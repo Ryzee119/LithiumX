@@ -1,0 +1,15 @@
+[submodule "src/nanoprintf"]
+	path = src/lib/nanoprintf
+	url = https://github.com/charlesnicholson/nanoprintf.git
+[submodule "src/lib/lvgl"]
+	path = src/lib/lvgl
+	url = https://github.com/Ryzee119/lvgl.git
+[submodule "src/xml_c"]
+	path = src/lib/xml
+	url = https://github.com/Ryzee119/xml_c.git
+[submodule "src/lib/xml"]
+	path = src/lib/xml
+	url = https://github.com/Ryzee119/xml_c.git
+[submodule "src/lib/nxdk"]
+	path = src/lib/nxdk
+	url = https://github.com/Ryzee119/nxdk.git

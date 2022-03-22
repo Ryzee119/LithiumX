@@ -1,0 +1,94 @@
+name: Build
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.images/*'
+      - 'LICENSE'
+      - '.gitignore'
+      - '*.md'
+    branches: [ master ]
+  push:
+    paths-ignore:
+      - '.images/*'
+      - 'LICENSE'
+      - '.gitignore'
+      - '*.md'
+    branches: [ master ]
+
+jobs:
+  Xbox:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install and Setup Dependencies
+      run: |
+        sudo apt-get update -y && sudo apt-get install -y flex bison clang lld llvm
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Compile
+      run: |
+        eval $(src/lib/nxdk/bin/activate -s)
+        make -f Makefile.nxdk -j$(nproc)
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: dash_xbox
+        path: |
+          LithiumX.iso
+          bin
+
+  Linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install and Setup Dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt install build-essential libsdl2-dev libturbojpeg-dev -y
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Compile
+      run: |
+        mkdir build && cd build
+        cmake ..
+        cmake --build .
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: dash_linux
+        path: |
+          build/LithiumX
+
+  Windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+    - name: Install and Setup Dependencies
+      run: |
+        pacman -S mingw-w64-x86_64-make --noconfirm
+        pacman -S mingw-w64-x86_64-cmake --noconfirm
+        pacman -S mingw-w64-x86_64-gcc --noconfirm
+        pacman -S mingw-w64-x86_64-SDL2 --noconfirm
+        pacman -S mingw-w64-x86_64-libjpeg-turbo --noconfirm
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Compile
+      run: |
+        mkdir build && cd build
+        cmake .. -G "MinGW Makefiles"
+        cmake --build .
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: dash_windows
+        path: |
+          build/LithiumX.exe

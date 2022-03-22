@@ -1,0 +1,48 @@
+XBE_TITLE = LithiumX
+GEN_XISO = $(XBE_TITLE).iso
+NXDK_SDL = y
+
+LVGL_DIR     = src/lib/lvgl
+LV_CONF_PATH = "lv_conf.h"
+GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
+
+# Include my files
+SRCS += \
+	$(CURDIR)/src/main.c \
+	$(CURDIR)/src/dash.c \
+	$(CURDIR)/src/dash_menu.c \
+	$(CURDIR)/src/dash_styles.c \
+	$(CURDIR)/src/dash_synop.c \
+	$(CURDIR)/src/dash_titlelist.c \
+	$(CURDIR)/src/helpers/fileio.c \
+	$(CURDIR)/src/helpers/nano_debug.c \
+	$(CURDIR)/src/platform/platform_xbox.c \
+	$(CURDIR)/src/dash_resources/default_tbn.c \
+	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
+	$(CURDIR)/src/lib/xml/src/xml.c \
+	$(CURDIR)/src/lvgl_drivers/lv_sdl_disp.c) \
+	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c)
+
+CFLAGS += \
+	-I$(CURDIR)/src \
+	-I$(CURDIR)/src/lib \
+	-I$(CURDIR)/src/lib/jpg_decoder \
+	-I$(CURDIR)/src/lvgl_drivers \
+	-O3 \
+	-Wall \
+	-DLV_LVGL_H_INCLUDE_SIMPLE -DLV_CONF_PATH=$(LV_CONF_PATH) \
+	-DWIN32 \
+	-DSDL_DISABLE_JOYSTICK_INIT_DELAY \
+	-DLVGL_USE_CUSTOM_CONTROLLER_MAP \
+	-DDEBUG_CONSOLE \
+	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
+	-DQRURL=\"https://github.com/Ryzee119/LithiumX\"
+	#-DDBG_I2C
+	#-DDBG
+
+# Include lvgl main library
+include $(LVGL_DIR)/lvgl.mk
+SRCS +=	$(CSRCS)
+CFLAGS += -I$(LVGL_DIR)/
+
+include $(NXDK_DIR)/Makefile
