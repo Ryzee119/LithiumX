@@ -14,8 +14,9 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 * Black/White - Change page
 * LT/RT - Scroll page
 * D-PAD - Select title
-* Back - Show Synopsis Screen
+* Back - Show synopsis screen
 * Start - Show main menu
+* A - Launch selected title
 
 ## Settings
 * On the first launch, a `dash.xml` will be created alongside the default.xbe with a starting template. Edit this to modify search paths for titles.
@@ -109,5 +110,5 @@ cmake --build .
 This project is shared under the [MIT license](https://github.com/Ryzee119/LithiumX/blob/master/LICENSE), however this project includes code by others. Refer to the list below.
 * [lvgl](https://github.com/lvgl)/**[lvgl](https://github.com/lvgl/lvgl)** shared under the [MIT License](https://github.com/lvgl/lvgl/blob/master/LICENCE.txt).
 * [charlesnicholson](https://github.com/charlesnicholson)/**[nanoprintf](https://github.com/charlesnicholson/nanoprintf)** shared under the [MIT License](https://github.com/charlesnicholson/nanoprintf/blob/main/LICENSE).
-* [ooxi](https://github.com/ooxi/)/**[ooxi](https://github.com/ooxi/xml.c)** shared under the [MIT License](https://github.com/ooxi/xml.c/blob/master/LICENSE).
+* [ooxi](https://github.com/ooxi/)/**[xml.c](https://github.com/ooxi/xml.c)** shared under the [MIT License](https://github.com/ooxi/xml.c/blob/master/LICENSE).
 * [XboxDev](https://github.com/XboxDev)/**[nxdk](https://github.com/XboxDev/nxdk)** shared under the [Various Licenses](https://github.com/XboxDev/nxdk/tree/master/LICENSES).
