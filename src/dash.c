@@ -769,8 +769,9 @@ void dash_init()
 void dash_deinit()
 {
     dash_running = false;
-    jpeg_decoder_deinit();
     SDL_WaitThread(parser_thread, NULL);
+    jpeg_decoder_deinit();
+    //All threads are stopped. Dont need lvgl locks anymore.
     if (dash_config)
     {
         xml_document_free(dash_config, false);
