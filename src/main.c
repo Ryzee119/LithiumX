@@ -88,9 +88,9 @@ int main(int argc, char *argv[])
         }
     }
     dash_deinit();
-    lv_deinit();
     lv_port_disp_deinit();
     lv_port_indev_deinit();
+    lv_deinit();
     platform_quit(lv_get_quit());
     return 0;
 }
