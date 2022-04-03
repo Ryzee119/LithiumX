@@ -87,12 +87,10 @@ int main(int argc, char *argv[])
             SDL_Delay(LV_DISP_DEF_REFR_PERIOD - tick_elapsed);
         }
     }
-    lvgl_getlock();
     dash_deinit();
     lv_deinit();
     lv_port_disp_deinit();
     lv_port_indev_deinit();
-    lvgl_removelock();
     platform_quit(lv_get_quit());
     return 0;
 }
