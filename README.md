@@ -6,7 +6,7 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 
 ## Features
 * Customisable search paths and pages.
-* Supports game synopsis information and boxart using the [XBMC4Gamers artwork format](https://github.com/Rocky5/XBMC4Gamers/blob/master/README.md).
+* Supports game synopsis information and boxart using the [XBMC4Gamers artwork format](https://github.com/Rocky5/XBMC4Gamers/blob/master/README.md#game-resources-and-synopsis).
 * Keeps track of recently launched titles to quickly get back into your games.
 * Will run at 720p if available, otherwise it will automatically fallback to 480p.
 
