@@ -16,7 +16,6 @@
 
 static lv_obj_t *main_menu;
 static lv_obj_t *rt_info;
-static lv_timer_t *rt_info_timer;
 
 typedef struct
 {
@@ -128,8 +127,9 @@ static void close_callback(lv_event_t *e)
     {
         if (obj == main_menu)
         {
-            lv_obj_del(rt_info);
+            lv_timer_t *rt_info_timer = (lv_timer_t *)rt_info->user_data;
             lv_timer_del(rt_info_timer);
+            lv_obj_del_async(rt_info);
             //Main menu is about to be deleted, invalidate this pointer.
             main_menu = NULL;
             rt_info = NULL;
@@ -356,7 +356,8 @@ void main_menu_open()
     lv_obj_add_style(rt_info, &rtinfo_style, LV_PART_MAIN);
     lv_obj_set_width(rt_info, MAINMENU_WIDTH);
     lv_obj_set_style_text_align(rt_info, LV_TEXT_ALIGN_LEFT, 0);
-    rt_info_timer = lv_timer_create(realtime_info_cb, 2000, rt_info);
+    lv_timer_t *rt_info_timer = lv_timer_create(realtime_info_cb, 2000, rt_info);
+    rt_info->user_data = rt_info_timer;
     lv_timer_ready(rt_info_timer);
 }
 
