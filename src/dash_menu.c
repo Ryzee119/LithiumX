@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 #define MAINMENU_WIDTH 600
-#define MAINMENU_HEIGHT 440
+#define MAINMENU_HEIGHT (lv_obj_get_height(lv_scr_act()) - (2 * DASH_YMARGIN))
 
 static lv_obj_t *main_menu;
 static lv_obj_t *rt_info;
@@ -104,6 +104,19 @@ static void realtime_info_cb(lv_timer_t *event)
     }
     const char *rt_info_str = platform_realtime_info_cb();
     lv_label_set_text(rt_info, rt_info_str);
+    lv_obj_update_layout(rt_info);
+
+    //If there's alot of realtime text, it may take up multiple lines. We need to shrink the menu size
+    int max_height = lv_obj_get_height(lv_scr_act()) - 2 * DASH_YMARGIN - lv_obj_get_height(rt_info);
+    if (lv_obj_get_height(main_menu) > max_height)
+    {
+        lv_obj_set_height(main_menu, max_height);
+        lv_obj_update_layout(main_menu);
+    }
+
+    lv_obj_align(rt_info, LV_ALIGN_CENTER, 0,
+                 (-lv_obj_get_height(main_menu) - lv_obj_get_height(rt_info)) / 2);
+
 }
 
 // Menu or submenu close callback on ESC or DASH_SETTINGS_PAGE (B or BACK) to close
@@ -133,6 +146,24 @@ static void close_callback(lv_event_t *e)
         }
         lv_mem_free(menu_data);
         lv_obj_del(obj);
+    }
+}
+
+//Scroll the main menu table if the selected cell is outside of the container view
+static void scroll_callback(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
+    uint16_t row, col;
+    lv_table_get_selected_cell(obj, &row, &col);
+    int row_height = lv_font_get_line_height(lv_obj_get_style_text_font(obj, LV_PART_ITEMS)) +
+                     lv_obj_get_style_pad_top(obj, LV_PART_ITEMS) +
+                     lv_obj_get_style_pad_bottom(obj, LV_PART_ITEMS);
+    int y = lv_obj_get_y(obj) + (row + 1) * row_height;
+    int y2 = lv_obj_get_y2(obj);
+    if (y > y2 || y < y2)
+    {
+        lv_obj_scroll_by_bounded(obj, 0, y2 - y, LV_ANIM_ON);
     }
 }
 
@@ -300,29 +331,30 @@ void main_menu_open()
     lv_obj_set_scrollbar_mode(main_menu, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_width(main_menu, MAINMENU_WIDTH);
     lv_obj_align(main_menu, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_update_layout(main_menu);
 
     int row_cnt = sizeof(menu_items) / sizeof(menu_items[0]);
     lv_table_set_col_cnt(main_menu, 1);
     lv_table_set_row_cnt(main_menu, row_cnt);
-    lv_table_set_col_width(main_menu, 0, lv_obj_get_width(main_menu));
+    lv_table_set_col_width(main_menu, 0, MAINMENU_WIDTH);
     for (int i = 0; i < row_cnt; i++)
     {
         lv_table_set_cell_value(main_menu, i, 0, menu_items[i]);
     }
+    lv_obj_set_height(main_menu, LV_SIZE_CONTENT);
     lv_obj_update_layout(main_menu);
 
     lv_obj_add_event_cb(main_menu, mainmenu_callback, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(main_menu, close_callback, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(main_menu, scroll_callback, LV_EVENT_VALUE_CHANGED, NULL);
 
     lv_group_focus_obj(main_menu);
     lv_group_focus_freeze(gp, true);
 
+    //Create a header above the menu to display realtime system info
     rt_info = lv_label_create(lv_scr_act());
     lv_obj_add_style(rt_info, &rtinfo_style, LV_PART_MAIN);
     lv_obj_set_width(rt_info, MAINMENU_WIDTH);
-    lv_obj_align(rt_info, LV_ALIGN_CENTER, 0,
-                 (-lv_obj_get_height(main_menu) - lv_font_get_line_height(&lv_font_montserrat_22)) / 2);
+    lv_obj_set_style_text_align(rt_info, LV_TEXT_ALIGN_LEFT, 0);
     rt_info_timer = lv_timer_create(realtime_info_cb, 2000, rt_info);
     lv_timer_ready(rt_info_timer);
 }
