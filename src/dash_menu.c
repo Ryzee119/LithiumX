@@ -132,6 +132,8 @@ static void close_callback(lv_event_t *e)
         {
             lv_obj_del(rt_info);
             lv_timer_del(rt_info_timer);
+            //Main menu is about to be deleted, invalidate this pointer.
+            main_menu = NULL;
         }
         lv_group_focus_freeze(gp, false);
         // If the object was on the recent items page, it may have been cleared. Ensure its valid still
