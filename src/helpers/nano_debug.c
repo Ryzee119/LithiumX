@@ -14,6 +14,7 @@
 
 #include "helpers/nano_debug.h"
 #include <stdarg.h>
+#include <string.h>
 
 #ifdef NXDK
 #include <xboxkrnl/xboxkrnl.h>
