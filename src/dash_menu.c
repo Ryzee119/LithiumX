@@ -96,10 +96,8 @@ static void dash_flush_cache()
 
 static void realtime_info_cb(lv_timer_t *event)
 {
-    lv_obj_t *rt_info = event->user_data;
-    if (lv_obj_is_valid(rt_info) == false)
+    if (rt_info == NULL || lv_obj_is_valid(rt_info) == false)
     {
-        lv_timer_del(event);
         return;
     }
     const char *rt_info_str = platform_realtime_info_cb();
@@ -134,6 +132,7 @@ static void close_callback(lv_event_t *e)
             lv_timer_del(rt_info_timer);
             //Main menu is about to be deleted, invalidate this pointer.
             main_menu = NULL;
+            rt_info = NULL;
         }
         lv_group_focus_freeze(gp, false);
         // If the object was on the recent items page, it may have been cleared. Ensure its valid still
