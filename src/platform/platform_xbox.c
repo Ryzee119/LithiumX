@@ -27,10 +27,19 @@ void platform_init(int *w, int *h)
     *h = 720;
     if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
     {
-        // Fall back to 480p. This should always be available
-        *w = 640;
+        // Fall back to 720*480
+        *w = 720;
         *h = 480;
-        XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT);
+        if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
+        {
+            //Try whatever else the xbox is happy with
+            VIDEO_MODE xmode;
+            void *p = NULL;
+            while (XVideoListModes(&xmode, 0, 0, &p));
+            XVideoSetMode(xmode.width, xmode.height, xmode.bpp, xmode.refresh);
+            *w = xmode.width;
+            *h = xmode.height;
+        }
     }
 
     // nxdk automounts D to the root xbe path. Lets undo that
