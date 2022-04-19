@@ -778,74 +778,6 @@ static void ftp_cmd_list(ftp_data_t *ftp)
 	ftp_send(ftp, "226 Directory send OK.\r\n");
 }
 
-static void ftp_cmd_mlsd(ftp_data_t *ftp)
-{
-	// are we not yet logged in?
-	if (!FTP_IS_LOGGED_IN(ftp))
-		return;
-
-	DIR dir;
-	uint16_t nm = 0;
-
-	// can we open the directory?
-	if (ftps_f_opendir(&dir, ftp->path) != FR_OK)
-	{
-		ftp_send(ftp, "550 Can't open directory %s\r\n", ftp->parameters);
-		return;
-	}
-
-	// open data connection
-	if (data_con_open(ftp) != 0)
-	{
-		ftp_send(ftp, "425 Can't create connection\r\n");
-		return;
-	}
-
-	// all good
-	ftp_send(ftp, "150 Accepted data connection\r\n");
-
-	// working buffer
-	char buf[FTP_BUF_SIZE];
-
-	// loop while we read without errors
-	while (ftps_f_readdir(&dir, &ftp->finfo) == FR_OK)
-	{
-		// end of directory found?
-		if (ftp->finfo.fname[0] == 0)
-			break;
-
-		// entry valid?
-		if (ftp->finfo.fname[0] == '.')
-			continue;
-
-		// does the file have a date?
-		if (ftp->finfo.fdate != 0)
-		{
-			char date_str[64];
-			snprintf(buf, FTP_BUF_SIZE, "Type=%s;Size=%d;Modify=%s; %s\r\n", ftp->finfo.fattrib & AM_DIR ? "dir" : "file", ftp->finfo.fsize,
-					 data_time_to_str(date_str, ftp->finfo.fdate, ftp->finfo.ftime), ftp->lfn[0] == 0 ? ftp->finfo.fname : ftp->lfn);
-			printf("date_str %s\n", date_str);
-		}
-		// file has no date
-		else
-		{
-			snprintf(buf, FTP_BUF_SIZE, "Type=%s;Size=%d; %s\r\n", ftp->finfo.fattrib & AM_DIR ? "dir" : "file", ftp->finfo.fsize, ftp->lfn[0] == 0 ? ftp->finfo.fname : ftp->lfn);
-		}
-
-		// write the data
-		netconn_write(ftp->dataconn, buf, strlen(buf), NETCONN_COPY);
-
-		// increment variable
-		nm++;
-	}
-
-	// close data connection
-	data_con_close(ftp);
-
-	// all was good
-	ftp_send(ftp, "226 Options: -a -l, %d matches total\r\n", nm);
-}
-
 static void ftp_cmd_dele(ftp_data_t *ftp)
 {
 	// are we not yet logged in?
@@ -1545,7 +1477,7 @@ static ftp_cmd_t ftpd_commands[] = {
 	{"PORT", ftp_cmd_port}, //
 	{"NLST", ftp_cmd_list}, //
 	{"LIST", ftp_cmd_list}, //
-	{"MLSD", ftp_cmd_mlsd}, //
+	{"MLSD", ftp_cmd_list}, //
 	{"DELE", ftp_cmd_dele}, //
 	{"NOOP", ftp_cmd_noop}, //
 	{"RETR", ftp_cmd_retr}, //
