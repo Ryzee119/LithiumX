@@ -1,6 +1,7 @@
 XBE_TITLE = LithiumX
 GEN_XISO = $(XBE_TITLE).iso
 NXDK_SDL = y
+NXDK_NET = y
 
 LVGL_DIR     = src/lib/lvgl
 LV_CONF_PATH = "lv_conf.h"
@@ -16,12 +17,18 @@ SRCS += \
 	$(CURDIR)/src/dash_titlelist.c \
 	$(CURDIR)/src/helpers/fileio.c \
 	$(CURDIR)/src/helpers/nano_debug.c \
-	$(CURDIR)/src/platform/platform_xbox.c \
+	$(CURDIR)/src/platform/xbox/platform.c \
+	$(CURDIR)/src/platform/xbox/network.c \
 	$(CURDIR)/src/dash_resources/default_tbn.c \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
 	$(CURDIR)/src/lib/xml/src/xml.c \
 	$(CURDIR)/src/lvgl_drivers/lv_sdl_disp.c) \
-	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c)
+	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c) \
+	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv.c \
+	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv_lwip.c \
+	$(CURDIR)/src/lib/ftpd/ftp_file.c \
+	$(CURDIR)/src/lib/ftpd/ftp_server.c \
+	$(CURDIR)/src/lib/ftpd/ftp.c \
 
 CFLAGS += \
 	-I$(CURDIR)/src \
@@ -36,7 +43,9 @@ CFLAGS += \
 	-DLVGL_USE_CUSTOM_CONTROLLER_MAP \
 	-DDEBUG_CONSOLE \
 	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
-	-DQRURL=\"https://github.com/Ryzee119/LithiumX\"
+	-DQRURL=\"https://github.com/Ryzee119/LithiumX\" \
+	-DFTP_CUSTOM_ROOT_PATH=\"X:\\\\LithiumX\\\\ftp_root\" \
+	-DDBG
 	#-DDBG_I2C
 	#-DDBG
 

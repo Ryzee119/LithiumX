@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "helpers/nano_debug.h"
+#include "platform/platform.h"
+
 #include "lvgl.h"
 #include "lv_port_indev.h"
 #include "dash.h"
 #include "dash_styles.h"
-#include "dash_network.h"
-#include "helpers/nano_debug.h"
-#include <stdio.h>
-#include <stdlib.h>
+
 #include <xboxkrnl/xboxkrnl.h>
 #include <nxdk/format.h>
 #include <nxdk/mount.h>
@@ -73,6 +77,45 @@ void platform_init(int *w, int *h)
     {
         fprintf(fp, "TitleName=LithiumX Dashboard\r\n");
         fclose(fp);
+    }
+
+    // Create a fake ftp root on cache
+    static const char root_drives[] = "DCEFGXYZ";
+    char ftp_folder[] = FTP_CUSTOM_ROOT_PATH "\0\0"; // over allocate for drive letters
+    int letter_pos = sizeof(ftp_folder) - 3;
+
+    // Create all folders and parent folders to reach FTP_CUSTOM_ROOT_PATH
+    char *end = strchr(ftp_folder, '\\');
+    uint8_t folder[255];
+    memset(folder, 0, sizeof(folder));
+    while (end != NULL)
+    {
+        strncpy((char *)folder, ftp_folder, end - ftp_folder);
+        CreateDirectory((const char *)folder, NULL);
+        end = strchr(++end, '\\');
+    }
+    CreateDirectoryA(ftp_folder, NULL);
+
+    // Create the ftp root folders
+    for (int d = 0; d < sizeof(root_drives); d++)
+    {
+        ftp_folder[letter_pos + 0] = '\\';
+        ftp_folder[letter_pos + 1] = root_drives[d];
+        if (nxIsDriveMounted(root_drives[d]))
+        {
+            nano_debug(LEVEL_TRACE, "Create directory %s\n", ftp_folder);
+            if (CreateDirectoryA(ftp_folder, NULL) == 0)
+            {
+                if (GetLastError() != ERROR_ALREADY_EXISTS)
+                {
+                    nano_debug(LEVEL_ERROR, "Could not create %s\n", ftp_folder);
+                }
+            }
+        }
+        else
+        {
+            RemoveDirectoryA(ftp_folder);
+        }
     }
 }
 
@@ -140,10 +183,15 @@ const char *platform_realtime_info_cb(void)
 
     HalReadSMCTrayState(&tray_state, NULL);
 
-    lv_snprintf(rt_text, sizeof(rt_text), "Tray State: %s, CPU: %lu%c, MB: %lu%c",
+    char ip[20];
+    platform_network_get_ip(ip, sizeof(ip));
+
+    lv_snprintf(rt_text, sizeof(rt_text), "Tray State: %s, CPU: %lu%c, MB: %lu%c\n"
+                                          "IP: %s",
                 tray_state_str(tray_state),
                 cpu_temp, temp_unit,
-                mb_temp, temp_unit);
+                mb_temp, temp_unit,
+                ip);
 
     return rt_text;
 }
