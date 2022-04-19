@@ -28,14 +28,14 @@ static ip4_addr_t ipaddr, netmask, gw;
 static void ftp_thread(void *arg)
 {
     LWIP_UNUSED_ARG(arg);
-    nano_debug(LEVEL_ERROR, "Waiting for DHCP...\n");
+    nano_debug(LEVEL_TRACE, "Waiting for DHCP...\n");
     while (dhcp_supplied_address(&netif) == 0)
     {
         Sleep(100);
     }
-    nano_debug(LEVEL_ERROR, "IP address.. %s\n", ip4addr_ntoa(netif_ip4_addr(&netif)));
-    nano_debug(LEVEL_ERROR, "Mask........ %s\n", ip4addr_ntoa(netif_ip4_netmask(&netif)));
-    nano_debug(LEVEL_ERROR, "Gateway..... %s\n", ip4addr_ntoa(netif_ip4_gw(&netif)));
+    nano_debug(LEVEL_TRACE, "IP address.. %s\n", ip4addr_ntoa(netif_ip4_addr(&netif)));
+    nano_debug(LEVEL_TRACE, "Mask........ %s\n", ip4addr_ntoa(netif_ip4_netmask(&netif)));
+    nano_debug(LEVEL_TRACE, "Gateway..... %s\n", ip4addr_ntoa(netif_ip4_gw(&netif)));
     ftp_server();
 }
 
