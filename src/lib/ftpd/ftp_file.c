@@ -70,7 +70,7 @@ static void win_to_ftps_time(FILETIME filetime, uint16_t *fdate, uint16_t *ftime
 #ifdef NXDK
 	TIME_FIELDS ft;
 	RtlTimeToTimeFields((PLARGE_INTEGER)&filetime, &ft);
-	year = ((ft.Year) << 9) & 0xFE00;
+	year = ((ft.Year - 1980) << 9) & 0xFE00;
 	month = (ft.Month << 5) & 0x01E0;
 	day = ft.Day & 0x001F;
 	h = (ft.Hour << 11) & 0xF800;
@@ -350,20 +350,23 @@ FRESULT ftps_f_mkdir(const char *path)
 
 FRESULT ftps_f_rename(const char *from, const char *to)
 {
-	FILE_DBG("%s from %s to %s\n", __FUNCTION__, from, to);
-	return FR_OK;
+	char win_from[_MAX_LFN];
+	char win_to[_MAX_LFN];
+	get_win_path(from, win_from);
+	get_win_path(to, win_to);
+	return (MoveFile(win_from, win_to)) ? FR_OK : FR_INVALID_PARAMETER;
 }
 
 FRESULT ftps_f_utime(const char *path, const FILINFO *fno)
 {
 	// http://elm-chan.org/fsw/ff/doc/utime.html
-	FILE_DBG("%s, path %s\n", __FUNCTION__, path);
+	FILE_DBG("%s: NOT IMPLEMENTED\n", __FUNCTION__);
 	return FR_OK;
 }
 
 FRESULT ftps_f_getfree(const char *path, uint32_t *nclst, void *fs)
 {
 	// Not implemented
-	FILE_DBG("%s\n", __FUNCTION__);
+	FILE_DBG("%s: NOT IMPLEMENTED\n", __FUNCTION__);
 	return FR_OK;
 }
