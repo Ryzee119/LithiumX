@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 {
     int w,h;
     platform_init(&w, &h);
+    platform_network_init();
 
     lvgl_mutex = SDL_CreateMutex();
 

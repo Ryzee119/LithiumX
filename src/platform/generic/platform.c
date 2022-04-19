@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: CC0-1.0
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "helpers/nano_debug.h"
+#include "platform/platform.h"
+
 #include "lvgl.h"
-#include "dash_styles.h"
 #include "lv_port_indev.h"
-#include "platform.h"
+#include "dash.h"
+#include "dash_styles.h"
 
 void platform_init(int *w, int *h)
 {

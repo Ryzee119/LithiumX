@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+#include "lvgl.h"
+#include "lv_port_indev.h"
+
 #ifndef BUILD_VERSION
 #define BUILD_VERSION "BUILD_VERSION not set"
 #endif
@@ -17,6 +20,14 @@ void platform_launch_dvd(); //Xbox only
 const char *platform_realtime_info_cb(void); //Xbox only
 void platform_show_info_cb(lv_obj_t *parent);
 void platform_quit(lv_quit_event_t event);
+
+void platform_network_init(void);
+void platform_networkrestart(void);
+void platform_networkdeinit(void);
+int platform_networkget_up(void);
+uint32_t platform_networkget_ip(char *rxbuf, uint32_t max_len);
+uint32_t platform_networkget_gateway(char *rxbuf, uint32_t max_len);
+uint32_t platform_networkget_netmask(char *rxbuf, uint32_t max_len);
 
 #ifdef __cplusplus
 }
