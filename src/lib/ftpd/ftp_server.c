@@ -983,8 +983,6 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 	uint32_t bytes_read;
 
 	// loop while reading is OK
-	LARGE_INTEGER test1, test2, test3, test4;
-	LONGLONG diff1 = 0, diff2 = 0;
 	while (1)
 	{
 		// read from file ok?
@@ -1094,7 +1092,6 @@ static void ftp_cmd_stor(ftp_data_t *ftp)
 	int8_t file_err = 0;
 	int8_t con_err = 0;
 	uint32_t bytes_written = 0;
-	uint32_t bytes_transferred = 0;
 	while (1)
 	{
 		// receive data from ftp client ok?
