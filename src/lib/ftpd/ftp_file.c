@@ -191,6 +191,7 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 		{
 			FILE_DBG("No more files\n");
 			nfo->fname[0] = '\0';
+			CloseHandle(dp->h);
 			return FR_OK;
 		}
 	}
