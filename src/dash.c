@@ -134,7 +134,7 @@ static void change_page(int new_index)
 }
 
 // About to launch a title. Add it to the recent titles file (if enabled) and launch it
-static void launch_title()
+static void launch_title(void)
 {
     lv_fs_file_t fp;
     uint32_t brw;
@@ -165,7 +165,7 @@ static void launch_title()
     // Most recent item is always first on the list. If its already on the list, it gets pushed to first.
     // If its not on the list it is inserted. If the number if items exceed RECENT_TITLES_MAX, the last item is dropped.
     int recent_title_cnt_new = LV_MIN(RECENT_TITLES_MAX, num_items + 1);
-    const char **recent_titles_new = lv_mem_alloc(sizeof(char *) * recent_title_cnt_new);
+    const char **recent_titles_new = (const char **)lv_mem_alloc(sizeof(char *) * recent_title_cnt_new);
     recent_titles_new[0] = launch_folder;
     for (int i = 1; i < recent_title_cnt_new; i++)
     {
@@ -204,7 +204,7 @@ static void input_callback(lv_event_t *event)
     current_obj = lv_event_get_target(event);
 
     // The obj has the title_t struct stored with it
-    current_title = current_obj->user_data;
+    current_title = (title_t *)current_obj->user_data;
 
     if (e == LV_EVENT_KEY)
     {
@@ -246,7 +246,7 @@ static void input_callback(lv_event_t *event)
         if (key == LV_KEY_ENTER)
         {
             dash_set_launch_folder(current_title->title_folder);
-            char *confirm_box_text = lv_mem_alloc(DASH_MAX_PATHLEN);
+            char *confirm_box_text = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
             lv_snprintf(confirm_box_text, DASH_MAX_PATHLEN, "%s \"%s\"", "Launch", current_title->title);
             menu_create_confirm_box(confirm_box_text, launch_title);
             lv_mem_free(confirm_box_text);
@@ -292,7 +292,7 @@ static void input_callback(lv_event_t *event)
         // Grab the object at the new index
         new_obj = lv_obj_get_child(parent, new_index);
         LV_ASSERT(new_obj != NULL); // Some unhandled case! Shouldnt happen
-        new_title = new_obj->user_data;
+        new_title = (title_t *)new_obj->user_data;
         LV_ASSERT(new_title != NULL);
 
         // Remember the current index so when we change page we come back to the previous item
@@ -481,7 +481,7 @@ static int game_parser_thread(void *ptr)
     return 0;
 }
 
-void dash_init()
+void dash_init(void)
 {
     if (dash_running)
     {
@@ -492,7 +492,7 @@ void dash_init()
     uint32_t fs;
     bool xml_parse_error = true;
     unsigned int br, bw;
-    char *xml_settings_path = DASH_XML;
+    const char *xml_settings_path = DASH_XML;
 
     // Read the xml path if available to gather settings and search paths
     xml_raw = lv_fs_orc(xml_settings_path, &br);
@@ -529,7 +529,7 @@ void dash_init()
         // We use built xml in. Assert on errors here, as errors should never happen!
         nano_debug(LEVEL_WARN, "WARN: %s missing or invalid. Using inbuilt default", DASH_XML);
         int xml_len = strlen(xml_default);
-        xml_raw = lv_mem_alloc(xml_len + 1);
+        xml_raw = (uint8_t *)lv_mem_alloc(xml_len + 1);
         lv_memcpy(xml_raw, xml_default, xml_len);
         xml_raw[xml_len] = '\0';
         dash_config = xml_parse_document((uint8_t *)xml_raw, strlen((char *)xml_raw));
@@ -632,7 +632,7 @@ void dash_init()
     lv_memset(parsers, 0, sizeof(parse_handle_t) * parser_cnt);
     recent_parser = NULL;
     parser_current = NULL;
-    for (size_t i = 0; i < parser_cnt; i++)
+    for (int i = 0; i < parser_cnt; i++)
     {
         // Add the tile to create a new page
         parsers[i].tile = lv_tileview_add_tile(page_tiles, i, 0, LV_DIR_NONE);
@@ -693,7 +693,7 @@ void dash_init()
         {
             struct xml_string *dir_name = xml_node_content(xml_node_child(page, j));
             size_t dir_len = LV_MIN(xml_string_length(dir_name), DASH_MAX_PATHLEN);
-            parser->paths[j] = lv_mem_alloc(dir_len);
+            parser->paths[j] = (char *)lv_mem_alloc(dir_len);
             xml_string_copy(dir_name, (uint8_t *)parser->paths[j], dir_len);
             parser->paths[j][dir_len] = '\0';
             nano_debug(LEVEL_TRACE, "TRACE: Found path %s for page %s\n", parser->paths[j], title);
@@ -717,7 +717,7 @@ void dash_init()
         {
             nano_debug(LEVEL_TRACE, "TRACE: Found %s. Reading recent items\n", RECENT_TITLES);
             // Find number of lines and replace with string terminators
-            for (int i = 0; i < fs; i++)
+            for (uint32_t i = 0; i < fs; i++)
             {
                 if (data[i] == '\n')
                 {
@@ -725,7 +725,7 @@ void dash_init()
                     data[i] = '\0';
                 }
             }
-            recent_titles = lv_mem_alloc(sizeof(char *) * recent_title_cnt);
+            recent_titles = (char **)lv_mem_alloc(sizeof(char *) * recent_title_cnt);
             // Add all the recent titles to the recent items page
             for (int i = 0; i < recent_title_cnt; i++)
             {
@@ -766,7 +766,7 @@ void dash_init()
     nano_debug(LEVEL_TRACE, "TRACE: Dash init compete\n");
 }
 
-void dash_deinit()
+void dash_deinit(void)
 {
     dash_running = false;
     SDL_WaitThread(parser_thread, NULL);

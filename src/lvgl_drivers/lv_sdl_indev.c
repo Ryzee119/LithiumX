@@ -65,7 +65,7 @@ static keyboard_map_t lvgl_keyboard_map[] =
 extern keyboard_map_t lvgl_keyboard_map[];
 #endif
 
-lv_quit_event_t lv_get_quit()
+lv_quit_event_t lv_get_quit(void)
 {
     return quit_event;
 }
@@ -75,7 +75,7 @@ void lv_set_quit(lv_quit_event_t event)
     quit_event = event;
 }
 
-static void mouse_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data)
+static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
     if (pad == NULL)
     {
@@ -90,7 +90,9 @@ static void mouse_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data)
         uint32_t buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
         data->point.x = mouse_x;
         data->point.y = mouse_y;
-        data->state |= (buttons & SDL_BUTTON_LMASK) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+
+        unsigned int *_state = (unsigned int *)&data->state;
+        *_state |= (buttons & SDL_BUTTON_LMASK) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
         mouse_event = false;
     }
     // From gamecontroller
@@ -122,7 +124,7 @@ static void mouse_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data)
     }
 }
 
-static void keypad_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data)
+static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
     data->key = 0;
 
@@ -133,7 +135,7 @@ static void keypad_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data
         {
             if (e.window.event == SDL_WINDOWEVENT_CLOSE)
             {
-                quit_event = true;
+                quit_event = LV_SHUTDOWN;
             }
         }
 
@@ -221,7 +223,7 @@ static void keypad_read(lv_indev_drv_t *indev_drv_gamepad, lv_indev_data_t *data
         // Handle keyboard button events
         if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP)
         {
-            for (int i = 0; i < (sizeof(lvgl_keyboard_map) / sizeof(keyboard_map_t)); i++)
+            for (size_t i = 0; i < (sizeof(lvgl_keyboard_map) / sizeof(keyboard_map_t)); i++)
             {
                 if (lvgl_keyboard_map[i].sdl_map == e.key.keysym.sym)
                 {
@@ -260,7 +262,7 @@ void lv_port_indev_init(bool use_mouse_cursor)
         lv_img_set_src(mouse_cursor, LV_SYMBOL_PLUS);
         lv_indev_set_cursor(indev_mouse, mouse_cursor);
     }
-    quit_event = false;
+    quit_event = LV_QUIT_NONE;
 }
 
 void lv_port_indev_deinit(void)

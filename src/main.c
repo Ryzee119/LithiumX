@@ -37,12 +37,12 @@ gamecontroller_map_t lvgl_gamecontroller_map[] =
 
 // LVGL isn't thread safe but we can use threads if we put locks around lv_task_handler
 // and then any other lv_.. calls from other threads
-void lvgl_getlock()
+void lvgl_getlock(void)
 {
     SDL_LockMutex(lvgl_mutex);
 }
 
-void lvgl_removelock()
+void lvgl_removelock(void)
 {
     SDL_UnlockMutex(lvgl_mutex);
 }
@@ -53,7 +53,7 @@ void dash_set_launch_folder(const char *path)
     strncpy(launch_title, path, sizeof(launch_title) - 1);
 }
 
-const char *dash_get_launch_folder()
+const char *dash_get_launch_folder(void)
 {
     return launch_title;
 }

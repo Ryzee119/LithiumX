@@ -167,7 +167,7 @@ static void jpg_delayed_queue(lv_timer_t *timer)
         {
             /*Drop the first two characters in the filename. These are lvgl specific*/
             int path_len = strlen(title->title_folder) + 1 + strlen(DASH_LAUNCH_EXE) + 1;
-            char *thumbnail_path = lv_mem_alloc(path_len);
+            char *thumbnail_path = (char *)lv_mem_alloc(path_len);
             lv_snprintf(thumbnail_path, path_len, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, DASH_GAME_THUMBNAIL);
             title->jpeg_handle = jpeg_decoder_queue(&thumbnail_path[2], jpg_decompression_complete_cb, title);
             lv_mem_free(thumbnail_path);
@@ -197,7 +197,7 @@ static int title_parse(title_t *title)
     uint32_t br;
     lv_fs_file_t fp;
     int success = 1;
-    char *launch_path = lv_mem_alloc(DASH_MAX_PATHLEN);
+    char *launch_path = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
     do
     {
         lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
@@ -242,14 +242,14 @@ static int title_parse(title_t *title)
     return success;
 }
 
-void titlelist_init()
+void titlelist_init(void)
 {
     list_head = NULL;
     list_tail = NULL;
     flush_timer = lv_timer_create(jpg_flush_cache_cb, FLUSH_PERIOD, NULL);
 }
 
-void titlelist_deinit()
+void titlelist_deinit(void)
 {
     lv_timer_del(flush_timer);
     title_t *title = list_head;
@@ -336,7 +336,7 @@ title_no_xml:
     if (xml_parsed == false)
     {
         nano_debug(LEVEL_TRACE, "TRACE: Could not find a valid synopsis xml in %s\n", xml_path);
-        for (int i = 0; i < LV_MIN(sizeof(title->title), sizeof(title->xbe_cert.wszTitleName) / 2); i++)
+        for (int i = 0; i < (int)LV_MIN(sizeof(title->title), sizeof(title->xbe_cert.wszTitleName) / 2); i++)
         {
             uint16_t unicode = title->xbe_cert.wszTitleName[i];
             title->title[i] = (unicode > 0x7E) ? '?' : (unicode & 0x7F);
@@ -372,7 +372,6 @@ title_no_xml:
     // Put some text on the default thumbnail with title
     // if (title->has_thumbnail == false) //We'll just put text on everything for now
     {
-        LV_FONT_DECLARE(lv_font_montserrat_24);
         lv_obj_t *label = lv_label_create(title->thumb_default);
         lv_obj_add_style(label, &titleview_image_text_style, LV_PART_MAIN);
         lv_obj_set_width(label, DASH_THUMBNAIL_WIDTH);

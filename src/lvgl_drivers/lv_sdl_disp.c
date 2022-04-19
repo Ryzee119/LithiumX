@@ -17,11 +17,11 @@ static int DISPLAY_HEIGHT;
 #define WINDOW_NAME "LVGL"
 #endif
 
-static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
+static void disp_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 {
     SDL_RenderPresent(renderer);
     SDL_RenderClear(renderer);
-    lv_disp_flush_ready(disp_drv);
+    lv_disp_flush_ready(drv);
 }
 
 void lv_port_disp_init(int width, int height)
@@ -57,7 +57,7 @@ void lv_port_disp_init(int width, int height)
     SDL_RenderClear(renderer);
 }
 
-void lv_port_disp_deinit()
+void lv_port_disp_deinit(void)
 {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

@@ -8,6 +8,8 @@
 extern "C" {
 #endif
 
+#include "dash_titlelist.h"
+
 void synop_menu_init(void);
 void synop_menu_deinit(void);
 void synop_menu_open(title_t *title);

@@ -60,34 +60,34 @@ enum
 };
 
 // The follow callbacks are called after the confirmation box has been accepted
-static void dash_shutdown()
+static void dash_shutdown(void)
 {
     lv_set_quit(LV_SHUTDOWN);
 }
 
-static void dash_reboot()
+static void dash_reboot(void)
 {
     lv_set_quit(LV_REBOOT);
 }
 
-static void dash_clear_recent()
+static void dash_clear_recent(void)
 {
     dash_clear_recent_list();
 }
 
 #ifdef NXDK
-static void dash_launch_msdash()
+static void dash_launch_msdash(void)
 {
     dash_set_launch_folder("MSDASH");
     lv_set_quit(LV_QUIT_OTHER);
 }
 
-static void dash_launch_dvd()
+static void dash_launch_dvd(void)
 {
     platform_launch_dvd();
 }
 
-static void dash_flush_cache()
+static void dash_flush_cache(void)
 {
     platform_flush_cache_cb();
 }
@@ -154,7 +154,6 @@ static void close_callback(lv_event_t *e)
 static void scroll_callback(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
-    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
     uint16_t row, col;
     lv_table_get_selected_cell(obj, &row, &col);
     int row_height = lv_font_get_line_height(lv_obj_get_style_text_font(obj, LV_PART_ITEMS)) +
@@ -203,7 +202,7 @@ static void menu_set_style(lv_obj_t *obj)
 }
 
 // Create a generic submenu container
-static lv_obj_t *menu_create_submenu_box()
+static lv_obj_t *menu_create_submenu_box(void)
 {
     lv_obj_t *obj = lv_obj_create(lv_scr_act());
     lv_group_t *gp = lv_group_get_default();
@@ -213,7 +212,7 @@ static lv_obj_t *menu_create_submenu_box()
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(obj, confirmbox_callback, LV_EVENT_PRESSED, NULL);
 
-    menu_data_t *user_data = lv_mem_alloc(sizeof(menu_data_t));
+    menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
     user_data->old_focus = lv_group_get_focused(gp);
     user_data->old_focus_parent = lv_obj_get_parent(user_data->old_focus);
     user_data->cb = NULL;
@@ -304,7 +303,7 @@ static void mainmenu_callback(lv_event_t *e)
     }
 }
 
-void main_menu_init()
+void main_menu_init(void)
 {
 }
 
@@ -313,14 +312,14 @@ void main_menu_deinit(void)
 }
 
 // Create and open the main menu
-void main_menu_open()
+void main_menu_open(void)
 {
     nano_debug(LEVEL_TRACE, "TRACE: Opening main menu\n");
     lv_group_t *gp;
 
     gp = lv_group_get_default();
     main_menu = lv_table_create(lv_scr_act());
-    menu_data_t *user_data = lv_mem_alloc(sizeof(menu_data_t));
+    menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
     user_data->old_focus = lv_group_get_focused(gp);
     user_data->old_focus_parent = lv_obj_get_parent(user_data->old_focus);
     user_data->cb = NULL;
@@ -378,7 +377,7 @@ lv_obj_t *menu_create_confirm_box(const char *msg, confirm_cb_t confirm_cb)
     lv_obj_add_event_cb(obj, confirmbox_callback, LV_EVENT_PRESSED, NULL);
 
     // We need to manually control the focus here so lvgl doesnt just to random places
-    menu_data_t *user_data = lv_mem_alloc(sizeof(menu_data_t));
+    menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
     user_data->old_focus = lv_group_get_focused(gp);
     user_data->old_focus_parent = lv_obj_get_parent(user_data->old_focus);
     user_data->cb = confirm_cb;

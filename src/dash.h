@@ -93,10 +93,10 @@ void dash_init(void);
 void dash_deinit(void);
 void dash_set_launch_folder(const char *path);
 void dash_clear_recent_list(void);
-const char *dash_get_launch_folder();
+const char *dash_get_launch_folder(void);
 
-void lvgl_getlock();
-void lvgl_removelock();
+void lvgl_getlock(void);
+void lvgl_removelock(void);
 
 #ifdef __cplusplus
 }

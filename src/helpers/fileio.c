@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
 #include "lvgl.h"
+#include "fileio.h"
 
 bool lv_fs_exists(const char *path)
 {
@@ -38,7 +39,7 @@ uint8_t *lv_fs_orc(const char *fn, uint32_t *br)
 
     file_size = lv_fs_size(&fp);
 
-    data = lv_mem_alloc(file_size);
+    data = (uint8_t *)lv_mem_alloc(file_size);
     if (data == NULL)
     {
         lv_fs_close(&fp);

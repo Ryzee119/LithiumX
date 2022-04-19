@@ -4,6 +4,7 @@
 #include "lvgl.h"
 #include "dash.h"
 #include "dash_styles.h"
+#include "dash_synop.h"
 #include "dash_titlelist.h"
 #include "xml/src/xml.h"
 #include "helpers/fileio.h"
@@ -33,7 +34,7 @@ static void close_callback(lv_event_t *event)
     {
         lv_group_t *gp = lv_group_get_default();
         lv_group_focus_freeze(gp, false);
-        lv_group_focus_obj(synop_menu->user_data);
+        lv_group_focus_obj((lv_obj_t *)synop_menu->user_data);
         // We only hide it and keep is cached for now
         lv_obj_add_flag(synop_menu, LV_OBJ_FLAG_HIDDEN);
     }
@@ -84,12 +85,12 @@ static void synop_scroll(lv_event_t *e)
     }
 }
 
-void synop_menu_init()
+void synop_menu_init(void)
 {
     lv_memset(cache, 0x00, sizeof(cache));
 }
 
-void synop_menu_deinit()
+void synop_menu_deinit(void)
 {
     for (int i = 0; i < SYNOP_CACHE_SIZE; i++)
     {

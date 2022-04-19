@@ -17,7 +17,7 @@ lv_style_t titleview_image_container_style;
 lv_style_t titleview_image_text_style;
 lv_style_t titleview_header_footer_style;
 
-void dash_styles_init()
+void dash_styles_init(void)
 {
     // Set the style for the background
     lv_style_init(&dash_background_style);
@@ -112,7 +112,7 @@ void dash_styles_init()
     lv_style_set_text_font(&titleview_header_footer_style, &lv_font_montserrat_26);
 }
 
-void dash_styles_deinit()
+void dash_styles_deinit(void)
 {
     lv_style_reset(&dash_background_style);
     lv_style_reset(&menu_table_style);

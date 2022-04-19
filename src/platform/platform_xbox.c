@@ -5,6 +5,7 @@
 #include "lv_port_indev.h"
 #include "dash.h"
 #include "dash_styles.h"
+#include "dash_network.h"
 #include "helpers/nano_debug.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,7 @@ static const char *tray_state_str(uint32_t tray_state);
 
 void platform_init(int *w, int *h)
 {
+    //First try 720p. This is the preferred resolution
     *w = 1280;
     *h = 720;
     if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)

@@ -4,6 +4,7 @@
 #include "lvgl.h"
 #include "dash_styles.h"
 #include "lv_port_indev.h"
+#include "platform.h"
 
 void platform_init(int *w, int *h)
 {
