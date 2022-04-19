@@ -919,7 +919,7 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 	{
 		// read from file ok?
 		bytes_read = 0;
-		if (ftps_f_read(&ftp->file, ftp->file.cache_buf, FILE_CACHE_SIZE, &bytes_read) != FR_OK)
+		if (ftps_f_read(&ftp->file, ftp->file.cache_buf[0], FILE_CACHE_SIZE, &bytes_read) != FR_OK)
 		{
 			ftp_send(ftp, "451 Communication error during transfer\r\n");
 			break;
@@ -937,7 +937,7 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 		{
 			uint32_t xfer_remain = (bytes_read - bytes_transferred);
 			uint32_t xfer_len = (xfer_remain < FTP_BUF_SIZE) ? xfer_remain : FTP_BUF_SIZE;
-			err_t con_err = netconn_write(ftp->dataconn, &ftp->file.cache_buf[bytes_transferred], xfer_len, NETCONN_COPY);
+			err_t con_err = netconn_write(ftp->dataconn, &ftp->file.cache_buf[0][bytes_transferred], xfer_len, NETCONN_COPY);
 			if (con_err != ERR_OK)
 			{
 				ftp_send(ftp, "426 Error during file transfer: %d\r\n", con_err);

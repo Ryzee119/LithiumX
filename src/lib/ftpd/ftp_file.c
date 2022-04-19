@@ -222,6 +222,26 @@ FRESULT ftps_f_unlink(const char *path)
 	return FR_OK;
 }
 
+static void NTAPI async_writer(PKSTART_ROUTINE StartRoutine, PVOID StartContext)
+{
+	FIL *fp = (FIL *)StartContext;
+	HANDLE hfile = fp->h;
+	int cache_index = 0;
+	DWORD bw;
+	while (1)
+	{
+		NtWaitForSingleObject(fp->cache_mutex[cache_index], FALSE, NULL);
+		if (fp->thread_running == 0)
+		{
+			break;
+		}
+		WriteFile(hfile, (LPVOID)fp->cache_buf[cache_index], FILE_CACHE_SIZE, &bw, NULL);
+		NtReleaseMutant(fp->cache_mutex[cache_index], NULL);
+		cache_index ^= 1;
+	}
+	PsTerminateSystemThread(0);
+}
+
 FRESULT ftps_f_open(FIL *fp, const char *path, uint8_t mode)
 {
 	DWORD access = 0, disposition = 0;
@@ -237,8 +257,21 @@ FRESULT ftps_f_open(FIL *fp, const char *path, uint8_t mode)
 		return FR_NO_FILE;
 	}
 	fp->h = hfile;
-	fp->write_total = (access & GENERIC_READ) ? -1 : 0;
+	fp->write_total = -1;
 	fp->bytes_cached = 0;
+	fp->cache_index = 0;
+	fp->thread_running = 0;
+
+	if (access & GENERIC_WRITE)
+	{
+		fp->thread_running = 1;
+		fp->write_total = 0;
+		NtCreateMutant(&fp->cache_mutex[0], NULL, TRUE);
+		NtCreateMutant(&fp->cache_mutex[1], NULL, FALSE);
+		PsCreateSystemThreadEx(&fp->write_thread, 0, 4096, 0, NULL, NULL, fp, FALSE, FALSE, async_writer);
+	}
+	//FIXME async_reader?
+
 	return FR_OK;
 }
 
@@ -262,13 +295,22 @@ FRESULT ftps_f_close(FIL *fp)
 	// Did we have the file opened as write?
 	if (fp->write_total != -1)
 	{
+		//Shutdown async_writer thread
+		fp->thread_running = 0;
+		NtReleaseMutant(fp->cache_mutex[0], NULL);
+		NtReleaseMutant(fp->cache_mutex[1], NULL);
+		NtWaitForSingleObject(fp->write_thread, FALSE, NULL);
+		NtClose(fp->write_thread);
+		NtClose(fp->cache_mutex[0]);
+		NtClose(fp->cache_mutex[1]);
+
 		// If we have pending data in cache, write it out.
 		if (fp->bytes_cached > 0)
 		{
 			// Have to write out a full sector even if the remaining bytes is less to maintain
 			// zero buffering. The size if fixed below.
 			int write_len = (fp->bytes_cached + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-			res = WriteFile(hfile, (LPVOID)fp->cache_buf, write_len, &bw, NULL) ? FR_OK : FR_INVALID_PARAMETER;
+			res = WriteFile(hfile, (LPVOID)fp->cache_buf[fp->cache_index], write_len, &bw, NULL) ? FR_OK : FR_INVALID_PARAMETER;
 			fp->write_total += fp->bytes_cached;
 		}
 
@@ -293,7 +335,6 @@ FRESULT ftps_f_close(FIL *fp)
 		endOfFile.EndOfFile.QuadPart = fp->write_total;
 		SetFileInformationByHandle(hfile, FileEndOfFileInfo, &endOfFile, sizeof(endOfFile));
 		#endif
-
 	}
 
 	CloseHandle(hfile);
@@ -309,14 +350,18 @@ FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t buflen, uint32_t *wri
 	// Write the correct amount of bytes to fill up to FILE_CACHE_SIZE exactly.
 	int next_spot = fp->bytes_cached + buflen;
 	int len = (next_spot < FILE_CACHE_SIZE) ? buflen : (buflen - (next_spot - FILE_CACHE_SIZE));
-	memcpy(&fp->cache_buf[fp->bytes_cached], prcvbuf, len);
+	memcpy(&fp->cache_buf[fp->cache_index][fp->bytes_cached], prcvbuf, len);
 	fp->bytes_cached += len;
 
 	// If we have filled the file write cache, write it out.
 	assert(fp->bytes_cached <= FILE_CACHE_SIZE);
 	if (fp->bytes_cached == FILE_CACHE_SIZE)
 	{
-		res = WriteFile(hfile, (LPVOID)fp->cache_buf, FILE_CACHE_SIZE, (LPDWORD)written, NULL) ? FR_OK : FR_INVALID_PARAMETER;
+		//Get ownership of next buffer
+		NtWaitForSingleObject(fp->cache_mutex[fp->cache_index ^ 1], FALSE, NULL);
+		//Release ownership of current buffer to start writing in the async_writer thread
+		NtReleaseMutant(fp->cache_mutex[fp->cache_index], NULL);
+		fp->cache_index ^= 1;
 		fp->write_total += FILE_CACHE_SIZE;
 
 		// If we have remaining bytes, put them in the now cleared cache buffer.
@@ -324,7 +369,7 @@ FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t buflen, uint32_t *wri
 		assert(remaining >= 0);
 		if (remaining > 0)
 		{
-			memcpy(fp->cache_buf, &prcvbuf[len], remaining);
+			memcpy(fp->cache_buf[fp->cache_index], &prcvbuf[len], remaining);
 		}
 		fp->bytes_cached = remaining;
 	}

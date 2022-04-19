@@ -28,16 +28,22 @@ typedef struct
 #define PAGE_SIZE 4096
 #endif
 
+#define FILE_CACHE_SIZE (PAGE_SIZE * 128)
+
 typedef struct
 {
-	HANDLE h;
+    HANDLE h;
     char path[_MAX_LFN];
-	char cache_buf[PAGE_SIZE * 16 + TCP_MSS] __attribute__((aligned(PAGE_SIZE)));
+    int cache_index;
+    char cache_buf[2][FILE_CACHE_SIZE + TCP_MSS] __attribute__((aligned(PAGE_SIZE)));
+    HANDLE cache_mutex[2];
+    HANDLE write_thread;
+    int thread_running;
     int write_total;
     int bytes_cached;
 } fil_handle_t;
 
-#define FILE_CACHE_SIZE (PAGE_SIZE * 16)
+
 #define DIR dir_handle_t
 #define FIL fil_handle_t
 
