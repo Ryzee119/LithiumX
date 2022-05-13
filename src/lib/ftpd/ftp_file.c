@@ -21,7 +21,8 @@
 
 #ifdef NXDK
 #include <xboxkrnl/xboxkrnl.h>
-static const char *root_drives = "CDEFGXYZ\0";
+static const char root_drives[][3] = {"/C", "/D", "/E", "/F", "/G", "/X", "/Y", "/Z"};
+static int root_index;
 #define FILE_DBG DbgPrint
 #else
 #include <timezoneapi.h>
@@ -51,6 +52,21 @@ static char *get_win_path(const char *in, char* out)
 #endif
 	return out;
 }
+
+#ifdef FTP_CUSTOM_ROOT_PATH
+static int is_root_path(const char *path)
+{
+	int cnt = sizeof(root_drives) / sizeof(root_drives[0]);
+	for (int i = 0; i < cnt; i++)
+	{
+		if (strcmp(path, root_drives[i]) == 0)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+#endif
 
 static uint8_t win_to_ftps_attr(DWORD attr)
 {
@@ -98,6 +114,14 @@ FRESULT ftps_f_stat(const char *path, FILINFO *nfo)
 	DWORD attr = GetFileAttributesA(p);
 	HANDLE hfile = CreateFileA(p, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
+#ifdef FTP_CUSTOM_ROOT_PATH
+	if (is_root_path(path))
+	{
+		nfo->fattrib = AM_DIR | AM_RDO;
+		return FR_OK;
+	}
+#endif
+
 	if (attr == INVALID_FILE_ATTRIBUTES && hfile == INVALID_HANDLE_VALUE)
 	{
 		FILE_DBG("Could not find %s %08x %08x\n", path, attr, hfile);
@@ -130,16 +154,19 @@ FRESULT ftps_f_opendir(DIR *dp, const char *path)
 {
 	char *p = NULL;
 	dp->h = INVALID_HANDLE_VALUE;
+	FILE_DBG("Opening directory %s\n", path);
 
-// If a custom root path is defined, it gets prefixed into the path
+// If a custom root path is defined, we return the custom directory
 #ifdef FTP_CUSTOM_ROOT_PATH
+	//FTP client is request the root directory listing
 	if (strcmp(path, "/") == 0 || strcmp(path, "\\") == 0)
 	{
-		FILE_DBG("copying %s in path\n", FTP_CUSTOM_ROOT_PATH);
-		strncpy(dp->path, FTP_CUSTOM_ROOT_PATH, sizeof(dp->path));
-		p = get_win_path(dp->path, dp->path);
+		root_index = 0;
+		strcpy(dp->path, "root");
+		return FR_OK;
 	}
 #endif
+
 	if (p == NULL)
 	{
 		p = get_win_path(path, dp->path);
@@ -174,6 +201,23 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 {
 	WIN32_FIND_DATA findFileData;
 	FILE_DBG("Looking for files in %s\n", dp->path);
+
+#ifdef FTP_CUSTOM_ROOT_PATH
+	if (strcmp(dp->path, "root") == 0)
+	{
+		if (root_index < (sizeof(root_drives) / sizeof(root_drives[0])))
+		{
+			nfo->fname[0] = root_drives[root_index++][1];
+			nfo->fname[1] = '\0';
+			nfo->fattrib = AM_DIR | AM_RDO;
+		}
+		else
+		{
+			nfo->fname[0] = '\0';
+		}
+		return FR_OK;
+	}
+#endif
 
 	if (dp->h == INVALID_HANDLE_VALUE)
 	{

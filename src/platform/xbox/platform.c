@@ -78,45 +78,6 @@ void platform_init(int *w, int *h)
         fprintf(fp, "TitleName=LithiumX Dashboard\r\n");
         fclose(fp);
     }
-
-    // Create a fake ftp root on cache
-    static const char root_drives[] = "DCEFGXYZ";
-    char ftp_folder[] = FTP_CUSTOM_ROOT_PATH "\0\0"; // over allocate for drive letters
-    int letter_pos = sizeof(ftp_folder) - 3;
-
-    // Create all folders and parent folders to reach FTP_CUSTOM_ROOT_PATH
-    char *end = strchr(ftp_folder, '\\');
-    uint8_t folder[255];
-    memset(folder, 0, sizeof(folder));
-    while (end != NULL)
-    {
-        strncpy((char *)folder, ftp_folder, end - ftp_folder);
-        CreateDirectory((const char *)folder, NULL);
-        end = strchr(++end, '\\');
-    }
-    CreateDirectoryA(ftp_folder, NULL);
-
-    // Create the ftp root folders
-    for (int d = 0; d < sizeof(root_drives); d++)
-    {
-        ftp_folder[letter_pos + 0] = '\\';
-        ftp_folder[letter_pos + 1] = root_drives[d];
-        if (nxIsDriveMounted(root_drives[d]))
-        {
-            nano_debug(LEVEL_TRACE, "Create directory %s\n", ftp_folder);
-            if (CreateDirectoryA(ftp_folder, NULL) == 0)
-            {
-                if (GetLastError() != ERROR_ALREADY_EXISTS)
-                {
-                    nano_debug(LEVEL_ERROR, "Could not create %s\n", ftp_folder);
-                }
-            }
-        }
-        else
-        {
-            RemoveDirectoryA(ftp_folder);
-        }
-    }
 }
 
 // Xbox specific
