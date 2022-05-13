@@ -44,7 +44,7 @@ CFLAGS += \
 	-DDEBUG_CONSOLE \
 	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
 	-DQRURL=\"https://github.com/Ryzee119/LithiumX\" \
-	-DFTP_CUSTOM_ROOT_PATH=\"X:\\\\LithiumX\\\\ftp_root\" \
+	-DFTP_CUSTOM_ROOT_PATH \
 	-DDBG
 	#-DDBG_I2C
 	#-DDBG

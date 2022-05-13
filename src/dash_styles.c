@@ -23,13 +23,13 @@ void dash_styles_init(void)
     lv_style_init(&dash_background_style);
     lv_style_set_border_width(&dash_background_style, 0);
     lv_style_set_radius(&dash_background_style, 0);
-    lv_style_set_bg_color(&dash_background_style, lv_color_make(48, 48, 48));
+    lv_style_set_bg_color(&dash_background_style, lv_color_make(15, 15, 15));
     lv_style_set_bg_grad_color(&dash_background_style, lv_color_make(22, 111, 15));
     lv_style_set_bg_grad_dir(&dash_background_style, LV_GRAD_DIR_VER);
 
     // Set the style for the main menu container
     lv_style_init(&menu_table_style);
-    lv_style_set_bg_color(&menu_table_style, lv_color_make(48, 48, 48));
+    lv_style_set_bg_color(&menu_table_style, lv_color_make(15, 15, 15));
     lv_style_set_border_width(&menu_table_style, 1);
     lv_style_set_border_color(&menu_table_style, lv_color_make(255, 255, 255));
     lv_style_set_pad_all(&menu_table_style, 0);
@@ -51,13 +51,13 @@ void dash_styles_init(void)
 
     // Set the style for the main menu item cells when they are selected
     lv_style_init(&menu_table_highlight_style);
-    lv_style_set_bg_color(&menu_table_highlight_style, lv_color_make(0x0A, 0x0A, 0x0A));
+    lv_style_set_bg_color(&menu_table_highlight_style, lv_color_make(61, 153, 0));
 
     // This is the small text area about the main menu that shows temperature/tray state or other
     // real-time info.
     lv_style_init(&rtinfo_style);
     lv_style_set_text_font(&rtinfo_style, &lv_font_montserrat_22);
-    lv_style_set_bg_color(&rtinfo_style, lv_color_make(48, 48, 48));
+    lv_style_set_bg_color(&rtinfo_style, lv_color_make(15, 15, 15));
     lv_style_set_bg_opa(&rtinfo_style, 255);
     lv_style_set_text_align(&rtinfo_style, LV_TEXT_ALIGN_CENTER);
     lv_style_set_border_width(&rtinfo_style, 1);
@@ -69,7 +69,7 @@ void dash_styles_init(void)
 
     // Set the style for the synopsis screen container
     lv_style_init(&synop_container_style);
-    lv_style_set_bg_color(&synop_container_style, lv_color_make(48, 48, 48));
+    lv_style_set_bg_color(&synop_container_style, lv_color_make(15, 15, 15));
     lv_style_set_pad_left(&synop_container_style, 10);
     lv_style_set_border_width(&synop_container_style, 1);
     lv_style_set_radius(&synop_container_style, 0);
