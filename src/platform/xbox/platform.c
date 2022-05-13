@@ -33,8 +33,8 @@ void platform_init(int *w, int *h)
     *h = 720;
     if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
     {
-        // Fall back to 720*480
-        *w = 720;
+        // Fall back to 640*480
+        *w = 640;
         *h = 480;
         if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
         {
