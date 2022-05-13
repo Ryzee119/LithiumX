@@ -25,9 +25,9 @@ void platform_network_init(void);
 void platform_networkrestart(void);
 void platform_networkdeinit(void);
 int platform_networkget_up(void);
-uint32_t platform_networkget_ip(char *rxbuf, uint32_t max_len);
-uint32_t platform_networkget_gateway(char *rxbuf, uint32_t max_len);
-uint32_t platform_networkget_netmask(char *rxbuf, uint32_t max_len);
+uint32_t platform_network_get_ip(char *rxbuf, uint32_t max_len);
+uint32_t platform_network_get_gateway(char *rxbuf, uint32_t max_len);
+uint32_t platform_network_get_netmask(char *rxbuf, uint32_t max_len);
 
 #ifdef __cplusplus
 }
