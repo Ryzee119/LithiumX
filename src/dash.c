@@ -208,7 +208,7 @@ static void input_callback(lv_event_t *event)
 
     if (e == LV_EVENT_KEY)
     {
-        parent = lv_obj_get_parent(current_obj);
+        parent = p->scroller;
         last_index = lv_obj_get_child_cnt(parent) - 1; // The index of the final item in the scroller
         current_index = lv_obj_get_index(current_obj); // The index of the current item in the scroller
         new_index = current_index;                     // Will store the index we need to go to if it changes
@@ -453,7 +453,6 @@ static int game_parser_thread(void *ptr)
                 {
                     qsort(parsers[k].scroller->spec_attr->children,
                           lv_obj_get_child_cnt(parsers[k].scroller), sizeof(lv_obj_t *), title_sort);
-                    lv_group_focus_obj(lv_obj_get_child(parser_current->scroller, parser_current->current_item));
                 }
                 lvgl_removelock();
             }
