@@ -242,11 +242,11 @@ static void mainmenu_callback(lv_event_t *e)
         submenu = menu_create_submenu_box();
         lv_obj_set_layout(submenu, LV_LAYOUT_FLEX);
         lv_obj_set_flex_flow(submenu, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_height(submenu, MAINMENU_HEIGHT);
         lv_obj_t *label;
         label = lv_label_create(submenu);
         lv_label_set_text(label, menu_items[row]);
         platform_show_info_cb(submenu);
+        lv_obj_set_height(submenu, LV_SIZE_CONTENT);
     }
     else if (row == MENU_CLEAR_RECENT)
     {
