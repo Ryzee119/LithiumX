@@ -13,3 +13,6 @@
 [submodule "src/lib/nxdk"]
 	path = src/lib/nxdk
 	url = https://github.com/Ryzee119/nxdk.git
+[submodule "src/lib/pbgl"]
+	path = src/lib/pbgl
+	url = https://github.com/fgsfdsfgs/pbgl.git

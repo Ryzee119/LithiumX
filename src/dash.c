@@ -236,7 +236,7 @@ static void input_callback(lv_event_t *event)
         }
 
         // Show synopsis page
-        if (key == DASH_INFO_PAGE)
+        if (key == DASH_INFO_PAGE && current_title)
         {
             synop_menu_open(current_title);
             return;
