@@ -195,6 +195,10 @@ static void menu_set_style(lv_obj_t *obj)
     lv_group_t *gp = lv_group_get_default();
     lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_style(obj, &menu_table_style, LV_PART_MAIN);
+    lv_obj_add_style(obj, &menu_table_cell_style, LV_PART_ITEMS);
+    lv_obj_add_style(obj, &menu_table_highlight_style, LV_PART_ITEMS | LV_STATE_FOCUS_KEY);
+    lv_obj_set_width(obj, MAINMENU_WIDTH);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_group_add_obj(gp, obj);
     lv_group_focus_freeze(gp, false);
     lv_group_focus_obj(obj);
@@ -206,10 +210,7 @@ static lv_obj_t *menu_create_submenu_box(void)
 {
     lv_obj_t *obj = lv_obj_create(lv_scr_act());
     lv_group_t *gp = lv_group_get_default();
-    lv_obj_add_style(obj, &menu_table_style, LV_PART_MAIN);
-    lv_obj_add_style(obj, &menu_table_cell_style, LV_PART_ITEMS);
-    lv_obj_set_width(obj, MAINMENU_WIDTH);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
     lv_obj_add_event_cb(obj, confirmbox_callback, LV_EVENT_PRESSED, NULL);
 
     menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
@@ -370,10 +371,6 @@ lv_obj_t *menu_create_confirm_box(const char *msg, confirm_cb_t confirm_cb)
     lv_table_set_col_width(obj, 0, MAINMENU_WIDTH);
 
     lv_group_t *gp = lv_group_get_default();
-    lv_obj_add_style(obj, &menu_table_style, LV_PART_MAIN);
-    lv_obj_add_style(obj, &menu_table_cell_style, LV_PART_ITEMS);
-    lv_obj_set_width(obj, MAINMENU_WIDTH);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(obj, confirmbox_callback, LV_EVENT_PRESSED, NULL);
 
     // We need to manually control the focus here so lvgl doesnt just to random places
