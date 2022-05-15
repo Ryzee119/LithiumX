@@ -17,7 +17,7 @@
 #include <SDL.h>
 
 #ifdef NXDK
-#ifdef DBG
+#ifdef SHOW_FPS_MEM
 #include <xboxkrnl/xboxkrnl.h>
 static void mem_callback(lv_timer_t *event)
 {
@@ -754,7 +754,7 @@ void dash_init(void)
     change_page(settings_default_screen_index);
 
 #ifdef NXDK
-#ifdef DBG
+#ifdef SHOW_FPS_MEM
     lv_obj_t *mem_label = lv_label_create(ROOT_PARENT);
     lv_obj_set_style_bg_color(mem_label, lv_color_make(0, 0, 0), LV_PART_MAIN);
     lv_obj_set_style_text_color(mem_label, lv_color_make(255, 255, 255), LV_PART_MAIN);
