@@ -7,6 +7,10 @@ LVGL_DIR     = src/lib/lvgl
 LV_CONF_PATH = "lv_conf.h"
 GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
 
+#$(CURDIR)/src/lvgl_drivers/lv_pbgl_disp.c) \
+#$(CURDIR)/src/lvgl_drivers/pbgl/lv_draw_pbgl.c) \
+#$(CURDIR)/src/lvgl_drivers/lv_sdl_disp.c) \
+
 # Include my files
 SRCS += \
 	$(CURDIR)/src/main.c \
@@ -22,13 +26,15 @@ SRCS += \
 	$(CURDIR)/src/dash_resources/default_tbn.c \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
 	$(CURDIR)/src/lib/xml/src/xml.c \
-	$(CURDIR)/src/lvgl_drivers/lv_sdl_disp.c) \
 	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c) \
 	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv.c \
 	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv_lwip.c \
 	$(CURDIR)/src/lib/ftpd/ftp_file.c \
 	$(CURDIR)/src/lib/ftpd/ftp_server.c \
-	$(CURDIR)/src/lib/ftpd/ftp.c \
+	$(CURDIR)/src/lib/ftpd/ftp.c) \
+	$(CURDIR)/src/lvgl_drivers/lv_pbgl_disp.c) \
+	$(CURDIR)/src/lvgl_drivers/pbgl/lv_draw_pbgl.c) \
+	$(CURDIR)/src/lvgl_drivers/pbgl/pbgl_rect.c)
 
 CFLAGS += \
 	-I$(CURDIR)/src \
@@ -45,9 +51,16 @@ CFLAGS += \
 	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
 	-DQRURL=\"https://github.com/Ryzee119/LithiumX\" \
 	-DFTP_CUSTOM_ROOT_PATH \
-	-DDBG
+	#-DSHOW_FPS_MEM \
 	#-DDBG_I2C
 	#-DDBG
+
+# Include pbgl library
+PBGL_DIR = $(CURDIR)/src/lib/pbgl
+PBGL_SRCS := $(wildcard $(PBGL_DIR)/src/*.c)
+PBGL_FLAGS = -I$(PBGL_DIR)/include -DPBGL_VERSION=$(PBGL_VERSION) -DPBGL_GL_VERSION=$(PBGL_GL_VERSION)
+SRCS += $(PBGL_SRCS)
+CFLAGS += $(PBGL_FLAGS)
 
 # Include lvgl main library
 include $(LVGL_DIR)/lvgl.mk
