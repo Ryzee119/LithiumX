@@ -120,10 +120,10 @@ static void rect_draw_outline(const lv_area_t *draw_area, const lv_draw_rect_dsc
     // FIXME
 }
 
-void pbgl_draw_rect(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *coords)
+void pbgl_draw_rect(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *src_area)
 {
     lv_area_t draw_area;
-    if (!_lv_area_intersect(&draw_area, coords, draw_ctx->clip_area))
+    if (!_lv_area_intersect(&draw_area, src_area, draw_ctx->clip_area))
     {
         return;
     }
@@ -145,7 +145,7 @@ void pbgl_draw_rect(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *d
     rect_draw_border(&draw_area, dsc);
 }
 
-void pbgl_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc, const lv_area_t *coords)
+void pbgl_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc, const lv_area_t *src_area)
 {
     DbgPrint("%s\r\n", __FUNCTION__);
     lv_draw_gl_ctx_t *ctx = (lv_draw_gl_ctx_t *)draw_ctx;
