@@ -14,6 +14,8 @@
 #define MAINMENU_WIDTH 600
 #define MAINMENU_HEIGHT (lv_obj_get_height(lv_scr_act()) - (2 * DASH_YMARGIN))
 
+LV_IMG_DECLARE(qrcode);
+
 static lv_obj_t *main_menu;
 static lv_obj_t *rt_info;
 
@@ -280,17 +282,17 @@ static void mainmenu_callback(lv_event_t *e)
         lv_obj_set_width(submenu, lv_obj_get_width(lv_scr_act()));
         lv_obj_set_height(submenu, lv_obj_get_height(lv_scr_act()));
 
-        lv_obj_t *qrcode = lv_qrcode_create(submenu, LV_MIN((MAINMENU_WIDTH * 3) / 4, (MAINMENU_HEIGHT * 3) / 4),
-                                            lv_color_make(0x00, 0x00, 0x00),
-                                            lv_color_make(0xFF, 0xFF, 0xFF));
-        lv_obj_align(qrcode, LV_ALIGN_CENTER, 0, 0);
-        lv_qrcode_update(qrcode, url, strlen(url));
-        lv_obj_update_layout(qrcode);
+        lv_obj_t *qrcode_img = lv_img_create(submenu);
+        lv_img_set_src(qrcode_img, &qrcode);
+        lv_img_set_size_mode(qrcode_img, LV_IMG_SIZE_MODE_REAL);
+        lv_img_set_antialias(qrcode_img, 0);
+        lv_img_set_zoom(qrcode_img, 2048);
+        lv_obj_align(qrcode_img, LV_ALIGN_CENTER, 0, 0);
         lv_obj_t *label = lv_label_create(submenu);
         lv_label_set_text_fmt(label, "Visit the Github Repo for info\n%s", url);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_update_layout(label);
-        lv_obj_align(label, LV_ALIGN_CENTER, 0, -(lv_obj_get_height(qrcode) + lv_obj_get_height(label)) / 2 - 10);
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, -(lv_obj_get_height(qrcode_img) + lv_obj_get_height(label)) / 2 - 10);
     }
     else if (row == MENU_REBOOT)
     {

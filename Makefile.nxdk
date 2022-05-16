@@ -24,6 +24,7 @@ SRCS += \
 	$(CURDIR)/src/platform/xbox/platform.c \
 	$(CURDIR)/src/platform/xbox/network.c \
 	$(CURDIR)/src/dash_resources/default_tbn.c \
+	$(CURDIR)/src/dash_resources/qrcode.c \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
 	$(CURDIR)/src/lib/xml/src/xml.c \
 	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c) \
