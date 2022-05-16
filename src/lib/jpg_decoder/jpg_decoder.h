@@ -12,6 +12,7 @@ extern "C" {
 #define JPEG_DECODER_QUEUE_SIZE 64
 #endif
 
+//jpg Decompression compelte cb. Buffer must be freed with free() when complete.
 typedef void (*jpg_complete_cp_t)(void *buffer, int w, int h, void *user_data);
 
 /**
@@ -25,12 +26,6 @@ void jpeg_decoder_init(int colour_depth);
  * @brief Deinitialise the jpeg_decoder library
  */
 void jpeg_decoder_deinit();
-
-/**
- * @brief Returns the number of jpeg files that have been allocated and not cleared.
- * @return Number of cached images in user control.
- */
-int jpeg_decoder_get_cached_cnt();
 
 /**
  * @brief Queue a jpeg file for asynchronous decompression
@@ -47,11 +42,6 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *us
  */
 void jpeg_decoder_abort(void *handle);
 
-/**
- * @brief Frees the buffer returned by complete_cb. Once the buffer is with the user, it wont be freed by the library.
- * so you should use this to clean up images that you no longer need
- */
-void jpeg_decoder_free_buffer(void *uncompressed_image);
 #ifdef __cplusplus
 }
 #endif

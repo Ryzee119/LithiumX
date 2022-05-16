@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
 #include "lvgl.h"
+#include "lvgl/src/misc/lv_lru.h"
 #include "dash.h"
 #include "dash_styles.h"
 #include "dash_titlelist.h"
@@ -14,12 +15,20 @@
 
 LV_IMG_DECLARE(default_tbn);
 
-#define FLUSH_PERIOD 0xFFFF
 #define DELAYED_DECOMPRESS_PERIOD 50
 
-static lv_timer_t *flush_timer;
 static title_t *list_head = NULL;
 static title_t *list_tail = NULL;
+
+typedef struct
+{
+    title_t *title;
+    void *src;
+    uint32_t w;
+    uint32_t h;
+} draw_cache_value_t;
+lv_lru_t *jpg_cache;
+static int jpg_cache_size = 8 * 1024 * 1024;
 
 // 1. jpg is onscreen, think about decompressing it soon.
 static void jpg_on_screen_cb(lv_event_t *event);
@@ -28,63 +37,17 @@ static void jpg_on_screen_cb(lv_event_t *event);
 static void jpg_delayed_queue(lv_timer_t *timer);
 // 3. Decompression is finished. Update image container.
 static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user_data);
-// 4. Regularly flush jpg cache. This will also abort decompression if we scroll away from item.
-static void jpg_flush_cache_cb(lv_timer_t *event);
-
-#ifdef NXDK1
-static char *jpg_get_cache_fn(title_t *title)
-{
-    char *cache_fn = lv_mem_alloc(DASH_MAX_PATHLEN);
-    lv_snprintf(cache_fn, DASH_MAX_PATHLEN, "A:X:\\%08x_%08x_thumb.bin",
-                title->xbe_cert.dwTitleId,
-                title->xbe_cert.dwTimeDate);
-    return cache_fn;
-}
-#endif
 
 static void jpg_clean(title_t *title)
 {
     if (title->jpeg_handle != NULL)
     {
         jpeg_decoder_abort(title->jpeg_handle);
+        title->jpeg_handle = NULL;
     }
     if (title->thumb_jpeg != NULL)
     {
-        if (title->thumb_jpeg->user_data != NULL)
-        {
-            jpeg_decoder_free_buffer(title->thumb_jpeg->user_data);
-        }
-        lv_obj_del(title->thumb_jpeg);
-        lv_obj_clear_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
-    }
-    title->jpeg_handle = NULL;
-    title->thumb_jpeg = NULL;
-}
-
-static void jpg_flush_cache_cb(lv_timer_t *timer)
-{
-    static title_t *title = NULL;
-    int cached_cnt = jpeg_decoder_get_cached_cnt();
-
-    if (cached_cnt < LV_IMG_CACHE_DEF_SIZE)
-    {
-        return;
-    }
-
-    // We continue where we left off last call, if we're at the end, restart loop
-    if (title == NULL)
-    {
-        title = list_head;
-    }
-
-    while (title && cached_cnt >= LV_IMG_CACHE_DEF_SIZE)
-    {
-        if (lv_obj_is_visible(title->image_container) == false)
-        {
-            jpg_clean(title);
-        }
-        title = title->next;
-        cached_cnt = jpeg_decoder_get_cached_cnt();
+        lv_lru_remove(jpg_cache, &title, sizeof(title));
     }
 }
 
@@ -104,23 +67,15 @@ static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user
         lv_img_set_pivot(title->thumb_jpeg, 0, 0);
         lv_img_set_zoom(title->thumb_jpeg, DASH_THUMBNAIL_WIDTH * 256 / w);
         lv_obj_add_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
-#ifdef NXDK1
-        // Check if the file exists in cache partition. If not, write it out
-        char *cache_fn = jpg_get_cache_fn(title);
-        if (lv_fs_exists(cache_fn) == false)
-        {
-            lv_fs_file_t fp;
-            uint32_t bw;
-            if (lv_fs_open(&fp, cache_fn, LV_FS_MODE_WR) == LV_FS_RES_OK)
-            {
-                lv_fs_write(&fp, &w, sizeof(w), &bw);
-                lv_fs_write(&fp, &h, sizeof(h), &bw);
-                lv_fs_write(&fp, buffer, w * h * sizeof(uint32_t), &bw);
-                lv_fs_close(&fp);
-            }
-        }
-        lv_mem_free(cache_fn);
-#endif
+
+        // Add it to jpg cache
+        draw_cache_value_t *jpg = lv_mem_alloc(sizeof(draw_cache_value_t));
+        jpg->title = title;
+        jpg->src = buffer;
+        jpg->w = w;
+        jpg->h = h;
+        lv_lru_set(jpg_cache, &title, sizeof(title), jpg, w * h * sizeof(lv_color_t));
+
         lvgl_removelock();
     }
     // Done, we cant use this handle anymore. It is closed automatically by jpeg decoder.
@@ -131,41 +86,17 @@ static void jpg_delayed_queue(lv_timer_t *timer)
 {
     title_t *title = (title_t *)timer->user_data;
 
-    // Too many images cached, try again shortly
-    if (jpeg_decoder_get_cached_cnt() >= LV_IMG_CACHE_DEF_SIZE)
-    {
-        lv_timer_ready(flush_timer);
-        lv_timer_ready(timer);
-        return;
-    }
-
     // If object is still on screen after delay, we queue the jpg decompression
     if (lv_obj_is_visible(title->image_container) == true)
     {
-#ifdef NXDK1
-        // First check if it in the cache partition.
-        uint32_t br = 0, w = 0, h = 0;
-        char *cache_fn = jpg_get_cache_fn(title);
-        uint32_t *cache_data = (uint32_t *)lv_fs_orc(cache_fn, &br);
-        if (cache_data != NULL && br > 8)
+        draw_cache_value_t *jpg = NULL;
+        lv_lru_get(jpg_cache, &title, sizeof(title), (void **)&jpg);
+        if (jpg)
         {
-            w = cache_data[0];
-            h = cache_data[1];
-        }
-        lv_mem_free(cache_fn);
-        if (cache_data != NULL && br == ((w * h + 2) * sizeof(uint32_t)))
-        {
-            nano_debug(LEVEL_ERROR, "TRACE: found in cache %s\n", title->title);
-            // Its in the cache partition. Create the image and we are done.
-            title->jpeg_handle = NULL;
-            title->thumb_jpeg = lv_canvas_create(title->image_container);
-            title->thumb_jpeg->user_data = &cache_data[2];
-            lv_canvas_set_buffer(title->thumb_jpeg, &cache_data[2], w, h, LV_IMG_CF_TRUE_COLOR);
-            lv_obj_set_size(title->image_container, DASH_THUMBNAIL_WIDTH, DASH_THUMBNAIL_HEIGHT);
-            lv_obj_add_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
+            // Found in jpg cache, retrieve it complete cb
+            jpg_decompression_complete_cb(jpg->src, jpg->w, jpg->h, title);
         }
         else
-#endif
         {
             /*Drop the first two characters in the filename. These are lvgl specific*/
             int path_len = strlen(title->title_folder) + 1 + strlen(DASH_LAUNCH_EXE) + 1;
@@ -175,7 +106,6 @@ static void jpg_delayed_queue(lv_timer_t *timer)
             lv_mem_free(thumbnail_path);
         }
     }
-
     // We're done. The jpg is queued for decompression. Clean up
     lv_timer_del(timer);
     lv_obj_add_event_cb(title->image_container, jpg_on_screen_cb, LV_EVENT_DRAW_MAIN_BEGIN, title);
@@ -186,6 +116,14 @@ static void jpg_delayed_queue(lv_timer_t *timer)
 static void jpg_on_screen_cb(lv_event_t *event)
 {
     title_t *title = (title_t *)event->user_data;
+
+    //Poke cache to refresh access count
+    if (title->thumb_jpeg != NULL)
+    {
+        draw_cache_value_t *jpg = NULL;
+        lv_lru_get(jpg_cache, &title, sizeof(title), (void **)&jpg);
+    }
+
     if (title->thumb_jpeg == NULL && title->jpeg_handle == NULL && title->has_thumbnail == true)
     {
         lv_timer_create(jpg_delayed_queue, DELAYED_DECOMPRESS_PERIOD, title);
@@ -244,16 +182,24 @@ static int title_parse(title_t *title)
     return success;
 }
 
+static void cache_free(draw_cache_value_t *jpg)
+{
+    lv_obj_del(jpg->title->thumb_jpeg);
+    lv_obj_clear_flag(jpg->title->thumb_default, LV_OBJ_FLAG_HIDDEN);
+    jpg->title->thumb_jpeg = NULL;
+    free(jpg->src);
+    lv_mem_free(jpg);
+}
+
 void titlelist_init(void)
 {
     list_head = NULL;
     list_tail = NULL;
-    flush_timer = lv_timer_create(jpg_flush_cache_cb, FLUSH_PERIOD, NULL);
+    jpg_cache = lv_lru_create(jpg_cache_size, 0x40000, (lv_lru_free_t *)cache_free, NULL);
 }
 
 void titlelist_deinit(void)
 {
-    lv_timer_del(flush_timer);
     title_t *title = list_head;
     while (title)
     {
@@ -261,19 +207,11 @@ void titlelist_deinit(void)
         {
             jpeg_decoder_abort(title->jpeg_handle);
         }
-        if (title->thumb_jpeg != NULL)
-        {
-            if (title->thumb_jpeg->user_data != NULL)
-            {
-                jpeg_decoder_free_buffer(title->thumb_jpeg->user_data);
-            }
-            lv_obj_del(title->thumb_jpeg);
-            lv_obj_clear_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
-        }
         title = title->next;
     }
     list_head = NULL;
     list_tail = NULL;
+    lv_lru_del(jpg_cache);
 }
 
 struct xml_string *title_get_synopsis(struct xml_document *title_xml, const char *node_name)

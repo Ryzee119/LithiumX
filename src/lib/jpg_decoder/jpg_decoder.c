@@ -19,7 +19,6 @@ typedef enum
 {
     STATE_FREE,          // Mempool item free and ready to use
     STATE_DECOMP_QUEUED, // Mempool item currently queued
-    STATE_DECOMP_DONE,   // Mempool item decompression finished
     STATE_DECOMP_ABORTED // Mempool item had started decompression, but was aborted
 } jpeg_image_state_t;
 
@@ -29,6 +28,7 @@ typedef struct jpeg
     SDL_atomic_t state; // jpeg_image_state_t. Track state of jpeg decompression
     void *user_data;    // User data to be returned on complete_cb;
     uint8_t *decompressed_image;
+    uint32_t malloc_len;
     jpg_complete_cp_t complete_cb; // Callback for jpeg decompression complete. Warning: Called from decomp thread context.
     struct jpeg *next;             // Singley linked list for decompression queue
 } jpeg_t;
@@ -42,8 +42,6 @@ static jpeg_t jpeg_mpool[JPEG_DECODER_QUEUE_SIZE]; // Local mempool for jpeg obj
 static jpeg_t *jpeg_mpool_free;                    // Stores a free pointer in mempool that can be used to quickly allocate from pool
 static jpeg_t *jpegdecomp_qhead;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 static jpeg_t *jpegdecomp_qtail;                   // Tracks a singly linked list of queued jpegs for decompression in thread
-SDL_atomic_t jpeg_cache_cnt;                       // Keeps track of how many images are cached. Use jpeg_decoder_free_buffer to clear items
-uint32_t jpeg_memory_use = 0;
 
 static int decomp_thread(void *ptr)
 {
@@ -85,13 +83,19 @@ static int decomp_thread(void *ptr)
 
         old_line_buffer = line_buffer[0]; // Save the original allocation
 
+        jpeg->decompressed_image = malloc(jpeg->malloc_len);
+
         while (jinfo.output_scanline < jinfo.output_height)
         {
             jpeg_image_state_t state = SDL_AtomicGet(&jpeg->state);
             if (state == STATE_DECOMP_ABORTED)
             {
-                jpeg_decoder_free_buffer(jpeg->decompressed_image);
+                free(jpeg->decompressed_image);
                 jpeg->decompressed_image = NULL;
+            }
+
+            if (jpeg->decompressed_image == NULL)
+            {
                 break;
             }
 
@@ -113,7 +117,7 @@ static int decomp_thread(void *ptr)
         {
             jpegdecomp_qhead = jpegdecomp_qhead->next;
         }
-        SDL_AtomicSet(&jpeg->state, (jpeg->decompressed_image == NULL) ? STATE_FREE : STATE_DECOMP_DONE);
+        SDL_AtomicSet(&jpeg->state, STATE_FREE);
         SDL_UnlockMutex(jpegdecomp_qmutex);
     }
     return 0;
@@ -138,7 +142,6 @@ void jpeg_decoder_init(int colour_depth)
     jpegdecomp_queue = SDL_CreateSemaphore(0);
     jpegdecomp_thread = SDL_CreateThread(decomp_thread, "jpegdecomp_thread", (void *)NULL);
 
-    SDL_AtomicSet(&jpeg_cache_cnt, 0);
     assert(jpegdecomp_qmutex != NULL);
     assert(jpegdecomp_thread != NULL);
     assert(jpegdecomp_queue != NULL);
@@ -207,13 +210,7 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *us
     SDL_AtomicSet(&jpeg->state, STATE_DECOMP_QUEUED);
     jpeg->user_data = user_data;
     jpeg->complete_cb = complete_cb;
-    jpeg->decompressed_image = malloc(jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8));
-    if (jpeg->decompressed_image == NULL)
-    {
-        goto clean_and_exit_error;
-    }
-    jpeg_memory_use += jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8);
-    SDL_AtomicIncRef(&jpeg_cache_cnt);
+    jpeg->malloc_len = jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8);
 
     jpeg_destroy_decompress(&jinfo);
     fclose(jfile);
@@ -252,31 +249,4 @@ void jpeg_decoder_abort(void *handle)
 {
     jpeg_t *jpeg = (jpeg_t *)handle;
     SDL_AtomicCAS(&jpeg->state, STATE_DECOMP_QUEUED, STATE_DECOMP_ABORTED);
-}
-
-void jpeg_decoder_free_buffer(void *decompressed_image)
-{
-    free(decompressed_image);
-    for (int i = 0; i < JPEG_DECODER_QUEUE_SIZE; i++)
-    {
-        if (jpeg_mpool[i].decompressed_image == decompressed_image)
-        {
-            jpeg_memory_use -= 200 * 284 * 4;
-            SDL_AtomicSet(&jpeg_mpool[i].state, STATE_FREE);
-            if (jpeg_mpool_free == NULL)
-            {
-                jpeg_mpool_free = &jpeg_mpool[i];
-            }
-            break;
-        }
-    }
-    if (SDL_AtomicDecRef(&jpeg_cache_cnt) == SDL_TRUE)
-    {
-        ;
-    }
-}
-
-int jpeg_decoder_get_cached_cnt()
-{
-    return SDL_AtomicGet(&jpeg_cache_cnt);
 }
