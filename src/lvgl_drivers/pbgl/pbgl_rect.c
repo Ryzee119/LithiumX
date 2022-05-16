@@ -20,11 +20,6 @@ static void rect_draw_border(const lv_area_t *draw_area, const lv_draw_rect_dsc_
         return;
     }
 
-    if (dsc->border_width > 10)
-    {
-        DbgPrint("Draw border %d\r\n", dsc->border_width);
-    }
-
     GLfloat r = (GLfloat)dsc->border_color.ch.red / 255.0f;
     GLfloat g = (GLfloat)dsc->border_color.ch.green / 255.0f;
     GLfloat b = (GLfloat)dsc->border_color.ch.blue / 255.0f;
