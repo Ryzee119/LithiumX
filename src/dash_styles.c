@@ -30,6 +30,7 @@ void dash_styles_init(void)
     // Set the style for the main menu container
     lv_style_init(&menu_table_style);
     lv_style_set_bg_color(&menu_table_style, lv_color_make(15, 15, 15));
+    lv_style_set_bg_opa(&menu_table_style, 240);
     lv_style_set_border_width(&menu_table_style, 1);
     lv_style_set_border_color(&menu_table_style, lv_color_make(255, 255, 255));
     lv_style_set_pad_all(&menu_table_style, 0);
@@ -48,6 +49,7 @@ void dash_styles_init(void)
     lv_style_set_pad_top(&menu_table_cell_style, 10);
     lv_style_set_pad_bottom(&menu_table_cell_style, 10);
     lv_style_set_radius(&menu_table_cell_style, 0);
+    lv_style_set_outline_width(&menu_table_cell_style, 0);
 
     // Set the style for the main menu item cells when they are selected
     lv_style_init(&menu_table_highlight_style);
@@ -70,6 +72,7 @@ void dash_styles_init(void)
     // Set the style for the synopsis screen container
     lv_style_init(&synop_container_style);
     lv_style_set_bg_color(&synop_container_style, lv_color_make(15, 15, 15));
+    lv_style_set_bg_opa(&synop_container_style, 200);
     lv_style_set_pad_left(&synop_container_style, 10);
     lv_style_set_border_width(&synop_container_style, 1);
     lv_style_set_radius(&synop_container_style, 0);
@@ -95,6 +98,7 @@ void dash_styles_init(void)
     lv_style_init(&titleview_image_container_style);
     lv_style_set_radius(&titleview_image_container_style, 0);
     lv_style_set_border_width(&titleview_image_container_style, 0);
+    lv_style_set_border_color(&titleview_image_container_style, lv_color_make(255, 255, 255));
     lv_style_set_pad_all(&titleview_image_container_style, 0);
     lv_style_set_border_width(&titleview_image_container_style, 0);
 
