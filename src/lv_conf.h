@@ -72,7 +72,7 @@
  *====================*/
 
 /*Default display refresh period. LVG will redraw changed areas with this period time*/
-#define LV_DISP_DEF_REFR_PERIOD (1000/30 + 1)      /*[ms]*/
+#define LV_DISP_DEF_REFR_PERIOD (1000/60 + 1)      /*[ms]*/
 
 /*Input device read period in milliseconds*/
 #define LV_INDEV_DEF_READ_PERIOD 30     /*[ms]*/
@@ -262,7 +262,7 @@
  *-----------*/
 
 /*1: Show CPU usage and FPS count*/
-#ifdef DBG
+#ifdef SHOW_FPS_MEM
 #define LV_USE_PERF_MONITOR 1
 #else
 #define LV_USE_PERF_MONITOR 0
@@ -273,7 +273,7 @@
 
 /*1: Show the used memory and the memory fragmentation
  * Requires LV_MEM_CUSTOM = 0*/
-#ifdef DBG
+#ifdef SHOW_FPS_MEM
 #define LV_USE_MEM_MONITOR 1
 #else
 #define LV_USE_MEM_MONITOR 0
