@@ -54,7 +54,7 @@ static const uint8_t _lv_bpp8_opa_table[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
                                                 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
                                                 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255};
 
-static draw_cache_value_t *create_texture(const uint8_t *src_buf, const lv_area_t *coords, GLenum format, uint32_t bytes_pp, GLenum type, uint32_t key)
+static draw_cache_value_t *create_texture(const uint8_t *src_buf, const lv_area_t *src_area, GLenum format, uint32_t bytes_pp, GLenum type, uint32_t key)
 {
     uint8_t *src_pot;
     bool npot = false;
@@ -69,8 +69,8 @@ static draw_cache_value_t *create_texture(const uint8_t *src_buf, const lv_area_
     }
 
     texture = lv_mem_alloc(sizeof(draw_cache_value_t));
-    texture->iw = lv_area_get_width(coords);
-    texture->ih = lv_area_get_height(coords);
+    texture->iw = lv_area_get_width(src_area);
+    texture->ih = lv_area_get_height(src_area);
     texture->th = npot2pot(texture->ih);
     texture->tw = npot2pot(texture->iw);
     if (texture->iw != texture->tw || texture->ih != texture->th)
@@ -285,17 +285,17 @@ void draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t *dsc
 }
 
 void draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
-                      const lv_area_t *coords, const uint8_t *src_buf, lv_img_cf_t cf)
+                      const lv_area_t *src_area, const uint8_t *src_buf, lv_img_cf_t cf)
 {
     draw_cache_value_t *texture = NULL;
 
-    lv_area_t zoomed_coords;
-    _lv_img_buf_get_transformed_area(&zoomed_coords, lv_area_get_width(coords), lv_area_get_height(coords), 0,
+    lv_area_t src_area_transformed;
+    _lv_img_buf_get_transformed_area(&src_area_transformed, lv_area_get_width(src_area), lv_area_get_height(src_area),0,
                                      dsc->zoom, &dsc->pivot);
-    lv_area_move(&zoomed_coords, coords->x1, coords->y1);
+    lv_area_move(&src_area_transformed, src_area->x1, src_area->y1);
 
     lv_area_t draw_area;
-    if (!_lv_area_intersect(&draw_area, &zoomed_coords, draw_ctx->clip_area))
+    if (!_lv_area_intersect(&draw_area, &src_area_transformed, draw_ctx->clip_area))
     {
         return;
     }
@@ -312,7 +312,7 @@ void draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
         uint32_t *_src = (uint32_t *)src_buf;
         key += _src[i];
     }
-    texture = create_texture(src_buf, coords, GL_RGBA, sizeof(lv_color_t), GL_UNSIGNED_BYTE, key);
+    texture = create_texture(src_buf, src_area, GL_RGBA, sizeof(lv_color_t), GL_UNSIGNED_BYTE, key);
     if (texture == NULL)
     {
         return;
@@ -325,16 +325,17 @@ void draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
 
     glBegin(GL_QUADS);
 
-    GLfloat tw, th, s0, s1, t0, t1;
+    GLfloat zm, tw, th, s0, s1, t0, t1;
 
-    tw = (float)texture->iw / (float)texture->tw / ((float)dsc->zoom / 256.0f);
-    th = (float)texture->ih / (float)texture->th / ((float)dsc->zoom / 256.0f);
+    zm = (GLfloat)dsc->zoom / 256.0f;
+    tw = (float)texture->iw / (float)texture->tw;
+    th = (float)texture->ih / (float)texture->th;
 
-    s0 = ((float)draw_area.x1 - (float)coords->x1) * tw / (float)texture->iw;
-    s1 = tw - ((((float)coords->x2 - (float)draw_area.x2) * tw / (float)texture->iw));
+    s0 = ((float)draw_area.x1 - (float)src_area_transformed.x1) / (float)texture->tw / zm;
+    s1 = tw - ((((float)src_area_transformed.x2 - (float)draw_area.x2) / (float)texture->tw) / zm);
 
-    t0 = ((float)draw_area.y1 - (float)coords->y1) * th / (float)texture->ih;
-    t1 = th - ((((float)coords->y2 - (float)draw_area.y2) * th / (float)texture->ih));
+    t0 = ((float)draw_area.y1 - (float)src_area_transformed.y1) / (float)texture->th / zm;
+    t1 = th - ((((float)src_area_transformed.y2 - (float)draw_area.y2) / (float)texture->th) / zm);
 
     glTexCoord2f(s0, t0);
     glVertex2f(draw_area.x1, draw_area.y1);
@@ -348,7 +349,6 @@ void draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
     glTexCoord2f(s0, t1);
     glVertex2f(draw_area.x1, draw_area.y2);
     glEnd();
-    glPopMatrix();
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
