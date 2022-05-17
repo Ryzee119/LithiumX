@@ -3,6 +3,7 @@
 
 #include "lvgl.h"
 #include "lvgl/src/misc/lv_lru.h"
+#include "lvgl/src/misc/lv_ll.h"
 #include "dash.h"
 #include "dash_styles.h"
 #include "dash_titlelist.h"
@@ -17,8 +18,11 @@ LV_IMG_DECLARE(default_tbn);
 
 #define DELAYED_DECOMPRESS_PERIOD 50
 
-static title_t *list_head = NULL;
-static title_t *list_tail = NULL;
+typedef struct
+{
+    title_t *title;
+} title_ll_value_t;
+static lv_ll_t title_llist;
 
 typedef struct
 {
@@ -193,25 +197,23 @@ static void cache_free(draw_cache_value_t *jpg)
 
 void titlelist_init(void)
 {
-    list_head = NULL;
-    list_tail = NULL;
     jpg_cache = lv_lru_create(jpg_cache_size, 0x40000, (lv_lru_free_t *)cache_free, NULL);
+    _lv_ll_init(&title_llist, sizeof(title_ll_value_t));
 }
 
 void titlelist_deinit(void)
 {
-    title_t *title = list_head;
-    while (title)
+    title_ll_value_t *llist = _lv_ll_get_head(&title_llist);
+    while (llist)
     {
-        if (title->jpeg_handle != NULL)
+        if (llist->title->jpeg_handle != NULL)
         {
-            jpeg_decoder_abort(title->jpeg_handle);
+            jpeg_decoder_abort(llist->title->jpeg_handle);
         }
-        title = title->next;
+        llist = _lv_ll_get_next(&title_llist, llist);
     }
-    list_head = NULL;
-    list_tail = NULL;
     lv_lru_del(jpg_cache);
+    _lv_ll_clear(&title_llist);
 }
 
 struct xml_string *title_get_synopsis(struct xml_document *title_xml, const char *node_name)
@@ -334,18 +336,9 @@ title_no_xml:
         lv_mem_free(xml_raw);
     }
 
-    if (list_head == NULL)
-    {
-        list_head = title;
-        list_tail = title;
-        list_tail->next = NULL;
-    }
-    else
-    {
-        list_tail->next = title;
-        list_tail = title;
-        list_tail->next = NULL;
-    }
+    title_ll_value_t *llist = _lv_ll_ins_tail(&title_llist);
+    llist->title = title;
+
     success = 1;
 title_invalid:
     return success;
@@ -359,24 +352,15 @@ void titlelist_remove(title_t *title)
         lv_obj_del(title->image_container);
     }
 
-    // Handle the case if its the head item.
-    if (title == list_head)
+    title_ll_value_t *llist = _lv_ll_get_head(&title_llist);
+    while (llist)
     {
-        list_head = title->next;
-        lv_memset(title, 0, sizeof(title_t));
-        return;
+        if (llist->title == title)
+        {
+            _lv_ll_remove(&title_llist, llist);
+            lv_memset(title, 0, sizeof(title_t));
+            break;
+        }
+        llist = _lv_ll_get_next(&title_llist, llist);
     }
-
-    // Find it in the linked list
-    title_t *_title = list_head;
-    while (_title && _title->next != title)
-    {
-        _title = _title->next;
-    }
-    if (_title == NULL)
-    {
-        return;
-    }
-    _title->next = title->next;
-    lv_memset(title, 0, sizeof(title_t));
 }
