@@ -730,6 +730,13 @@ void dash_init(void)
             {
                 title_t *new_title = &recent_parser->title[lv_obj_get_child_cnt(recent_parser->scroller)];
                 char *launch_folder = (i == 0) ? data : strchr(launch_folder, '\0') + 1;
+                char launch_path[256];
+                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", launch_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+                if (lv_fs_exists(launch_path) == false)
+                {
+                    nano_debug(LEVEL_WARN, "WARN: %s no longer exists. Skipping\n", launch_path);
+                    continue;
+                }
                 recent_titles[i] = launch_folder;
                 if (titlelist_add(new_title, launch_folder, recent_parser->scroller) != 0)
                 {
