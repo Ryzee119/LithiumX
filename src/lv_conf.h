@@ -186,14 +186,9 @@
 #define LV_USE_GPU_NXP_VG_LITE 0
 
 /*Use SDL renderer API*/
-#define LV_USE_GPU_SDL 1
+#define LV_USE_GPU_SDL 0
 #if LV_USE_GPU_SDL
-#ifdef NXDK
-#define LV_GPU_SDL_INCLUDE_PATH <SDL.h>
-#else
 #define LV_GPU_SDL_INCLUDE_PATH <SDL2/SDL.h>
-#endif
-    
     /*Texture cache size, 8MB by default*/
     #define LV_GPU_SDL_LRU_SIZE (1024U * 1024U * 8U)
     /*Custom blend mode for mask drawing, disable if you need to link with older SDL2 lib*/

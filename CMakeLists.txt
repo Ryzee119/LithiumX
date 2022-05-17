@@ -37,6 +37,7 @@ file(GLOB PROJECT_FILES
     "${PROJECT_DIR}/platform/generic/platform.c"
     "${PROJECT_DIR}/platform/generic/network.c"
     "${PROJECT_DIR}/dash_resources/default_tbn.c"
+    "${PROJECT_DIR}/dash_resources/qrcode.c"
     "${PROJECT_DIR}/lvgl_drivers/lv_sdl_indev.c"
     "${PROJECT_DIR}/lvgl_drivers/lv_sdl_disp.c"
 )
