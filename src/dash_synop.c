@@ -113,7 +113,7 @@ void synop_menu_open(title_t *title)
     struct xml_string *t;
     uint32_t br;
 
-    nano_debug(LEVEL_TRACE, "TRACE: Opening synopsis menu for %s\n", title->title);
+    nano_debug(LEVEL_TRACE, "TRACE: Opening synopsis menu for %s\n", title->title_str);
 
     lv_group_t *gp = lv_group_get_default();
 
@@ -149,12 +149,12 @@ void synop_menu_open(title_t *title)
     lv_obj_update_layout(synop_menu);
 
     label = lv_label_create(synop_menu);
-    lv_label_set_text_fmt(label, "%s Title:# %s", DASH_MENU_COLOR, title->title);
+    lv_label_set_text_fmt(label, "%s Title:# %s", DASH_MENU_COLOR, title->title_str);
     apply_label_style(label);
 
     if (title->has_xml == false)
     {
-        nano_debug(LEVEL_WARN, "WARN: %s does not have a synopsis menu.\n", title->title);
+        nano_debug(LEVEL_WARN, "WARN: %s does not have a synopsis menu.\n", title->title_str);
         goto leave;
     }
 
@@ -175,7 +175,7 @@ void synop_menu_open(title_t *title)
         goto leave;
     }
 
-    nano_debug(LEVEL_TRACE, "TRACE: Synopsis for %s seems ok. Parsing it\n", title->title);
+    nano_debug(LEVEL_TRACE, "TRACE: Synopsis for %s seems ok. Parsing it\n", title->title_str);
     has_synop = true;
 
     t = title_get_synopsis(xml_handle, "developer");

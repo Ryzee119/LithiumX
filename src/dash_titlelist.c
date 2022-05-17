@@ -58,7 +58,7 @@ static void jpg_clean(title_t *title)
 static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user_data)
 {
     title_t *title = (title_t *)user_data;
-    nano_debug(LEVEL_TRACE, "TRACE: jpg_decompression_complete_cb %s\n", title->title);
+    nano_debug(LEVEL_TRACE, "TRACE: jpg_decompression_complete_cb %s\n", title->title_str);
     // If buffer == NULL. decompression was aborted or had an error.
     if (title->thumb_jpeg == NULL && buffer != NULL)
     {
@@ -269,8 +269,8 @@ int titlelist_add(title_t *title, char *title_folder, lv_obj_t *parent)
         nano_debug(LEVEL_ERROR, "ERROR: %s missing \"title\" node\n", xml_path);
         goto title_no_xml;
     }
-    xml_string_copy(clean_title_string, (uint8_t *)title->title, xml_string_length(clean_title_string));
-    title->title[xml_string_length(clean_title_string)] = '\0';
+    xml_string_copy(clean_title_string, (uint8_t *)title->title_str, xml_string_length(clean_title_string));
+    title->title_str[xml_string_length(clean_title_string)] = '\0';
     xml_parsed = true;
 
 title_no_xml:
@@ -278,12 +278,12 @@ title_no_xml:
     if (xml_parsed == false)
     {
         nano_debug(LEVEL_TRACE, "TRACE: Could not find a valid synopsis xml in %s\n", xml_path);
-        for (int i = 0; i < (int)LV_MIN(sizeof(title->title), sizeof(title->xbe_cert.wszTitleName) / 2); i++)
+        for (int i = 0; i < (int)LV_MIN(sizeof(title->title_str), sizeof(title->xbe_cert.wszTitleName) / 2); i++)
         {
             uint16_t unicode = title->xbe_cert.wszTitleName[i];
-            title->title[i] = (unicode > 0x7E) ? '?' : (unicode & 0x7F);
+            title->title_str[i] = (unicode > 0x7E) ? '?' : (unicode & 0x7F);
         }
-        title->title[sizeof(title->xbe_cert.wszTitleName) / 2] = '\0';
+        title->title_str[sizeof(title->xbe_cert.wszTitleName) / 2] = '\0';
         title->has_xml = false;
         title->has_thumbnail = false;
     }
@@ -320,7 +320,7 @@ title_no_xml:
         lv_obj_add_style(label, &titleview_image_text_style, LV_PART_MAIN);
         lv_obj_set_width(label, DASH_THUMBNAIL_WIDTH);
         lv_obj_update_layout(label);
-        lv_label_set_text_static(label, title->title);
+        lv_label_set_text_static(label, title->title_str);
         lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     }
 

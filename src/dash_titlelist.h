@@ -87,12 +87,11 @@ typedef struct title
     lv_obj_t *thumb_default;
     lv_obj_t *thumb_jpeg;
     void *jpeg_handle;
-    char title[64];                      // Clean title
+    char title_str[64];                      // Clean title
     char title_folder[DASH_MAX_PATHLEN]; // String of the folder containing the executable
     bool has_thumbnail;
     bool has_xml;
     struct xml_document *xbe_xml; // Struct of the above XML data
-    struct title *next;
 } title_t;
 
 void titlelist_init(void);

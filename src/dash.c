@@ -247,7 +247,7 @@ static void input_callback(lv_event_t *event)
         {
             dash_set_launch_folder(current_title->title_folder);
             char *confirm_box_text = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
-            lv_snprintf(confirm_box_text, DASH_MAX_PATHLEN, "%s \"%s\"", "Launch", current_title->title);
+            lv_snprintf(confirm_box_text, DASH_MAX_PATHLEN, "%s \"%s\"", "Launch", current_title->title_str);
             menu_create_confirm_box(confirm_box_text, launch_title);
             lv_mem_free(confirm_box_text);
             return;
@@ -307,7 +307,7 @@ static void input_callback(lv_event_t *event)
     else if (e == LV_EVENT_FOCUSED)
     {
         lv_obj_set_style_border_width(current_obj, 5, LV_PART_MAIN);
-        lv_label_set_text(label_footer, current_title->title);
+        lv_label_set_text(label_footer, current_title->title_str);
     }
     // Clear border around previously focused game
     else if (e == LV_EVENT_DEFOCUSED)
@@ -386,7 +386,7 @@ static void game_parser_task(parse_handle_t *p)
             title_t *new_title = &p->title[lv_obj_get_child_cnt(p->scroller)];
             if (titlelist_add(new_title, p->cwd, p->scroller) != 0)
             {
-                nano_debug(LEVEL_TRACE, "TRACE: Found item %s\n", new_title->title);
+                nano_debug(LEVEL_TRACE, "TRACE: Found item %s\n", new_title->title_str);
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_KEY, p);
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_FOCUSED, p);
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_DEFOCUSED, p);
@@ -412,15 +412,15 @@ static int title_sort(const void *a, const void *b)
     title_t *_title_a = (title_t *)_a[0]->user_data;
     title_t *_title_b = (title_t *)_b[0]->user_data;
     // FIXME. use strcasecmp when available in nxdk
-    if (_title_a->title[0] >= 'a' && _title_a->title[0] <= 'z')
+    if (_title_a->title_str[0] >= 'a' && _title_a->title_str[0] <= 'z')
     {
-        _title_a->title[0] -= 'a' - 'A';
+        _title_a->title_str[0] -= 'a' - 'A';
     }
-    if (_title_b->title[0] >= 'a' && _title_b->title[0] <= 'z')
+    if (_title_b->title_str[0] >= 'a' && _title_b->title_str[0] <= 'z')
     {
-        _title_b->title[0] -= 'a' - 'A';
+        _title_b->title_str[0] -= 'a' - 'A';
     }
-    return strcmp(_title_a->title, _title_b->title);
+    return strcmp(_title_a->title_str, _title_b->title_str);
 }
 
 // Thread to parse all titles. This is in a separate thread to keep GUI responsive while it is parsing and to
@@ -733,7 +733,7 @@ void dash_init(void)
                 recent_titles[i] = launch_folder;
                 if (titlelist_add(new_title, launch_folder, recent_parser->scroller) != 0)
                 {
-                    nano_debug(LEVEL_TRACE, "TRACE: Found recent item %s in %s\n", new_title->title, RECENT_TITLES);
+                    nano_debug(LEVEL_TRACE, "TRACE: Found recent item %s in %s\n", new_title->title_str, RECENT_TITLES);
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_KEY, recent_parser);
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_FOCUSED, recent_parser);
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_DEFOCUSED, recent_parser);
@@ -759,7 +759,7 @@ void dash_init(void)
     lv_obj_set_style_bg_color(mem_label, lv_color_make(0, 0, 0), LV_PART_MAIN);
     lv_obj_set_style_text_color(mem_label, lv_color_make(255, 255, 255), LV_PART_MAIN);
     lv_timer_create(mem_callback, 500, mem_label);
-    lv_obj_align(mem_label, LV_ALIGN_BOTTOM_LEFT, 150, 0);
+    lv_obj_align(mem_label, LV_ALIGN_BOTTOM_LEFT, 250, 0);
 #endif
 #endif
     nano_debug(LEVEL_TRACE, "TRACE: Dash init compete\n");
