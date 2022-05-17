@@ -102,6 +102,11 @@ static int decomp_thread(void *ptr)
             // Save a memcpy and put our buffer directly into JSAMPARRAY
             line_buffer[0] = (void *)&jpeg->decompressed_image[jinfo.output_scanline * row_stride];
             jpeg_read_scanlines(&jinfo, line_buffer, 1);
+
+            if (jinfo.output_scanline % 10 == 0)
+            {
+                SDL_Delay(0);
+            }
         }
 
         line_buffer[0] = old_line_buffer; // Restore original allocation so it gets cleared
