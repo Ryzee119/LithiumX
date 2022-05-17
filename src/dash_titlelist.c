@@ -32,7 +32,7 @@ typedef struct
     uint32_t h;
 } draw_cache_value_t;
 lv_lru_t *jpg_cache;
-static int jpg_cache_size = 8 * 1024 * 1024;
+int jpg_cache_size = 8 * 1024 * 1024;
 
 // 1. jpg is onscreen, think about decompressing it soon.
 static void jpg_on_screen_cb(lv_event_t *event);

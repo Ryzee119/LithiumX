@@ -26,6 +26,9 @@ static char *game_region_str(uint32_t code);
 static const char *xbox_get_verion();
 static const char *tray_state_str(uint32_t tray_state);
 
+extern int jpg_cache_size;
+extern int lv_texture_cache_size;
+
 void platform_init(int *w, int *h)
 {
     //First try 720p. This is the preferred resolution
@@ -78,6 +81,13 @@ void platform_init(int *w, int *h)
         fprintf(fp, "TitleName=LithiumX Dashboard\r\n");
         fclose(fp);
     }
+
+    MM_STATISTICS MemoryStatistics;
+    MemoryStatistics.Length = sizeof(MM_STATISTICS);
+    MmQueryStatistics(&MemoryStatistics);
+    uint32_t mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE);
+    lv_texture_cache_size = mem_size / 4;
+    jpg_cache_size = mem_size / 8;
 }
 
 // Xbox specific

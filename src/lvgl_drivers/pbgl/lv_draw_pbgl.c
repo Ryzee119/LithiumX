@@ -24,7 +24,7 @@ typedef struct
     uint32_t ih;
 } draw_cache_value_t;
 lv_lru_t *texture_cache;
-static const int TEXTURE_CACHE_SIZE = 16 * 1024 * 1024;
+int lv_texture_cache_size = 16 * 1024 * 1024;
 
 static const uint8_t _lv_bpp1_opa_table[2] = {0, 255};          /*Opacity mapping with bpp = 1 (Just for compatibility)*/
 static const uint8_t _lv_bpp2_opa_table[4] = {0, 85, 170, 255}; /*Opacity mapping with bpp = 2*/
@@ -385,7 +385,7 @@ void lv_draw_gl_init_ctx(lv_disp_drv_t *drv, lv_draw_ctx_t *draw_ctx)
     draw_gl_ctx->base_draw.wait_for_finish = wait_for_finish;
     draw_gl_ctx->base_draw.buffer_copy = buffer_copy;
 
-    texture_cache = lv_lru_create(TEXTURE_CACHE_SIZE, 65536, (lv_lru_free_t *)cache_free, NULL);
+    texture_cache = lv_lru_create(lv_texture_cache_size, 65536, (lv_lru_free_t *)cache_free, NULL);
 }
 
 void lv_draw_gl_deinit_ctx(lv_disp_drv_t *drv, lv_draw_ctx_t *draw_ctx)
