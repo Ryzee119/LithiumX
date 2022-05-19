@@ -9,12 +9,11 @@
 #include "lvgl/src/draw/lv_draw.h"
 #include "lvgl/src/misc/lv_lru.h"
 #include "lvgl/src/lv_conf_internal.h"
-#include "lv_draw_xgu.h"
+#include "lv_xgu_draw.h"
 #include "helpers/nano_debug.h"
 #include <xboxkrnl/xboxkrnl.h>
 #include <xgu.h>
 #include <xgux.h>
-#include "swizzle.h"
 
 extern uint32_t *p;
 typedef struct
@@ -57,69 +56,7 @@ static const uint8_t _lv_bpp8_opa_table[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
                                                 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223,
                                                 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
                                                 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255};
-/*
-static draw_cache_value_t *create_texture(const uint8_t *src_buf, const lv_area_t *src_area, XguTexFormatColor format, uint32_t bytes_pp, uint32_t key)
-{
-    uint8_t *src_pot;
-    bool npot = false;
 
-    draw_cache_value_t *texture = NULL;
-    lv_lru_get(texture_cache, &key, sizeof(key), (void **)&texture);
-    if (texture)
-    {
-        glBindTexture(GL_TEXTURE_2D, texture->texture);
-        // DbgPrint("Found cached texture with key %08x\r\n", key);
-        return texture;
-    }
-
-    texture = lv_mem_alloc(sizeof(draw_cache_value_t));
-    texture->iw = lv_area_get_width(src_area);
-    texture->ih = lv_area_get_height(src_area);
-    texture->th = npot2pot(texture->ih);
-    texture->tw = npot2pot(texture->iw);
-    if (texture->iw != texture->tw || texture->ih != texture->th)
-    {
-        npot = true;
-        src_pot = lv_mem_alloc(texture->tw * texture->th * bytes_pp);
-        if (src_pot == NULL)
-        {
-            return NULL;
-        }
-        uint8_t *src_tex = (uint8_t *)src_buf;
-        uint8_t *dst_tex = (uint8_t *)src_pot;
-        int dst_px = 0, src_px = 0;
-        for (int y = 0; y < texture->ih; y++)
-        {
-            memcpy(&dst_tex[dst_px], &src_tex[src_px], texture->iw * bytes_pp);
-            dst_px += texture->tw * bytes_pp;
-            src_px += texture->iw * bytes_pp;
-        }
-    }
-    else
-    {
-        src_pot = (void *)src_buf;
-    }
-
-#if (0)
-    DbgPrint("Created new tex with key %08x w%d h%d %d %d\r\n", key,
-             texture->iw,
-             texture->ih,
-             texture->tw,
-             texture->th);
-#endif
-
-    glGenTextures(1, &texture->texture);
-    glBindTexture(GL_TEXTURE_2D, texture->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, texture->tw, texture->th, 0, format, type, src_pot);
-
-    if (npot)
-        lv_mem_free(src_pot);
-
-    lv_lru_set(texture_cache, &key, sizeof(key), texture, texture->tw * texture->th * bytes_pp);
-
-    return texture;
-}
-*/
 #include <x86intrin.h>
 static void memcpy_sse(unsigned char *__restrict dst, const unsigned char *__restrict src, const unsigned int len)
 {
@@ -262,49 +199,6 @@ static void amask_to_rgba(uint32_t *dest, const uint8_t *src, int width, int hei
     }
 }
 
-static void amask_to_y(uint8_t *dest, const uint8_t *src, int width, int height, int stride, uint8_t bpp)
-{
-    int src_len = width * height;
-    int cur = 0;
-    int curbit;
-    uint8_t opa_mask;
-    const uint8_t *opa_table;
-    switch (bpp)
-    {
-    case 1:
-        opa_mask = 0x1;
-        opa_table = _lv_bpp1_opa_table;
-        break;
-    case 2:
-        opa_mask = 0x4;
-        opa_table = _lv_bpp2_opa_table;
-        break;
-    case 4:
-        opa_mask = 0xF;
-        opa_table = _lv_bpp4_opa_table;
-        break;
-    case 8:
-        opa_mask = 0xFF;
-        opa_table = _lv_bpp8_opa_table;
-        break;
-    default:
-        return;
-    }
-    /* Does this work well on big endian systems? */
-    while (cur < src_len)
-    {
-        curbit = 8 - bpp;
-        uint8_t src_byte = src[cur * bpp / 8];
-        while (curbit >= 0 && cur < src_len)
-        {
-            uint8_t src_bits = opa_mask & (src_byte >> curbit);
-            dest[(cur / width * stride) + (cur % width)] = opa_table[src_bits];
-            curbit -= bpp;
-            cur++;
-        }
-    }
-}
-
 void bind_texture(struct _lv_draw_ctx_t *draw_ctx, draw_cache_value_t *texture, uint32_t tex_id, XguTexFilter filter)
 {
     lv_draw_xgu_ctx_t *xgu_ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
@@ -369,7 +263,6 @@ void draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t *dsc
     lv_lru_get(texture_cache, &bmp, sizeof(bmp), (void **)&texture);
     if (texture == NULL)
     {
-        DbgPrint("Create new letter %c\r\n", letter);
         uint8_t bytes_pp = 4;
         void *buf = lv_mem_alloc(g.box_w * g.box_h * bytes_pp);
         if (buf == NULL)
@@ -453,7 +346,6 @@ void draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
     lv_lru_get(texture_cache, &key, sizeof(key), (void **)&texture);
     if (texture == NULL)
     {
-        DbgPrint("Create new image %08x\r\n", key);
         uint8_t bytes_pp = sizeof(lv_color_t);
         texture = create_texture(src_buf, src_area, XGU_TEXTURE_FORMAT_A8B8G8R8, bytes_pp, (uint32_t)key);
         if (texture == NULL)

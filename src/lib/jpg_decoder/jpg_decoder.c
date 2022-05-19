@@ -111,9 +111,9 @@ static int decomp_thread(void *ptr)
             line_buffer[0] = (void *)&jpeg->decompressed_image[jinfo.output_scanline * row_stride];
             jpeg_read_scanlines(&jinfo, line_buffer, 1);
 
-            if (jinfo.output_scanline % 10 == 0)
+            if (jinfo.output_scanline % 100 == 0)
             {
-                SDL_Delay(0);
+                SDL_Delay(20);
             }
         }
 

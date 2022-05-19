@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-//#ifdef NXDK
-#if 1
 #include <assert.h>
 #include <hal/video.h>
+#include <lvgl.h>
 #include "lv_port_disp.h"
-#include "lvgl.h"
-#include "xgu/lv_draw_xgu.h"
+#include "lv_xgu_draw.h"
 #include <xgu.h>
 #include <xgux.h>
 
@@ -35,16 +33,20 @@ static void begin_frame()
     pb_target_back_buffer();
     while (pb_busy());
     p = pb_begin();
-    p = xgu_set_color_clear_value(p, 0xff0000ff);
-    p = xgu_set_zstencil_clear_value(p, 0xffffff00);
+    p = xgu_set_color_clear_value(p, 0xff000000);
     p = xgu_clear_surface(p, XGU_CLEAR_Z | XGU_CLEAR_STENCIL | XGU_CLEAR_COLOR);
 }
 
+void lvgl_getlock(void);
+void lvgl_removelock(void);
+
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
 {
+    lvgl_removelock();
     end_frame();
-    lv_disp_flush_ready(disp_drv);
     begin_frame();
+    lvgl_getlock();
+    lv_disp_flush_ready(disp_drv);
 }
 
 void lv_port_disp_init(int width, int height)
@@ -97,9 +99,6 @@ void lv_port_disp_init(int width, int height)
     p = xgu_set_clear_rect_vertical(p, 0 , pb_back_buffer_height());
     p = xgu_set_clear_rect_horizontal(p, 0 , pb_back_buffer_width());
 
-    p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_PRIVATE);
-    p = xgu_set_transform_program_cxt_write_enable(p, false);
-
     for (int i = 0; i < XGU_TEXTURE_COUNT; i++)
     {
         p = xgu_set_texgen_s(p, i, XGU_TEXGEN_DISABLE);
@@ -130,5 +129,3 @@ void lv_port_disp_deinit()
 {
     lv_mem_free(disp_drv.user_data);
 }
-
-#endif

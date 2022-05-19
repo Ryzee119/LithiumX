@@ -1,7 +1,7 @@
 #include <xgu.h>
 #include <xgux.h>
 #include <xboxkrnl/xboxkrnl.h>
-#include "lv_draw_xgu.h"
+#include "lv_xgu_draw.h"
 
 extern uint32_t *p;
 
