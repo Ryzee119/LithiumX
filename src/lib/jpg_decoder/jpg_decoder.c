@@ -81,7 +81,7 @@ static int decomp_thread(void *ptr)
             fclose(jfile);
             goto leave_error;
         }
-        jinfo.out_color_space = (jpeg_colour_depth == 16) ? JCS_RGB565 : JCS_EXT_RGBA;
+        jinfo.out_color_space = (jpeg_colour_depth == 16) ? JCS_RGB565 : JCS_EXT_BGRA;
         jpeg_start_decompress(&jinfo);
         jinfo.output_components = jpeg_colour_depth / 8;
         row_stride = jinfo.output_width * jinfo.output_components;

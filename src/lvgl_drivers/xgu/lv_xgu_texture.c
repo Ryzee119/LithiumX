@@ -263,7 +263,7 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     if (texture == NULL)
     {
         uint8_t bytes_pp = sizeof(lv_color_t);
-        texture = create_texture(xgu_ctx, src_buf, src_area, XGU_TEXTURE_FORMAT_A8B8G8R8, bytes_pp, (uint32_t)key);
+        texture = create_texture(xgu_ctx, src_buf, src_area, XGU_TEXTURE_FORMAT_A8R8G8B8, bytes_pp, (uint32_t)key);
         if (texture == NULL)
         {
             return;
