@@ -25,10 +25,7 @@ SRCS += \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
 	$(CURDIR)/src/lib/xml/src/xml.c \
 	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv.c \
-	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv_lwip.c \
-	$(CURDIR)/src/lib/ftpd/ftp_file.c \
-	$(CURDIR)/src/lib/ftpd/ftp_server.c \
-	$(CURDIR)/src/lib/ftpd/ftp.c
+	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv_lwip.c
 
 CFLAGS += \
 	-I$(CURDIR)/src \
@@ -58,6 +55,10 @@ XGU_DRV = $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_disp.c \
 CFLAGS += $(XGU_FLAGS)
 SRCS += $(XGU_DRV)
 SHADER_OBJS = $(CURDIR)/src/lvgl_drivers/xgu/texture.inl $(CURDIR)/src/lvgl_drivers/xgu/notexture.inl
+
+# Include ftp
+FTP_DIR = $(CURDIR)/src/lib/ftpd
+SRCS += $(FTP_DIR)/ftp_file.c $(FTP_DIR)/ftp_server.c $(FTP_DIR)/ftp.c
 
 %.inl: %.ps | fp20compiler
 	@echo "[ FP20     ] $@"
