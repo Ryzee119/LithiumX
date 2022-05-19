@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include "helpers/nano_debug.h"
 #include "platform/platform.h"
 
 #include <windows.h>
+#include <stdio.h>
 #include "lwip/opt.h"
+#include "lwip/debug.h"
 #include "lwip/netif.h"
 #include "lwip/netifapi.h"
 #include "lwip/ip_addr.h"
@@ -18,12 +20,19 @@
 #include "lwip/sys.h"
 #include "lwip/tcpip.h"
 #include "lwip/tcp.h"
-#include "ftpd/ftp.h"
 
 err_t nvnetif_init(struct netif *netif);
 static struct netif netif;
 const ip4_addr_t *ip;
 static ip4_addr_t ipaddr, netmask, gw;
+
+#if (1)
+#include "ftpd/ftp.h"
+#else //nxdk-ftp lib
+#include "nxdk-ftp/ftp.h"
+static ftpServer *ftp_server;
+static ftpConfig conf;
+#endif
 
 static void ftp_thread(void *arg)
 {
@@ -36,7 +45,23 @@ static void ftp_thread(void *arg)
     nano_debug(LEVEL_TRACE, "IP address.. %s\n", ip4addr_ntoa(netif_ip4_addr(&netif)));
     nano_debug(LEVEL_TRACE, "Mask........ %s\n", ip4addr_ntoa(netif_ip4_netmask(&netif)));
     nano_debug(LEVEL_TRACE, "Gateway..... %s\n", ip4addr_ntoa(netif_ip4_gw(&netif)));
+
+    #if(1)
     ftp_server();
+    #else
+    ftpConfig conf;
+    conf.enable = true;
+    conf.username = "xb1ox";
+    conf.password = "xb1ox";
+    conf.port = 21;
+    ftp_server = new_ftpServer(&conf);
+    while(1)
+    {
+        run_ftpServer(ftp_server);
+        Sleep(1);
+    }
+    delete_ftpServer(ftp_server);
+    #endif
 }
 
 //Callback when tcpip init is done. This should be in the lwip thread context, so remaining init is safe to call
@@ -51,7 +76,7 @@ static void tcpip_init_done(void *arg)
     netif_set_default(&netif);
     netif_set_up(&netif);
     dhcp_start(&netif);
-    sys_thread_new("http_server_netconn", ftp_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    sys_thread_new("ftp_server", ftp_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 }
 
 void platform_network_init(void)
@@ -65,7 +90,7 @@ void platform_network_restart(void)
 
 void platform_network_deinit(void)
 {
-    //pcapif_shutdown(&netif);
+
 }
 
 int platform_network_get_up(void)
