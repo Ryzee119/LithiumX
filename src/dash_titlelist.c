@@ -69,7 +69,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         title->thumb_jpeg->user_data = img;
         lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_TRUE_COLOR);
         lv_obj_set_size(title->image_container, DASH_THUMBNAIL_WIDTH, DASH_THUMBNAIL_HEIGHT);
-        lv_img_set_pivot(title->thumb_jpeg, 0, 0);
+        lv_img_set_size_mode(title->thumb_jpeg, LV_IMG_SIZE_MODE_REAL);
         lv_img_set_zoom(title->thumb_jpeg, DASH_THUMBNAIL_WIDTH * 256 / w);
         lv_obj_add_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
 
@@ -305,7 +305,7 @@ title_no_xml:
     lv_obj_update_layout(title->thumb_default);
     LV_ASSERT(lv_obj_get_height(title->thumb_default) != 0);
     LV_ASSERT(lv_obj_get_width(title->thumb_default) != 0);
-    lv_img_set_pivot(title->thumb_default, 0, 0);
+    lv_img_set_size_mode(title->thumb_default, LV_IMG_SIZE_MODE_REAL);
     lv_img_set_zoom(title->thumb_default, DASH_THUMBNAIL_WIDTH * 256 / lv_obj_get_width(title->thumb_default));
 
     // Setup the image container for the actual jpg thumbnail. It will be stored here if it exists
