@@ -51,7 +51,8 @@ XGU_DIR = $(CURDIR)/src/lib/xgu
 XGU_FLAGS = -I$(XGU_DIR)
 XGU_DRV = $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_disp.c \
 		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_draw.c \
-		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_rect.c
+		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_rect.c \
+		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_texture.c
 CFLAGS += $(XGU_FLAGS)
 SRCS += $(XGU_DRV)
 SHADER_OBJS = $(CURDIR)/src/lvgl_drivers/xgu/texture.inl $(CURDIR)/src/lvgl_drivers/xgu/notexture.inl
