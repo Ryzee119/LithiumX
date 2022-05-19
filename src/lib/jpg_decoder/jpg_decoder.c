@@ -28,7 +28,6 @@ typedef struct jpeg
     SDL_atomic_t state; // jpeg_image_state_t. Track state of jpeg decompression
     void *user_data;    // User data to be returned on complete_cb;
     uint8_t *decompressed_image;
-    uint32_t malloc_len;
     jpg_complete_cp_t complete_cb; // Callback for jpeg decompression complete. Warning: Called from decomp thread context.
     struct jpeg *next;             // Singley linked list for decompression queue
 } jpeg_t;
@@ -74,7 +73,13 @@ static int decomp_thread(void *ptr)
         jpeg_create_decompress(&jinfo);
         jinfo.err = jpeg_std_error(&jerr);
         jpeg_stdio_src(&jinfo, jfile);
-        jpeg_read_header(&jinfo, TRUE);
+        if (jpeg_read_header(&jinfo, TRUE) != JPEG_HEADER_OK)
+        {
+            printf("Invalid jpeg file at %s\n", jpeg->fn);
+            jpeg_destroy_decompress(&jinfo);
+            fclose(jfile);
+            goto leave_error;
+        }
         jinfo.out_color_space = (jpeg_colour_depth == 16) ? JCS_RGB565 : JCS_EXT_RGBA;
         jpeg_start_decompress(&jinfo);
         jinfo.output_components = jpeg_colour_depth / 8;
@@ -83,7 +88,7 @@ static int decomp_thread(void *ptr)
 
         old_line_buffer = line_buffer[0]; // Save the original allocation
 
-        jpeg->decompressed_image = malloc(jpeg->malloc_len);
+        jpeg->decompressed_image = malloc(jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8));
 
         while (jinfo.output_scanline < jinfo.output_height)
         {
@@ -164,9 +169,7 @@ void jpeg_decoder_deinit()
 
 void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *user_data)
 {
-    FILE *jfile;
-    struct jpeg_decompress_struct jinfo;
-    struct jpeg_error_mgr jerr;
+
     jpeg_t *jpeg = NULL;
 
     // Allocate a object from local mempool
@@ -194,31 +197,10 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *us
     // Increase JPEG_DECODER_QUEUE_SIZE if you hit this
     assert(jpeg != NULL);
 
-
     strncpy(jpeg->fn, fn, sizeof(jpeg->fn) - 1);
-
-    jfile = fopen(jpeg->fn, "rb");
-    if (jfile == NULL)
-    {
-        printf("Could not open %s\n", jpeg->fn);
-        return NULL;
-    }
-
-    jpeg_create_decompress(&jinfo);
-    jinfo.err = jpeg_std_error(&jerr);
-    jpeg_stdio_src(&jinfo, jfile);
-
-    if (jpeg_read_header(&jinfo, TRUE) != JPEG_HEADER_OK)
-    {
-        goto clean_and_exit_error;
-    }
-    SDL_AtomicSet(&jpeg->state, STATE_DECOMP_QUEUED);
     jpeg->user_data = user_data;
     jpeg->complete_cb = complete_cb;
-    jpeg->malloc_len = jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8);
-
-    jpeg_destroy_decompress(&jinfo);
-    fclose(jfile);
+    SDL_AtomicSet(&jpeg->state, STATE_DECOMP_QUEUED);
 
     SDL_LockMutex(jpegdecomp_qmutex);
     if (jpegdecomp_qhead == NULL)
@@ -237,17 +219,6 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *us
     SDL_SemPost(jpegdecomp_queue);
 
     return jpeg;
-clean_and_exit_error:
-    jpeg_destroy_decompress(&jinfo);
-    fclose(jfile);
-    SDL_AtomicSet(&jpeg->state, STATE_FREE);
-    SDL_LockMutex(jpegdecomp_qmutex);
-    if (jpeg_mpool_free == NULL)
-    {
-        jpeg_mpool_free = jpeg;
-    }
-    SDL_UnlockMutex(jpegdecomp_qmutex);
-    return NULL;
 }
 
 void jpeg_decoder_abort(void *handle)
