@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: MIT
+
+#include "lv_xgu_draw.h"
+#include "lvgl/src/draw/lv_draw.h"
 #include <xgu.h>
 #include <xgux.h>
-#include <xboxkrnl/xboxkrnl.h>
-#include "lv_xgu_draw.h"
 
 extern uint32_t *p;
 
@@ -107,13 +109,6 @@ static void rect_draw_outline(const lv_area_t *draw_area, const lv_draw_rect_dsc
         return;
     }
     DbgPrint("%s %d\r\n", __FUNCTION__, dsc->outline_width);
-    /*
-    lv_color_t outline_color;
-    lv_coord_t outline_width;
-    lv_coord_t outline_pad;
-    lv_opa_t outline_opa;
-    */
-    // FIXME
 }
 
 void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *src_area)
@@ -153,12 +148,14 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
 void xgu_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc, const lv_area_t *src_area)
 {
     DbgPrint("%s\r\n", __FUNCTION__);
-    lv_draw_xgu_ctx_t *ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
+    lv_draw_xgu_ctx_t *xgu_ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
+    LV_UNUSED(xgu_ctx);
 }
 
 void xgu_draw_polygon(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc,
                       const lv_point_t *points, uint16_t point_cnt)
 {
     DbgPrint("%s\r\n", __FUNCTION__);
-    lv_draw_xgu_ctx_t *ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
+    lv_draw_xgu_ctx_t *xgu_ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
+    LV_UNUSED(xgu_ctx);
 }

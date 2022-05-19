@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-#include <assert.h>
 #include <hal/video.h>
 #include <lvgl.h>
-#include "lv_port_disp.h"
-#include "lv_xgu_draw.h"
 #include <xgu.h>
 #include <xgux.h>
+#include "lv_port_disp.h"
+#include "lv_xgu_draw.h"
+#include "lvgl/src/misc/lv_lru.h"
+
 
 static lv_disp_drv_t disp_drv;
 static lv_disp_draw_buf_t draw_buf;
