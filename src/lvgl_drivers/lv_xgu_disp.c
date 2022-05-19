@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+
+//#ifdef NXDK
+#if 1
+#include <assert.h>
+#include <hal/video.h>
+#include "lv_port_disp.h"
+#include "lvgl.h"
+#include "xgu/lv_draw_xgu.h"
+#include <xgu.h>
+#include <xgux.h>
+
+static lv_disp_drv_t disp_drv;
+static lv_disp_draw_buf_t draw_buf;
+static int DISPLAY_WIDTH;
+static int DISPLAY_HEIGHT;
+uint32_t *p;
+
+static void end_frame()
+{
+    pb_end(p);
+    while (pb_busy());
+    while (pb_finished());
+}
+
+static void begin_frame()
+{
+    static int last_swap = 0;
+    int now = pb_get_vbl_counter();
+    while ((now - last_swap) < 2)
+    {
+        now = pb_wait_for_vbl();
+    }
+    pb_reset();
+    pb_target_back_buffer();
+    while (pb_busy());
+    p = pb_begin();
+    p = xgu_set_color_clear_value(p, 0xff0000ff);
+    p = xgu_set_zstencil_clear_value(p, 0xffffff00);
+    p = xgu_clear_surface(p, XGU_CLEAR_Z | XGU_CLEAR_STENCIL | XGU_CLEAR_COLOR);
+}
+
+static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
+{
+    end_frame();
+    lv_disp_flush_ready(disp_drv);
+    begin_frame();
+}
+
+void lv_port_disp_init(int width, int height)
+{
+    DISPLAY_WIDTH = width;
+    DISPLAY_HEIGHT = height;
+    XVideoSetMode(DISPLAY_WIDTH, DISPLAY_HEIGHT, LV_COLOR_DEPTH, REFRESH_DEFAULT);
+
+    lv_disp_draw_buf_init(&draw_buf, NULL, NULL, DISPLAY_WIDTH * DISPLAY_HEIGHT);
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.draw_ctx_init = lv_draw_xgu_init_ctx;
+    disp_drv.draw_ctx_deinit = lv_draw_xgu_deinit_ctx;
+    disp_drv.draw_ctx_size = sizeof(lv_draw_xgu_ctx_t);
+
+    disp_drv.hor_res = DISPLAY_WIDTH;
+    disp_drv.ver_res = DISPLAY_HEIGHT;
+    disp_drv.flush_cb = disp_flush;
+    disp_drv.draw_buf = &draw_buf;
+    disp_drv.full_refresh = 1;
+
+    lv_draw_xgu_data_t *data = lv_mem_alloc(sizeof(lv_draw_xgu_data_t));
+    disp_drv.user_data = data;
+    lv_disp_drv_register(&disp_drv);
+
+    pb_init();
+    pb_show_front_screen();
+
+    p = pb_begin();
+
+    #include "xgu/notexture.inl"
+    data->combiner_mode = 0;
+    data->current_tex = NULL;
+    data->tex_enabled = 0;
+
+    const float m_identity[4 * 4] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f};
+
+    p = xgu_set_blend_enable(p, true);
+    p = xgu_set_depth_test_enable(p, true);
+    p = xgu_set_blend_func_sfactor(p, XGU_FACTOR_SRC_ALPHA);
+    p = xgu_set_blend_func_dfactor(p, XGU_FACTOR_ONE_MINUS_SRC_ALPHA);
+    p = xgu_set_depth_func(p, XGU_FUNC_LESS_OR_EQUAL);
+
+    p = xgu_set_skin_mode(p, XGU_SKIN_MODE_OFF);
+    p = xgu_set_normalization_enable(p, false);
+    p = xgu_set_lighting_enable(p, false);
+    p = xgu_set_clear_rect_vertical(p, 0 , pb_back_buffer_height());
+    p = xgu_set_clear_rect_horizontal(p, 0 , pb_back_buffer_width());
+
+    p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_PRIVATE);
+    p = xgu_set_transform_program_cxt_write_enable(p, false);
+
+    for (int i = 0; i < XGU_TEXTURE_COUNT; i++)
+    {
+        p = xgu_set_texgen_s(p, i, XGU_TEXGEN_DISABLE);
+        p = xgu_set_texgen_t(p, i, XGU_TEXGEN_DISABLE);
+        p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
+        p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
+        p = xgu_set_texture_matrix_enable(p, i, false);
+        p = xgu_set_texture_matrix(p, i, m_identity);
+    }
+
+    for (int i = 0; i < XGU_WEIGHT_COUNT; i++)
+    {
+        p = xgu_set_model_view_matrix(p, i, m_identity);
+        p = xgu_set_inverse_model_view_matrix(p, i, m_identity);
+    }
+
+    p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_PRIVATE);
+    p = xgu_set_projection_matrix(p, m_identity);
+    p = xgu_set_composite_matrix(p, m_identity);
+    p = xgu_set_viewport_offset(p, 0.0f, 0.0f, 0.0f, 0.0f);
+    p = xgu_set_viewport_scale(p, 1.0f, 1.0f, 1.0f, 1.0f);
+
+    pb_end(p);
+    begin_frame();
+}
+
+void lv_port_disp_deinit()
+{
+    lv_mem_free(disp_drv.user_data);
+}
+
+#endif
