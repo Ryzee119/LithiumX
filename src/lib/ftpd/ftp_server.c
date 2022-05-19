@@ -22,6 +22,7 @@
 #include "ftp_file.h"
 #include "ftp.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -610,8 +611,9 @@ static void ftp_cmd_pasv(ftp_data_t *ftp)
 		data_con_close(ftp);
 
 		// reply that we are entering passive mode
-		ftp_send(ftp, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\r\n", ftp->ipserver.addr & 0xFF, (ftp->ipserver.addr >> 8) & 0xFF, (ftp->ipserver.addr >> 16) & 0xFF,
-				 (ftp->ipserver.addr >> 24) & 0xFF, ftp->data_port >> 8, ftp->data_port & 255);
+		unsigned int ip_addr = ip_addr_get_ip4_u32(&ftp->ipserver);
+		ftp_send(ftp, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\r\n", ip_addr & 0xFF,(ip_addr >> 8) & 0xFF, (ip_addr >> 16) & 0xFF,
+				 (ip_addr >> 24) & 0xFF, ftp->data_port >> 8, ftp->data_port & 255);
 
 		// feedback
 		FTP_CONN_DEBUG(ftp, "Data port set to %u\r\n", ftp->data_port);
@@ -699,13 +701,13 @@ static void ftp_cmd_port(ftp_data_t *ftp)
 	}
 
 	// build IP address
-	IP4_ADDR(&ftp->ipclient, ip[0], ip[1], ip[2], ip[3]);
+	IP_ADDR4(&ftp->ipclient, ip[0], ip[1], ip[2], ip[3]);
 
 	// send ack to client
 	ftp_send(ftp, "200 PORT command successful\r\n");
 
 	// feedback
-	FTP_CONN_DEBUG(ftp, "Data IP set to %u:%u:%u:%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+	FTP_CONN_DEBUG(ftp, "Data IP set to %s\r\n", ipaddr_ntoa(&ftp->ipclient));
 	FTP_CONN_DEBUG(ftp, "Data port set to %u\r\n", ftp->data_port);
 
 	// set data connection mode

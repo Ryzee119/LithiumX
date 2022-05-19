@@ -8,6 +8,7 @@
 #ifndef ETH_FTP_FTP_FILE_H_
 #define ETH_FTP_FTP_FILE_H_
 
+#include <stdio.h>
 #include <stdint.h>
 #include <fileapi.h>
 #include "ftp_server.h"

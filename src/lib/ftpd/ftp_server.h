@@ -8,6 +8,7 @@
 #ifndef _FTP_SERVER_H_
 #define _FTP_SERVER_H_
 
+#include <stdio.h>
 #include "lwip/opt.h"
 #include "lwip/api.h"
 #include "ftp_file.h"

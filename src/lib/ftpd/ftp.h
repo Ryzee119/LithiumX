@@ -20,6 +20,7 @@
 #ifndef _FTPS_H_
 #define _FTPS_H_
 
+#include <stdio.h>
 #include "lwip/opt.h"
 #include "lwip/api.h"
 #include "ftp_server.h"
@@ -36,8 +37,13 @@
 // number of clients we want to serve simultaneously, same as netbuf limit
 #define FTP_NBR_CLIENTS 2
 
+#ifdef FTP_DEBUG
 #define FTP_CONN_DEBUG(ftp, f, ...) printf("[%d] " f, ftp->ftp_con_num, ##__VA_ARGS__)
 #define FTP_PRINTF printf
+#else
+#define FTP_CONN_DEBUG(ftp, f, ...)
+#define FTP_PRINTF
+#endif
 
 // define a structure of parameters for a ftp thread
 typedef struct
