@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 //jpg Decompression compelte cb. Buffer must be freed with free() when complete.
-typedef void (*jpg_complete_cp_t)(void *buffer, int w, int h, void *user_data);
+typedef void (*jpg_complete_cb_t)(void *img, void *mem, int w, int h, void *user_data);
 
 /**
  * @brief Initialise the jpeg_decoder library. Must be called before use.
@@ -34,7 +34,7 @@ void jpeg_decoder_deinit();
  * @param user_data A user defined variable that is returned with the complete_cb.
  * @return A handle for the jpeg job, or NULL on error.
  */
-void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *user_data);
+void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *user_data);
 
 /**
  * @brief Abort a previously queued decompression job.

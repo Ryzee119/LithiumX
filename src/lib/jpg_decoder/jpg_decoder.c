@@ -27,8 +27,9 @@ typedef struct jpeg
     char fn[256];       // Stores the filename for this jpeg
     SDL_atomic_t state; // jpeg_image_state_t. Track state of jpeg decompression
     void *user_data;    // User data to be returned on complete_cb;
+    uint8_t *mem;
     uint8_t *decompressed_image;
-    jpg_complete_cp_t complete_cb; // Callback for jpeg decompression complete. Warning: Called from decomp thread context.
+    jpg_complete_cb_t complete_cb; // Callback for jpeg decompression complete. Warning: Called from decomp thread context.
     struct jpeg *next;             // Singley linked list for decompression queue
 } jpeg_t;
 
@@ -88,14 +89,16 @@ static int decomp_thread(void *ptr)
 
         old_line_buffer = line_buffer[0]; // Save the original allocation
 
-        jpeg->decompressed_image = malloc(jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8));
+        jpeg->mem = malloc(jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8) + 16);
+        //Get a 16 byte aligned pointer to return to the user
+        jpeg->decompressed_image = (uint8_t *)(((intptr_t)jpeg->mem + 16) & ~0x0F);
 
         while (jinfo.output_scanline < jinfo.output_height)
         {
             jpeg_image_state_t state = SDL_AtomicGet(&jpeg->state);
             if (state == STATE_DECOMP_ABORTED)
             {
-                free(jpeg->decompressed_image);
+                free(jpeg->mem);
                 jpeg->decompressed_image = NULL;
             }
 
@@ -118,7 +121,7 @@ static int decomp_thread(void *ptr)
         jpeg_destroy_decompress(&jinfo);
         fclose(jfile);
 
-        jpeg->complete_cb(jpeg->decompressed_image, jinfo.image_width, jinfo.image_height, jpeg->user_data);
+        jpeg->complete_cb(jpeg->decompressed_image, jpeg->mem, jinfo.image_width, jinfo.image_height, jpeg->user_data);
 
     leave_error:
         // We have finished with the object, remove it from the queue.
@@ -167,7 +170,7 @@ void jpeg_decoder_deinit()
     SDL_DestroySemaphore(jpegdecomp_queue);
 }
 
-void *jpeg_decoder_queue(const char *fn, jpg_complete_cp_t complete_cb, void *user_data)
+void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *user_data)
 {
 
     jpeg_t *jpeg = NULL;

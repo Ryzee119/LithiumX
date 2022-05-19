@@ -27,7 +27,8 @@ static lv_ll_t title_llist;
 typedef struct
 {
     title_t *title;
-    void *src;
+    void *img;
+    void *mem;
     uint32_t w;
     uint32_t h;
 } draw_cache_value_t;
@@ -40,7 +41,7 @@ static void jpg_on_screen_cb(lv_event_t *event);
 //    Helps prevent undeeded queuing when scrolling fast.
 static void jpg_delayed_queue(lv_timer_t *timer);
 // 3. Decompression is finished. Update image container.
-static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user_data);
+static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, void *user_data);
 
 static void jpg_clean(title_t *title)
 {
@@ -55,18 +56,18 @@ static void jpg_clean(title_t *title)
     }
 }
 
-static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user_data)
+static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, void *user_data)
 {
     title_t *title = (title_t *)user_data;
     nano_debug(LEVEL_TRACE, "TRACE: jpg_decompression_complete_cb %s\n", title->title_str);
     // If buffer == NULL. decompression was aborted or had an error.
-    if (title->thumb_jpeg == NULL && buffer != NULL)
+    if (title->thumb_jpeg == NULL && img != NULL)
     {
         // This callback is from another thread, we need to obtain lvgl lock
         lvgl_getlock();
         title->thumb_jpeg = lv_canvas_create(title->image_container);
-        title->thumb_jpeg->user_data = buffer;
-        lv_canvas_set_buffer(title->thumb_jpeg, buffer, w, h, LV_IMG_CF_TRUE_COLOR);
+        title->thumb_jpeg->user_data = img;
+        lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_TRUE_COLOR);
         lv_obj_set_size(title->image_container, DASH_THUMBNAIL_WIDTH, DASH_THUMBNAIL_HEIGHT);
         lv_img_set_pivot(title->thumb_jpeg, 0, 0);
         lv_img_set_zoom(title->thumb_jpeg, DASH_THUMBNAIL_WIDTH * 256 / w);
@@ -75,7 +76,8 @@ static void jpg_decompression_complete_cb(void *buffer, int w, int h, void *user
         // Add it to jpg cache
         draw_cache_value_t *jpg = lv_mem_alloc(sizeof(draw_cache_value_t));
         jpg->title = title;
-        jpg->src = buffer;
+        jpg->img = img;
+        jpg->mem = mem;
         jpg->w = w;
         jpg->h = h;
         lv_lru_set(jpg_cache, &title, sizeof(title), jpg, w * h * sizeof(lv_color_t));
@@ -98,7 +100,7 @@ static void jpg_delayed_queue(lv_timer_t *timer)
         if (jpg)
         {
             // Found in jpg cache, retrieve it complete cb
-            jpg_decompression_complete_cb(jpg->src, jpg->w, jpg->h, title);
+            jpg_decompression_complete_cb(jpg->img, jpg->mem, jpg->w, jpg->h, title);
         }
         else
         {
@@ -191,7 +193,7 @@ static void cache_free(draw_cache_value_t *jpg)
     lv_obj_del(jpg->title->thumb_jpeg);
     lv_obj_clear_flag(jpg->title->thumb_default, LV_OBJ_FLAG_HIDDEN);
     jpg->title->thumb_jpeg = NULL;
-    free(jpg->src);
+    free(jpg->mem);
     lv_mem_free(jpg);
 }
 
