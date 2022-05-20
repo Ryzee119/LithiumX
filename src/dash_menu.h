@@ -13,7 +13,7 @@ typedef void (*confirm_cb_t)(void);
 void main_menu_init(void);
 void main_menu_deinit(void);
 void main_menu_open(void);
-lv_obj_t *menu_create_confirm_box(const char *msg, confirm_cb_t confirm_cb);
+void confirmbox_open(const char *msg, confirm_cb_t confirmbox_cb);
 
 #ifdef __cplusplus
 }

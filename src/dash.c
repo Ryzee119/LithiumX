@@ -254,7 +254,7 @@ static void input_callback(lv_event_t *event)
             dash_set_launch_folder(current_title->title_folder);
             char *confirm_box_text = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
             lv_snprintf(confirm_box_text, DASH_MAX_PATHLEN, "%s \"%s\"", "Launch", current_title->title_str);
-            menu_create_confirm_box(confirm_box_text, launch_title);
+            confirmbox_open(confirm_box_text, launch_title);
             lv_mem_free(confirm_box_text);
             return;
         }
