@@ -183,11 +183,9 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
             return;
         }
         amask_to_rgba(buf, bmp, g.box_w, g.box_h, g.box_w, g.bpp);
-        // uint8_t *swizzled = malloc(npot2pot(g.box_w) * npot2pot(g.box_h) * bytes_pp);
-        // swizzle_rect(buf, g.box_w, g.box_h, swizzled, npot2pot(g.box_w) * bytes_pp, bytes_pp);
-        texture = create_texture(xgu_ctx, buf, &letter_area, XGU_TEXTURE_FORMAT_A8B8G8R8, bytes_pp, (uint32_t)bmp);
+
+        texture = create_texture(xgu_ctx, buf, &letter_area, XGU_TEXTURE_FORMAT_A8R8G8B8, bytes_pp, (uint32_t)bmp);
         lv_mem_free(buf);
-        // free(swizzled);
         if (texture == NULL)
         {
             return;
