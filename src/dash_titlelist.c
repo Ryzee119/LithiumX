@@ -31,7 +31,7 @@ typedef struct
     void *mem;
     uint32_t w;
     uint32_t h;
-} draw_cache_value_t;
+} jpg_cache_value_t;
 lv_lru_t *jpg_cache;
 int jpg_cache_size = 8 * 1024 * 1024;
 
@@ -74,7 +74,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         lv_obj_add_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
 
         // Add it to jpg cache
-        draw_cache_value_t *jpg = lv_mem_alloc(sizeof(draw_cache_value_t));
+        jpg_cache_value_t *jpg = lv_mem_alloc(sizeof(jpg_cache_value_t));
         jpg->title = title;
         jpg->img = img;
         jpg->mem = mem;
@@ -95,7 +95,7 @@ static void jpg_delayed_queue(lv_timer_t *timer)
     // If object is still on screen after delay, we queue the jpg decompression
     if (lv_obj_is_visible(title->image_container) == true)
     {
-        draw_cache_value_t *jpg = NULL;
+        jpg_cache_value_t *jpg = NULL;
         lv_lru_get(jpg_cache, &title, sizeof(title), (void **)&jpg);
         if (jpg)
         {
@@ -126,7 +126,7 @@ static void jpg_on_screen_cb(lv_event_t *event)
     //Poke cache to refresh access count
     if (title->thumb_jpeg != NULL)
     {
-        draw_cache_value_t *jpg = NULL;
+        jpg_cache_value_t *jpg = NULL;
         lv_lru_get(jpg_cache, &title, sizeof(title), (void **)&jpg);
     }
 
@@ -188,7 +188,7 @@ static int title_parse(title_t *title)
     return success;
 }
 
-static void cache_free(draw_cache_value_t *jpg)
+static void cache_free(jpg_cache_value_t *jpg)
 {
     lv_obj_del(jpg->title->thumb_jpeg);
     lv_obj_clear_flag(jpg->title->thumb_default, LV_OBJ_FLAG_HIDDEN);
