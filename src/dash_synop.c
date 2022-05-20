@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
 #include "lvgl.h"
+#include "lvgl/src/misc/lv_lru.h"
 #include "dash.h"
 #include "dash_styles.h"
 #include "dash_synop.h"
@@ -21,10 +22,12 @@ typedef struct
     title_t *title;
     lv_obj_t *synop_menu;
 } synop_cache_t;
-
-static char temp[4096];
-synop_cache_t cache[SYNOP_CACHE_SIZE];
-static int cache_head = 0;
+lv_lru_t *synop_cache;
+static void cache_free(synop_cache_t *synop)
+{
+    lv_obj_del(synop->synop_menu);
+    lv_mem_free(synop);
+}
 
 static void close_callback(lv_event_t *event)
 {
@@ -40,7 +43,7 @@ static void close_callback(lv_event_t *event)
     }
 }
 
-// Helper function to apply a consisten stype to the text
+// Helper function to apply a consistent style to the text
 static void apply_label_style(lv_obj_t *label)
 {
     lv_label_set_recolor(label, true);
@@ -56,13 +59,17 @@ static void apply_label_style(lv_obj_t *label)
 static lv_obj_t *new_label(lv_obj_t *parent, struct xml_string *t, const char *prefix)
 {
     lv_obj_t *label;
-    size_t slen;
+    size_t slen = xml_string_length(t);
+    char *str;
 
     label = lv_label_create(parent);
-    slen = LV_MIN(xml_string_length(t), sizeof(temp));
-    xml_string_copy(t, (uint8_t *)temp, slen);
-    temp[slen] = '\0';
-    lv_label_set_text_fmt(label, "%s %s# %s", DASH_MENU_COLOR, prefix, temp);
+
+    str = lv_mem_alloc(slen + 1);
+    xml_string_copy(t, (uint8_t *)str, slen);
+    str[slen] = '\0';
+
+    lv_label_set_text_fmt(label, "%s %s# %s", DASH_MENU_COLOR, prefix, str);
+    lv_mem_free(str);
     apply_label_style(label);
     lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
     return label;
@@ -87,24 +94,19 @@ static void synop_scroll(lv_event_t *e)
 
 void synop_menu_init(void)
 {
-    lv_memset(cache, 0x00, sizeof(cache));
+    synop_cache = lv_lru_create(sizeof(synop_cache_t) * SYNOP_CACHE_SIZE,
+                                sizeof(synop_cache_t), (lv_lru_free_t *)cache_free, NULL);
 }
 
 void synop_menu_deinit(void)
 {
-    for (int i = 0; i < SYNOP_CACHE_SIZE; i++)
-    {
-        if (cache[i].title != NULL)
-        {
-            lv_obj_del(cache[i].synop_menu);
-        }
-    }
-    lv_memset(cache, 0x00, sizeof(cache));
+    lv_lru_del(synop_cache);
 }
 
 // Opens the synopsis menu for the given title
 void synop_menu_open(title_t *title)
 {
+    synop_cache_t *synop = NULL;
     char xml_path[DASH_MAX_PATHLEN];
     bool has_synop;
     lv_obj_t *label;
@@ -117,20 +119,17 @@ void synop_menu_open(title_t *title)
 
     lv_group_t *gp = lv_group_get_default();
 
-    // Instead of reading the xml file and creating the synopsis page repeatly
-    // the last few calls are cached so if you reopen the synopsis screen is just shows the previously
-    // cached one
-    for (int i = 0; i < SYNOP_CACHE_SIZE; i++)
+    // Check if synop is cached
+    lv_lru_get(synop_cache, &title, sizeof(title), (void **)&synop);
+    if (synop != NULL)
     {
-        if (cache[i].title == title)
-        {
-            synop_menu = cache[i].synop_menu;
-            lv_obj_clear_flag(synop_menu, LV_OBJ_FLAG_HIDDEN);
-            nano_debug(LEVEL_TRACE, "TRACE: Found synopsis menu in cache slot %d\n", i);
-            goto cache_leave;
-        }
+        synop_menu = synop->synop_menu;
+        lv_obj_clear_flag(synop_menu, LV_OBJ_FLAG_HIDDEN);
+        nano_debug(LEVEL_TRACE, "TRACE: Found synopsis menu in cache\n");
+        goto cache_leave;
     }
 
+    // Synop isnt cached. We need to create it
     xml_handle = NULL;
     has_synop = false;
 
@@ -148,10 +147,12 @@ void synop_menu_open(title_t *title)
     lv_obj_set_flex_flow(synop_menu, LV_FLEX_FLOW_COLUMN); // When each label is added, it is added below the previous
     lv_obj_update_layout(synop_menu);
 
+    // Add a title to the synopsis box
     label = lv_label_create(synop_menu);
     lv_label_set_text_fmt(label, "%s Title:# %s", DASH_MENU_COLOR, title->title_str);
     apply_label_style(label);
 
+    // If the title doesnt have an xml. We are done here.
     if (title->has_xml == false)
     {
         nano_debug(LEVEL_WARN, "WARN: %s does not have a synopsis menu.\n", title->title_str);
@@ -213,17 +214,13 @@ void synop_menu_open(title_t *title)
 
     xml_document_free(xml_handle, false);
     lv_mem_free(xml_raw);
-leave: ;
-    synop_cache_t *c = &cache[cache_head];
-    nano_debug(LEVEL_TRACE, "TRACE: Cached synopsis menu in cache slot %d\n", cache_head);
-    if (c->title != NULL)
-    {
-        nano_debug(LEVEL_TRACE, "TRACE: Cleared old slot %d\n", cache_head);
-        lv_obj_del(c->synop_menu);
-    }
-    cache_head = (cache_head + 1) % SYNOP_CACHE_SIZE;
-    c->title = title;
-    c->synop_menu = synop_menu;
+leave:;
+    // Add it to Synopsis cache
+    synop = lv_mem_alloc(sizeof(synop_cache_t));
+    synop->title = title;
+    synop->synop_menu = synop_menu;
+    lv_lru_set(synop_cache, &title, sizeof(title), synop, sizeof(synop_cache_t));
+
     if (has_synop == false)
     {
         label = lv_label_create(synop_menu);
@@ -235,7 +232,7 @@ leave: ;
     // Remember the previously focused object so we jump back to it when we close the synopsis menu
     lv_group_add_obj(gp, synop_menu);
     lv_obj_add_event_cb(synop_menu, close_callback, LV_EVENT_KEY, synop_menu);
-cache_leave: ;
+cache_leave:;
     lv_obj_t *old_focus = lv_group_get_focused(gp);
     lv_group_focus_obj(synop_menu);
     lv_group_focus_freeze(gp, true);
