@@ -50,6 +50,7 @@ void platform_init(int *w, int *h)
             *h = xmode.height;
         }
     }
+    debugPrint("Loading...");
 
     // nxdk automounts D to the root xbe path. Lets undo that
     if (nxIsDriveMounted('D'))
