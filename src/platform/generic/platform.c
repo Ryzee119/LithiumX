@@ -19,16 +19,14 @@ void platform_init(int *w, int *h)
     *h = 720;
 }
 
-void platform_show_info_cb(lv_obj_t *parent)
+const char *platform_show_info_cb(void)
 {
-    lv_obj_t *label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Build Commit:# %s", DASH_MENU_COLOR, BUILD_VERSION);
+    return "No platform info";
 }
 
 const char *platform_realtime_info_cb(void)
 {
-    return "No info";
+    return "No real-time info";
 }
 
 void platform_quit(lv_quit_event_t event)

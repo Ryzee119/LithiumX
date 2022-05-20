@@ -38,6 +38,7 @@ void dash_styles_init(void)
     lv_style_set_text_color(&menu_table_style, lv_color_white());
     lv_style_set_text_font(&menu_table_style, &lv_font_montserrat_26);
     lv_style_set_outline_width(&menu_table_style, 0);
+    lv_style_set_text_line_space(&menu_table_style, 10);
 
     // Set the style for the main menu item cells.
     lv_style_init(&menu_table_cell_style);

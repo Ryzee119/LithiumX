@@ -12,12 +12,12 @@
 #include <stdio.h>
 
 #define MAINMENU_WIDTH 600
-#define MAINMENU_HEIGHT (lv_obj_get_height(lv_scr_act()) - (2 * DASH_YMARGIN))
+#define MAINMENU_HEIGHT 440
 
 LV_IMG_DECLARE(qrcode);
 
-static lv_obj_t *main_menu;
-static lv_obj_t *rt_info;
+static lv_obj_t *main_menu = NULL;
+static lv_timer_t *realtime_info = NULL;
 
 typedef struct
 {
@@ -95,31 +95,8 @@ static void dash_flush_cache(void)
 }
 #endif
 
-static void realtime_info_cb(lv_timer_t *event)
-{
-    if (rt_info == NULL || lv_obj_is_valid(rt_info) == false)
-    {
-        return;
-    }
-    const char *rt_info_str = platform_realtime_info_cb();
-    lv_label_set_text(rt_info, rt_info_str);
-    lv_obj_update_layout(rt_info);
-
-    //If there's alot of realtime text, it may take up multiple lines. We need to shrink the menu size
-    int max_height = lv_obj_get_height(lv_scr_act()) - 2 * DASH_YMARGIN - lv_obj_get_height(rt_info);
-    if (lv_obj_get_height(main_menu) > max_height)
-    {
-        lv_obj_set_height(main_menu, max_height);
-        lv_obj_update_layout(main_menu);
-    }
-
-    lv_obj_align(rt_info, LV_ALIGN_CENTER, 0,
-                 (-lv_obj_get_height(main_menu) - lv_obj_get_height(rt_info)) / 2);
-
-}
-
 // Menu or submenu close callback on ESC or DASH_SETTINGS_PAGE (B or BACK) to close
-static void close_callback(lv_event_t *e)
+static void menu_close(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
     lv_group_t *gp = lv_group_get_default();
@@ -127,14 +104,15 @@ static void close_callback(lv_event_t *e)
     menu_data_t *menu_data = (menu_data_t *)obj->user_data;
     if (key == LV_KEY_ESC || key == DASH_SETTINGS_PAGE)
     {
+        if (realtime_info != NULL)
+        {
+            lv_timer_del(realtime_info);
+            realtime_info = NULL;
+        }
         if (obj == main_menu)
         {
-            lv_timer_t *rt_info_timer = (lv_timer_t *)rt_info->user_data;
-            lv_timer_del(rt_info_timer);
-            lv_obj_del_async(rt_info);
             //Main menu is about to be deleted, invalidate this pointer.
             main_menu = NULL;
-            rt_info = NULL;
         }
         lv_group_focus_freeze(gp, false);
         // If the object was on the recent items page, it may have been cleared. Ensure its valid still
@@ -152,8 +130,25 @@ static void close_callback(lv_event_t *e)
     }
 }
 
+// Basic containers dont scroll. We registered a custom scroll callback for text boxes. This is handled here.
+static void text_scroll(lv_event_t *e)
+{
+    // objects normally scroll automatically however core object containers dont have any animations.
+    // I replace the scrolling with my own here with animation enabled.
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
+    if (key == LV_KEY_UP)
+    {
+        lv_obj_scroll_to_y(obj, lv_obj_get_scroll_y(obj) - lv_obj_get_height(obj) / 4, LV_ANIM_ON);
+    }
+    if (key == LV_KEY_DOWN)
+    {
+        lv_obj_scroll_to_y(obj, lv_obj_get_scroll_y(obj) + lv_obj_get_height(obj) / 4, LV_ANIM_ON);
+    }
+}
+
 //Scroll the main menu table if the selected cell is outside of the container view
-static void scroll_callback(lv_event_t *e)
+static void table_scroll(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
     uint16_t row, col;
@@ -213,8 +208,6 @@ static lv_obj_t *menu_create_submenu_box(void)
     lv_obj_t *obj = lv_obj_create(lv_scr_act());
     lv_group_t *gp = lv_group_get_default();
 
-    lv_obj_add_event_cb(obj, confirmbox_callback, LV_EVENT_PRESSED, NULL);
-
     menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
     user_data->old_focus = lv_group_get_focused(gp);
     user_data->old_focus_parent = lv_obj_get_parent(user_data->old_focus);
@@ -222,12 +215,23 @@ static lv_obj_t *menu_create_submenu_box(void)
     obj->user_data = user_data;
 
     menu_set_style(obj);
-    lv_obj_add_event_cb(obj, close_callback, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(obj, menu_close, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(obj, text_scroll, LV_EVENT_KEY, NULL);  // Setup scroll callback
+
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);             // Use my own scroll callback
+    lv_obj_set_scroll_dir(obj, LV_DIR_TOP);                     // Only scroll up and down
     return obj;
 }
 
+//Periodic callback to update realtime info text
+static void realtime_info_cb(lv_timer_t *t)
+{
+    lv_obj_t *label = t->user_data;
+    lv_label_set_text(label, platform_realtime_info_cb());
+}
+
 // Callback if a button is actived on the main menu
-static void mainmenu_callback(lv_event_t *e)
+static void menu_pressed(lv_event_t *e)
 {
     char temp[DASH_MAX_PATHLEN];
     uint16_t row, col;
@@ -242,14 +246,24 @@ static void mainmenu_callback(lv_event_t *e)
 
     if (row == MENU_SYSTEM_INFO)
     {
+        lv_obj_t *label;
         submenu = menu_create_submenu_box();
         lv_obj_set_layout(submenu, LV_LAYOUT_FLEX);
         lv_obj_set_flex_flow(submenu, LV_FLEX_FLOW_COLUMN);
-        lv_obj_t *label;
+
         label = lv_label_create(submenu);
         lv_label_set_text(label, menu_items[row]);
-        platform_show_info_cb(submenu);
-        lv_obj_set_height(submenu, LV_SIZE_CONTENT);
+
+        label = lv_label_create(submenu);
+        lv_label_set_recolor(label, true);
+        realtime_info = lv_timer_create(realtime_info_cb, 1000, label);
+        lv_timer_ready(realtime_info);
+
+        label = lv_label_create(submenu);
+        lv_label_set_recolor(label, true);
+        lv_label_set_text(label, platform_show_info_cb());
+
+        lv_obj_set_height(submenu, MAINMENU_HEIGHT);
     }
     else if (row == MENU_CLEAR_RECENT)
     {
@@ -346,21 +360,12 @@ void main_menu_open(void)
     lv_obj_set_height(main_menu, LV_SIZE_CONTENT);
     lv_obj_update_layout(main_menu);
 
-    lv_obj_add_event_cb(main_menu, mainmenu_callback, LV_EVENT_PRESSED, NULL);
-    lv_obj_add_event_cb(main_menu, close_callback, LV_EVENT_KEY, NULL);
-    lv_obj_add_event_cb(main_menu, scroll_callback, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(main_menu, menu_pressed, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(main_menu, menu_close, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(main_menu, table_scroll, LV_EVENT_VALUE_CHANGED, NULL);
 
     lv_group_focus_obj(main_menu);
     lv_group_focus_freeze(gp, true);
-
-    //Create a header above the menu to display realtime system info
-    rt_info = lv_label_create(lv_scr_act());
-    lv_obj_add_style(rt_info, &rtinfo_style, LV_PART_MAIN);
-    lv_obj_set_width(rt_info, MAINMENU_WIDTH);
-    lv_obj_set_style_text_align(rt_info, LV_TEXT_ALIGN_LEFT, 0);
-    lv_timer_t *rt_info_timer = lv_timer_create(realtime_info_cb, 2000, rt_info);
-    rt_info->user_data = rt_info_timer;
-    lv_timer_ready(rt_info_timer);
 }
 
 // Create a generic confirmation box. Options will be "Cancel" or Confirm "msg".
@@ -383,6 +388,6 @@ lv_obj_t *menu_create_confirm_box(const char *msg, confirm_cb_t confirm_cb)
     obj->user_data = user_data;
 
     menu_set_style(obj);
-    lv_obj_add_event_cb(obj, close_callback, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(obj, menu_close, LV_EVENT_KEY, NULL);
     return obj;
 }

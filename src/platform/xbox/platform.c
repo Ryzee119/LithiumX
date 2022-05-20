@@ -135,12 +135,20 @@ const char *platform_realtime_info_cb(void)
     static char rt_text[256];
     char temp_unit = 'C';
 
+    //Read current RAM and RAM usage
+    uint32_t mem_size, mem_used;
+    MM_STATISTICS MemoryStatistics;
+    MemoryStatistics.Length = sizeof(MM_STATISTICS);
+    MmQueryStatistics(&MemoryStatistics);
+    mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE) / 1024U / 1024U;
+    mem_used = mem_size - ((MemoryStatistics.AvailablePages * PAGE_SIZE) / 1024U / 1024U);
+
     // Try read temps from ADM temperature monitor
     HalReadSMBusValue(0x98, 0x01, FALSE, (ULONG *)&cpu_temp);
     HalReadSMBusValue(0x98, 0x00, FALSE, (ULONG *)&mb_temp);
     if (cpu_temp == 0 || mb_temp == 0)
     {
-        // If it fails, its probable a 1.6. Read SMC instead
+        // If it fails, its probably a 1.6. Read SMC instead
         HalReadSMBusValue(0x20, 0x09, FALSE, (ULONG *)&cpu_temp);
         HalReadSMBusValue(0x20, 0x0A, FALSE, (ULONG *)&mb_temp);
     }
@@ -157,29 +165,29 @@ const char *platform_realtime_info_cb(void)
     char ip[20];
     platform_network_get_ip(ip, sizeof(ip));
 
-    lv_snprintf(rt_text, sizeof(rt_text), "Tray State: %s, CPU: %lu%c, MB: %lu%c\n"
-                                          "IP: %s",
-                tray_state_str(tray_state),
-                cpu_temp, temp_unit,
-                mb_temp, temp_unit,
-                ip);
+    lv_snprintf(rt_text, sizeof(rt_text),
+                "%s Tray State:# %s\n"
+                "%s CPU:# %lu%c, %s MB:# %lu%c\n"
+                "%s RAM:# %d/%d MB\n"
+                "%s IP:# %s",
+                DASH_MENU_COLOR, tray_state_str(tray_state),
+                DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
+                DASH_MENU_COLOR, mem_used, mem_size,
+                DASH_MENU_COLOR, ip);
 
     return rt_text;
 }
 
 // Info shown in the 'System Information' screen.
-void platform_show_info_cb(lv_obj_t *parent)
+const char *platform_show_info_cb(void)
 {
-    lv_obj_t *label;
+    static char info_text[512];
     uint8_t mac_address[0x06];
-    // FIXME: IP ADDRESS
-    uint32_t mem_size, mem_used, video_region, game_region, encoder_check;
+    uint32_t video_region, game_region, encoder_check;
     ULONG type;
     char serial_number[0x0D];
     const char *encoder;
-    MM_STATISTICS MemoryStatistics;
-    MemoryStatistics.Length = sizeof(MM_STATISTICS);
-    MmQueryStatistics(&MemoryStatistics);
+
     ExQueryNonVolatileSetting(XC_FACTORY_SERIAL_NUMBER, &type, &serial_number, sizeof(serial_number), NULL);
     ExQueryNonVolatileSetting(XC_FACTORY_ETHERNET_ADDR, &type, &mac_address, sizeof(mac_address), NULL);
     ExQueryNonVolatileSetting(XC_FACTORY_AV_REGION, &type, &video_region, sizeof(video_region), NULL);
@@ -202,48 +210,24 @@ void platform_show_info_cb(lv_obj_t *parent)
         encoder = "Unknown";
     }
 
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Version:# %s", DASH_MENU_COLOR, xbox_get_verion());
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Serial Number:# %s", DASH_MENU_COLOR, serial_number);
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Mac Address :# %02x:%02x:%02x:%02x:%02x:%02x", DASH_MENU_COLOR,
-                          mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Encoder:# %s", DASH_MENU_COLOR, encoder);
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Kernel:# %u.%u.%u.%u", DASH_MENU_COLOR,
-                          XboxKrnlVersion.Major,
-                          XboxKrnlVersion.Minor,
-                          XboxKrnlVersion.Build,
-                          XboxKrnlVersion.Qfe);
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Video Region:# %s", DASH_MENU_COLOR, video_region_str(video_region));
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Game Region:# %s", DASH_MENU_COLOR, game_region_str(game_region));
-
-    mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE) / 1024U / 1024U;
-    mem_used = mem_size - ((MemoryStatistics.AvailablePages * PAGE_SIZE) / 1024U / 1024U);
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s RAM:# %d/%d MB", DASH_MENU_COLOR, mem_used, mem_size);
-
-    label = lv_label_create(parent);
-    lv_label_set_recolor(label, true);
-    lv_label_set_text_fmt(label, "%s Build Commit:# %s", DASH_MENU_COLOR, BUILD_VERSION);
+    lv_snprintf(info_text, sizeof(info_text),
+                "%s Hardware Version:# %s\n"
+                "%s Serial Number:# %s\n"
+                "%s Mac Address :# %02x:%02x:%02x:%02x:%02x:%02x\n"
+                "%s Encoder:# %s\n"
+                "%s Kernel:# %u.%u.%u.%u\n"
+                "%s Video Region:# %s\n"
+                "%s Game Region:# %s\n"
+                "%s Build Commit:# %s\n",
+                DASH_MENU_COLOR, xbox_get_verion(),
+                DASH_MENU_COLOR, serial_number,
+                DASH_MENU_COLOR, mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+                DASH_MENU_COLOR, encoder,
+                DASH_MENU_COLOR, XboxKrnlVersion.Major, XboxKrnlVersion.Minor, XboxKrnlVersion.Build, XboxKrnlVersion.Qfe,
+                DASH_MENU_COLOR, video_region_str(video_region),
+                DASH_MENU_COLOR, game_region_str(game_region),
+                DASH_MENU_COLOR, BUILD_VERSION);
+    return info_text;
 }
 
 void platform_quit(lv_quit_event_t event)
