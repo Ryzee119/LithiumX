@@ -137,8 +137,39 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
 
     if (dsc->bg_opa > LV_OPA_MIN)
     {
-        p = xgux_set_color4ub(p, dsc->bg_color.ch.red, dsc->bg_color.ch.green, dsc->bg_color.ch.blue, dsc->bg_opa);
-        draw_rect_simple(&draw_area);
+        lv_color_t grad[4];
+        if (dsc->bg_grad.dir == LV_GRAD_DIR_VER)
+        {
+            grad[0] = dsc->bg_grad.stops[0].color;
+            grad[1] = dsc->bg_grad.stops[0].color;
+            grad[2] = dsc->bg_grad.stops[1].color;
+            grad[3] = dsc->bg_grad.stops[1].color;
+        }
+        else if (dsc->bg_grad.dir == LV_GRAD_DIR_HOR)
+        {
+            grad[0] = dsc->bg_grad.stops[0].color;
+            grad[2] = dsc->bg_grad.stops[0].color;
+            grad[1] = dsc->bg_grad.stops[1].color;
+            grad[3] = dsc->bg_grad.stops[1].color;
+        }
+        else
+        {
+            grad[0] = dsc->bg_color;
+            grad[1] = dsc->bg_color;
+            grad[2] = dsc->bg_color;
+            grad[3] = dsc->bg_color;
+        }
+
+        p = xgu_begin(p, XGU_TRIANGLE_STRIP);
+        p = xgux_set_color4ub(p, grad[0].ch.red, grad[0].ch.green, grad[0].ch.blue, dsc->bg_opa);
+        p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y1, 1, 1);
+        p = xgux_set_color4ub(p, grad[1].ch.red, grad[1].ch.green, grad[1].ch.blue, dsc->bg_opa);
+        p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y1, 1, 1);
+        p = xgux_set_color4ub(p, grad[2].ch.red, grad[2].ch.green, grad[2].ch.blue, dsc->bg_opa);
+        p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y2, 1, 1);
+        p = xgux_set_color4ub(p, grad[3].ch.red, grad[3].ch.green, grad[3].ch.blue, dsc->bg_opa);
+        p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y2, 1, 1);
+        p = xgu_end(p);
     }
 
     rect_draw_image(&draw_area, dsc);
