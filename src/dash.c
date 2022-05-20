@@ -235,6 +235,12 @@ static void input_callback(lv_event_t *event)
             return;
         }
 
+        if (current_title == NULL)
+        {
+            lv_group_focus_obj(lv_obj_get_child(p->scroller, 0));
+            return;
+        }
+
         // Show synopsis page
         if (key == DASH_INFO_PAGE && current_title)
         {
