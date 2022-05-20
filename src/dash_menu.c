@@ -109,6 +109,12 @@ static void show_item(lv_obj_t *obj, confirm_cb_t confirmbox_cb)
     lv_group_focus_freeze(gp, true);
     lv_obj_move_foreground(obj);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+
+    if (lv_obj_check_type(obj, &lv_table_class) && confirmbox_cb)
+    {
+        lv_table_t *t = (lv_table_t *)obj;
+        t->row_act = 0;
+    }
 }
 
 static void hide_item(lv_obj_t *obj)
