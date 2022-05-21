@@ -19,6 +19,7 @@
 #include <nxdk/path.h>
 #include <hal/video.h>
 #include <hal/xbox.h>
+#include <hal/debug.h>
 #include <windows.h>
 
 static const char *video_region_str(uint32_t code);
@@ -260,8 +261,13 @@ void platform_quit(lv_quit_event_t event)
             lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", &path[2], DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
         }
         nano_debug(LEVEL_TRACE, "TRACE: Launching %s\n", launch_path);
+        debugPrint("Launching\n");
+        Sleep(500);
+        debugClearScreen();
         XLaunchXBE(launch_path);
         // If we get here, XLaunchXBE didnt work. Reboot instead.
+        debugPrint("Error launching. Reboot\n");
+        Sleep(500);
         nano_debug(LEVEL_ERROR, "ERROR: Could not launch %s\n", launch_path);
         HalReturnToFirmware(HalRebootRoutine);
     }

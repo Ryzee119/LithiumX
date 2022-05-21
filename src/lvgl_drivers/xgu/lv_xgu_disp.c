@@ -72,6 +72,7 @@ void lv_port_disp_init(int width, int height)
     disp_drv.user_data = data;
     lv_disp_drv_register(&disp_drv);
 
+    Sleep(100);
     pb_init();
     pb_show_front_screen();
 
@@ -129,4 +130,8 @@ void lv_port_disp_init(int width, int height)
 void lv_port_disp_deinit()
 {
     lv_mem_free(disp_drv.user_data);
+    while (pb_busy());
+    while (pb_finished());
+    pb_show_debug_screen();
+    debugClearScreen();
 }
