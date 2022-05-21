@@ -197,8 +197,10 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *us
     }
     SDL_UnlockMutex(jpegdecomp_qmutex);
 
-    // Increase JPEG_DECODER_QUEUE_SIZE if you hit this
-    assert(jpeg != NULL);
+    if (jpeg == NULL)
+    {
+        return NULL;
+    }
 
     strncpy(jpeg->fn, fn, sizeof(jpeg->fn) - 1);
     jpeg->user_data = user_data;
