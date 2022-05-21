@@ -9,6 +9,8 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 * Supports game synopsis information and boxart using the [XBMC4Gamers artwork format](https://github.com/Rocky5/XBMC4Gamers/blob/master/README.md#game-resources-and-synopsis).
 * Keeps track of recently launched titles to quickly get back into your games.
 * Will run at 720p if available, otherwise it will automatically fallback to 480p.
+* FTP Server (Xbox build only)
+* GPU Accelerated
 
 ## Controls
 * Black/White - Change page
@@ -23,11 +25,8 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 * The settings file only supports ASCII characters.
 * The settings file does not support comments or other text.
 * If the template is invalid, the program will reset it back to the inbuilt default.
-* A summary of the file is at the end of this readme.
 
 ## Todo
-- [ ] FTP/SMB or some network interface to access files.
-- [ ] Rework rendering backend for Xbox. It uses the GPU but is not very optimised and still has lots of SW routines.
 - [ ] Take advantage of 128MB Xbox RAM mods.
 - [ ] Some basic audio.
 - [ ] File browser.
@@ -75,35 +74,6 @@ cd LithiumX/
 mkdir build && cd build
 cmake ..
 cmake --build .
-```
-
-## XML settings summary
-```diff
-<Root>
-<dash_pages>
-  # Create a page node called "Recent"
-  <Recent>
--   # Use the keyword "Recent" as a path to populate with recently launched titles. This must only appear once
-    <1>Recent</1>   
-  </Recent>
--    # Create a page node called "My Sweet Games"
-    <My Sweet Games>
--     # Search in my_path1 and add titles to this page"
-      <1>my_path1</1>
--     # Search in my_path2 and add titles to this page"
-      <2>my_path2</2>
-    </My Sweet Games>
-    ...rest of pages
-</dash_pages>
-<dash_settings>
-- # The temperature info in the mainmenu will be in Fahrenheit, Celcius otherwise
-  <use_fahrenheit>0</use_fahrenheit>
-- # What page to show on bootup. 0 = the first item under <dash_pages>"
-  <default_screen_index>0</default_screen_index>
-- # Autolaunch a DVD when it is inserted and successfully read"
-  <auto_launch_dvd>0</auto_launch_dvd>
-</dash_settings>
-</Root>
 ```
 
 ## Licence and Attribution
