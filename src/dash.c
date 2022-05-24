@@ -600,7 +600,7 @@ void dash_init(void)
     }
 
     // Init other parts of the dash
-    jpeg_decoder_init(LV_COLOR_DEPTH);
+    jpeg_decoder_init(LV_COLOR_DEPTH, 256);
     dash_styles_init();
     titlelist_init();
     synop_menu_init();

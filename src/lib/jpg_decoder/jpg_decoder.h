@@ -18,9 +18,11 @@ typedef void (*jpg_complete_cb_t)(void *img, void *mem, int w, int h, void *user
 /**
  * @brief Initialise the jpeg_decoder library. Must be called before use.
  * @param colour_depth 16 or 32 for RGB565 or RGBA8888 output.
+ * @param max_dimension The maximum width or height Of the output image. The aspect ratio is maintained.
+ * This will downscale an image, but it will not upscale.
  * @return void
  */
-void jpeg_decoder_init(int colour_depth);
+void jpeg_decoder_init(int colour_depth, int max_dimension);
 
 /**
  * @brief Deinitialise the jpeg_decoder library

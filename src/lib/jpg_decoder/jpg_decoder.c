@@ -35,6 +35,7 @@ typedef struct jpeg
 
 static int jpeg_decoder_running = 0;
 static int jpeg_colour_depth;                      // What colour depth should the decompress jpeg be (16 (RGB565) or 32 (BGRA))
+static int jpeg_max_dimension;                     // The maximum output dimension of the width or height (whichever is larger)
 static SDL_mutex *jpegdecomp_qmutex;               // Mutex for the jpeg decompressor thread queue
 static SDL_sem *jpegdecomp_queue;                  // Semaphore to track nubmer of items in decompressor queue
 static SDL_Thread *jpegdecomp_thread;              // Thread for the jpeg decompressor
@@ -82,6 +83,23 @@ static int decomp_thread(void *ptr)
             goto leave_error;
         }
         jinfo.out_color_space = (jpeg_colour_depth == 16) ? JCS_RGB565 : JCS_EXT_BGRA;
+
+        int max_size;
+        jinfo.scale_num = 9;
+        jinfo.scale_denom = 8;
+        do
+        {
+            jinfo.scale_num--;
+            jpeg_calc_output_dimensions(&jinfo);
+            max_size = (jinfo.output_width < jinfo.output_height) ? jinfo.output_height : jinfo.output_width;
+            if (jinfo.scale_num == 1)
+                break;
+        } while (max_size > jpeg_max_dimension);
+        jinfo.do_fancy_upsampling = false;
+        jinfo.do_block_smoothing = false;
+        jinfo.two_pass_quantize = false;
+        jinfo.dct_method = JDCT_FASTEST;
+        jinfo.dither_mode = JDITHER_NONE;
         jpeg_start_decompress(&jinfo);
         jinfo.output_components = jpeg_colour_depth / 8;
         row_stride = jinfo.output_width * jinfo.output_components;
@@ -89,7 +107,7 @@ static int decomp_thread(void *ptr)
 
         old_line_buffer = line_buffer[0]; // Save the original allocation
 
-        jpeg->mem = malloc(jinfo.image_width * jinfo.image_height * (jpeg_colour_depth / 8) + 16);
+        jpeg->mem = malloc(jinfo.output_width * jinfo.output_height * (jpeg_colour_depth / 8) + 16);
         //Get a 16 byte aligned pointer to return to the user
         jpeg->decompressed_image = (uint8_t *)(((intptr_t)jpeg->mem + 16) & ~0x0F);
 
@@ -121,7 +139,7 @@ static int decomp_thread(void *ptr)
         jpeg_destroy_decompress(&jinfo);
         fclose(jfile);
 
-        jpeg->complete_cb(jpeg->decompressed_image, jpeg->mem, jinfo.image_width, jinfo.image_height, jpeg->user_data);
+        jpeg->complete_cb(jpeg->decompressed_image, jpeg->mem, jinfo.output_width, jinfo.output_height, jpeg->user_data);
 
     leave_error:
         // We have finished with the object, remove it from the queue.
@@ -136,7 +154,7 @@ static int decomp_thread(void *ptr)
     return 0;
 }
 
-void jpeg_decoder_init(int colour_depth)
+void jpeg_decoder_init(int colour_depth, int max_dimension)
 {
     assert(colour_depth == 16 || colour_depth == 32);
 
@@ -148,6 +166,7 @@ void jpeg_decoder_init(int colour_depth)
 
     memset(jpeg_mpool, 0, sizeof(jpeg_mpool));
     jpeg_colour_depth = colour_depth;
+    jpeg_max_dimension = max_dimension;
     jpegdecomp_qhead = NULL;
     jpegdecomp_qtail = NULL;
     jpeg_mpool_free = &jpeg_mpool[0];
