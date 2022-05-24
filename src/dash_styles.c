@@ -79,11 +79,12 @@ void dash_styles_init(void)
     lv_style_set_pad_row(&titleview_style, 0);
     lv_style_set_pad_column(&titleview_style, 0);
 
-    // Create a style for the image containers that contain an image. We basically want not borders or padding
-    // as we want this contaier to be invisible
+    // Create a style for the image containers that contain an image. We basically want no borders or padding
+    // as we want this container to be invisible
     lv_style_init(&titleview_image_container_style);
     lv_style_set_radius(&titleview_image_container_style, 0);
     lv_style_set_border_width(&titleview_image_container_style, 0);
+    lv_style_set_bg_color(&titleview_image_container_style, lv_color_make(34, 34, 34));
     lv_style_set_border_color(&titleview_image_container_style, lv_color_make(255, 255, 255));
     lv_style_set_pad_all(&titleview_image_container_style, 0);
     lv_style_set_border_width(&titleview_image_container_style, 0);
