@@ -151,6 +151,10 @@ static void launch_title(void)
     int num_items = lv_obj_get_child_cnt(recent_parser->scroller);
     for (int i = 0; i < num_items; i++)
     {
+        if (recent_titles == NULL)
+        {
+            goto leave;
+        }
         if (strcmp(recent_titles[i], launch_folder) == 0)
         {
             for (int k = i; k < num_items; k++)
@@ -161,11 +165,12 @@ static void launch_title(void)
             break;
         }
     }
-    // Create a new list to hold to reordered items. We cap it to a max for some sanity
+    // Create a new list to hold the reordered items. We cap it to a max for some sanity
     // Most recent item is always first on the list. If its already on the list, it gets pushed to first.
-    // If its not on the list it is inserted. If the number if items exceed RECENT_TITLES_MAX, the last item is dropped.
+    // If its not on the list it is inserted. If the number of items exceed RECENT_TITLES_MAX, the last item is dropped.
     int recent_title_cnt_new = LV_MIN(RECENT_TITLES_MAX, num_items + 1);
     const char **recent_titles_new = (const char **)lv_mem_alloc(sizeof(char *) * recent_title_cnt_new);
+    lv_memset(recent_titles_new, 0, sizeof(char *) * recent_title_cnt_new);
     recent_titles_new[0] = launch_folder;
     for (int i = 1; i < recent_title_cnt_new; i++)
     {
@@ -175,8 +180,11 @@ static void launch_title(void)
     {
         for (int i = 0; i < recent_title_cnt_new; i++)
         {
-            lv_fs_write(&fp, recent_titles_new[i], strlen(recent_titles_new[i]), &brw);
-            lv_fs_write(&fp, "\n", 1, &brw); // Needs to be finished with a new line
+            if(recent_titles_new[i])
+            {
+                lv_fs_write(&fp, recent_titles_new[i], strlen(recent_titles_new[i]), &brw);
+                lv_fs_write(&fp, "\n", 1, &brw); // Needs to be finished with a new line
+            }
         }
         lv_fs_close(&fp);
     }
@@ -493,6 +501,7 @@ void dash_init(void)
         return;
     }
     dash_running = true;
+    recent_titles = NULL;
     lv_fs_file_t fp;
     uint32_t fs;
     bool xml_parse_error = true;
@@ -532,7 +541,7 @@ void dash_init(void)
     if (xml_parse_error)
     {
         // We use built xml in. Assert on errors here, as errors should never happen!
-        nano_debug(LEVEL_WARN, "WARN: %s missing or invalid. Using inbuilt default", DASH_XML);
+        nano_debug(LEVEL_WARN, "WARN: %s missing or invalid. Using inbuilt default\n", DASH_XML);
         int xml_len = strlen(xml_default);
         xml_raw = (uint8_t *)lv_mem_alloc(xml_len + 1);
         lv_memcpy(xml_raw, xml_default, xml_len);
@@ -716,7 +725,6 @@ void dash_init(void)
     {
         // Read recent items file set by RECENT_TITLES
         int recent_title_cnt = 0;
-        recent_titles = NULL;
         char *data = (char *)lv_fs_orc(RECENT_TITLES, &fs);
         if (data != NULL)
         {
@@ -730,17 +738,20 @@ void dash_init(void)
                     data[i] = '\0';
                 }
             }
-            recent_titles = (char **)lv_mem_alloc(sizeof(char *) * recent_title_cnt);
+            recent_titles = (char **)lv_mem_alloc(sizeof(char *) * (recent_title_cnt + 1));
             // Add all the recent titles to the recent items page
-            for (int i = 0; i < recent_title_cnt; i++)
+            int i = 0;
+            char *launch_folder = NULL;
+            char *launch_path = lv_mem_alloc(DASH_MAX_PATHLEN);
+            while (i < recent_title_cnt)
             {
                 title_t *new_title = &recent_parser->title[lv_obj_get_child_cnt(recent_parser->scroller)];
-                char *launch_folder = (i == 0) ? data : strchr(launch_folder, '\0') + 1;
-                char launch_path[256];
+                launch_folder = (launch_folder == NULL) ? data : strchr(launch_folder, '\0') + 1;
                 lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", launch_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
                 if (lv_fs_exists(launch_path) == false)
                 {
                     nano_debug(LEVEL_WARN, "WARN: %s no longer exists. Skipping\n", launch_path);
+                    recent_title_cnt--;
                     continue;
                 }
                 recent_titles[i] = launch_folder;
@@ -751,7 +762,10 @@ void dash_init(void)
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_FOCUSED, recent_parser);
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_DEFOCUSED, recent_parser);
                 }
+                i++;
             }
+            lv_mem_free(launch_path);
+            recent_titles[recent_title_cnt] = NULL;
         }
         else
         {
