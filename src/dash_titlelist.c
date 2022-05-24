@@ -309,6 +309,14 @@ title_no_xml:
         title->has_thumbnail = false;
     }
 
+    //Sometimes the string has encoding issues. Fix the ones I know about.
+    char *_str = strstr(title->title_str, "&amp;");
+    if (_str)
+    {
+        _str++;
+        strcpy(_str, _str + strlen("&amp;") - 1);
+    }
+
     // Create an image container
     title->image_container = lv_obj_create(parent);
     title->image_container->user_data = title;
