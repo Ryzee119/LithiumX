@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAINMENU_WIDTH 600
-#define MAINMENU_HEIGHT 440
+#define MAINMENU_WIDTH (LV_MIN(600,lv_obj_get_width(lv_scr_act()) * 2 / 3))
+#define MAINMENU_HEIGHT (LV_MIN(440,lv_obj_get_height(lv_scr_act()) * 2 / 3))
 
 LV_IMG_DECLARE(qrcode);
 

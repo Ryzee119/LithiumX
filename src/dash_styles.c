@@ -35,7 +35,7 @@ void dash_styles_init(void)
     lv_style_set_pad_all(&menu_table_style, 0);
     lv_style_set_radius(&menu_table_style, 0);
     lv_style_set_text_color(&menu_table_style, lv_color_white());
-    lv_style_set_text_font(&menu_table_style, &lv_font_montserrat_26);
+    lv_style_set_text_font(&menu_table_style, &lv_font_montserrat_20);
     lv_style_set_outline_width(&menu_table_style, 0);
     lv_style_set_text_line_space(&menu_table_style, 10);
 
@@ -45,7 +45,7 @@ void dash_styles_init(void)
     lv_style_set_border_color(&menu_table_cell_style, lv_color_make(255, 255, 255));
     lv_style_set_bg_opa(&menu_table_cell_style, 0);
     lv_style_set_text_color(&menu_table_cell_style, lv_color_white());
-    lv_style_set_text_font(&menu_table_cell_style, &lv_font_montserrat_26);
+    lv_style_set_text_font(&menu_table_cell_style, &lv_font_montserrat_20);
     lv_style_set_pad_top(&menu_table_cell_style, 10);
     lv_style_set_pad_bottom(&menu_table_cell_style, 10);
     lv_style_set_radius(&menu_table_cell_style, 0);
@@ -67,7 +67,7 @@ void dash_styles_init(void)
     // To change the colour of the synop title text, edit DASH_MENU_COLOR in dash_styles.h
     lv_style_init(&synop_text_style);
     lv_style_set_text_color(&synop_text_style, lv_color_white());
-    lv_style_set_text_font(&synop_text_style, &lv_font_montserrat_22);
+    lv_style_set_text_font(&synop_text_style, &lv_font_montserrat_20);
 
     // Create a style for the container that holds all the images
     // Set padding between images, background colour behind the images etc
@@ -91,7 +91,7 @@ void dash_styles_init(void)
     // Create a style for the text that appears on the thumbnail art when no artwork is found
     lv_style_init(&titleview_image_text_style);
     lv_style_set_align(&titleview_image_text_style, LV_ALIGN_CENTER);
-    lv_style_set_text_font(&titleview_image_text_style, &lv_font_montserrat_24);
+    lv_style_set_text_font(&titleview_image_text_style, &lv_font_montserrat_20);
     lv_style_set_text_color(&titleview_image_text_style, lv_color_white());
     lv_style_set_text_align(&titleview_image_text_style, LV_TEXT_ALIGN_CENTER);
 

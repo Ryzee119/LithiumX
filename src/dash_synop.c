@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define SYNOP_WIDTH 600
-#define SYNOP_HEIGHT 440
+#define SYNOP_WIDTH (LV_MIN(600,lv_obj_get_width(lv_scr_act()) * 2 / 3))
+#define SYNOP_HEIGHT (LV_MIN(440,lv_obj_get_height(lv_scr_act()) * 2 / 3))
 #define SYNOP_CACHE_SIZE 6
 
 typedef struct
