@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 #ifndef DASH_XMARGIN
-#define DASH_XMARGIN 0
+#define DASH_XMARGIN 20
 #endif
 #ifndef DASH_YMARGIN
 #define DASH_YMARGIN 20
@@ -65,7 +65,7 @@ extern "C" {
 #endif
 
 #ifndef DASH_THUMBNAIL_WIDTH
-#define DASH_THUMBNAIL_WIDTH 200
+#define DASH_THUMBNAIL_WIDTH (LV_MIN(200, (lv_obj_get_width(lv_scr_act()) - (2 * DASH_XMARGIN)) / 4))
 #endif
 
 #ifndef DASH_THUMBNAIL_HEIGHT

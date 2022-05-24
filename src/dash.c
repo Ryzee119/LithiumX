@@ -614,8 +614,8 @@ void dash_init(void)
 
     // Create a tileview object to manage different pages
     page_tiles = lv_tileview_create(ROOT_PARENT);
-    lv_obj_align(page_tiles, LV_ALIGN_TOP_MID, DASH_XMARGIN, DASH_YMARGIN);
-    lv_obj_set_size(page_tiles, w - DASH_XMARGIN, h - 2 * DASH_YMARGIN);
+    lv_obj_align(page_tiles, LV_ALIGN_TOP_MID, 0, DASH_YMARGIN);
+    lv_obj_set_size(page_tiles, w - (2 * DASH_XMARGIN), h - (2 * DASH_YMARGIN));
     lv_obj_set_style_bg_opa(page_tiles, 0, LV_PART_MAIN);
     lv_obj_clear_flag(page_tiles, LV_OBJ_FLAG_SCROLLABLE);
 
