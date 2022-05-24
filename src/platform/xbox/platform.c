@@ -253,7 +253,7 @@ void platform_quit(lv_quit_event_t event)
         }
         else if (strcmp(path, "DVDROM") == 0)
         {
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "D:\\default.xbe");
+            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
         }
         else
         {
