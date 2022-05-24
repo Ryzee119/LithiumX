@@ -72,6 +72,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         lv_img_set_size_mode(title->thumb_jpeg, LV_IMG_SIZE_MODE_REAL);
         lv_img_set_zoom(title->thumb_jpeg, DASH_THUMBNAIL_WIDTH * 256 / w);
         lv_obj_add_flag(title->thumb_default, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_mark_layout_as_dirty(title->thumb_jpeg);
 
         // Add it to jpg cache
         jpg_cache_value_t *jpg = lv_mem_alloc(sizeof(jpg_cache_value_t));
