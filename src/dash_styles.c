@@ -9,7 +9,6 @@ lv_style_t dash_background_style;
 lv_style_t menu_table_style;
 lv_style_t menu_table_highlight_style;
 lv_style_t menu_table_cell_style;
-lv_style_t rtinfo_style;
 lv_style_t synop_container_style;
 lv_style_t synop_text_style;
 lv_style_t titleview_style;
@@ -55,20 +54,6 @@ void dash_styles_init(void)
     // Set the style for the main menu item cells when they are selected
     lv_style_init(&menu_table_highlight_style);
     lv_style_set_bg_color(&menu_table_highlight_style, lv_color_make(61, 153, 0));
-
-    // This is the small text area about the main menu that shows temperature/tray state or other
-    // real-time info.
-    lv_style_init(&rtinfo_style);
-    lv_style_set_text_font(&rtinfo_style, &lv_font_montserrat_22);
-    lv_style_set_bg_color(&rtinfo_style, lv_color_make(15, 15, 15));
-    lv_style_set_bg_opa(&rtinfo_style, 255);
-    lv_style_set_text_align(&rtinfo_style, LV_TEXT_ALIGN_CENTER);
-    lv_style_set_border_width(&rtinfo_style, 1);
-    lv_style_set_border_color(&rtinfo_style, lv_color_make(255, 255, 255));
-    lv_style_set_pad_all(&rtinfo_style, 0);
-    lv_style_set_radius(&rtinfo_style, 0);
-    lv_style_set_text_color(&rtinfo_style, lv_color_white());
-    lv_style_set_outline_width(&rtinfo_style, 0);
 
     // Set the style for the synopsis screen container
     lv_style_init(&synop_container_style);
@@ -123,7 +108,6 @@ void dash_styles_deinit(void)
     lv_style_reset(&menu_table_style);
     lv_style_reset(&menu_table_highlight_style);
     lv_style_reset(&menu_table_cell_style);
-    lv_style_reset(&rtinfo_style);
     lv_style_reset(&synop_container_style);
     lv_style_reset(&synop_text_style);
     lv_style_reset(&titleview_style);

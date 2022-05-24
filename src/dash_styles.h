@@ -14,7 +14,6 @@ extern lv_style_t dash_background_style;
 extern lv_style_t menu_table_style;
 extern lv_style_t menu_table_highlight_style;
 extern lv_style_t menu_table_cell_style;
-extern lv_style_t rtinfo_style;
 extern lv_style_t synop_container_style;
 extern lv_style_t synop_text_style;
 extern lv_style_t titleview_style;
