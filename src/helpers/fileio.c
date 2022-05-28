@@ -3,7 +3,13 @@
 
 #include "lvgl.h"
 #include "fileio.h"
-
+#ifdef NXDK
+#include <windows.h>
+bool lv_fs_exists(const char *path)
+{
+	return (GetFileAttributesA(&path[2]) != INVALID_FILE_ATTRIBUTES);
+}
+#else
 bool lv_fs_exists(const char *path)
 {
     lv_fs_file_t fp;
@@ -15,6 +21,7 @@ bool lv_fs_exists(const char *path)
     }
     return exists;
 }
+#endif
 
 uint32_t lv_fs_size(lv_fs_file_t *fp)
 {

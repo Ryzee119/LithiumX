@@ -6,6 +6,7 @@
 #include "dash.h"
 #include "dash_styles.h"
 #include "helpers/menu.h"
+#include "helpers/fileio.h"
 #include "helpers/nano_debug.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,13 +63,13 @@ static bool list_dir(lv_obj_t *obj)
 #endif
     }
 
-    if (lv_fs_dir_open(&dir, cwd) == LV_FS_RES_OK)
+    if (lv_fs_dir_open(&dir, cwd) == LV_FS_RES_OK || lv_fs_exists(cwd))
     {
         ret = true;
         lv_label_set_text(cwd_label, &cwd[2]);
         // Minimise reallocs in lvgl by preallocating a bunch of rows
         lv_table_set_row_cnt(obj, 1024);
-        while (lv_fs_dir_read(&dir, fname) == LV_FS_RES_OK)
+        while (dir.dir_d && lv_fs_dir_read(&dir, fname) == LV_FS_RES_OK)
         {
             if (strlen(fname) == 0)
             {
