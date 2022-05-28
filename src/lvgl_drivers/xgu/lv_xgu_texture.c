@@ -246,11 +246,12 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
 
     // Create a checksum of some initial data to create a unique key for the texture cache
     uint32_t key = 0;
-    for (int i = 0; i < 32; i++)
-    {
-        uint32_t *_src = (uint32_t *)src_buf;
-        key += _src[i];
-    }
+    int max = (lv_area_get_width(src_area) * lv_area_get_width(src_area) * sizeof(lv_color_t)) / 4;
+    uint32_t *_src = (uint32_t *)src_buf;
+    int i = 0, end = LV_MIN(i + 16, max);
+    while (i < end) key += _src[i++];
+    i = max / 2; end = LV_MIN(i + 16, max);
+    while (i < end) key += _src[i++];
     if (xgu_ctx->xgu_data->combiner_mode != 1)
     {
 #include "xgu/texture.inl"
