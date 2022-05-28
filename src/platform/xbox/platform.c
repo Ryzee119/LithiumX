@@ -163,9 +163,9 @@ const char *platform_realtime_info_cb(void)
     mem_used = mem_size - ((MemoryStatistics.AvailablePages * PAGE_SIZE) / 1024U / 1024U);
 
     // Try read temps from ADM temperature monitor
-    HalReadSMBusValue(0x98, 0x01, FALSE, (ULONG *)&cpu_temp);
-    HalReadSMBusValue(0x98, 0x00, FALSE, (ULONG *)&mb_temp);
-    if (cpu_temp == 0 || mb_temp == 0)
+    NTSTATUS cpu = HalReadSMBusValue(0x98, 0x01, FALSE, (ULONG *)&cpu_temp);
+    NTSTATUS mb = HalReadSMBusValue(0x98, 0x00, FALSE, (ULONG *)&mb_temp);
+    if (cpu != STATUS_SUCCESS  || mb != STATUS_SUCCESS)
     {
         // If it fails, its probably a 1.6. Read SMC instead
         HalReadSMBusValue(0x20, 0x09, FALSE, (ULONG *)&cpu_temp);
