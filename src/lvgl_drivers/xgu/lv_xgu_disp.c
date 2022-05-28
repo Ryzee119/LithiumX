@@ -73,6 +73,10 @@ void lv_port_disp_init(int width, int height)
     lv_disp_drv_register(&disp_drv);
 
     Sleep(100);
+    if (LV_COLOR_DEPTH == 16)
+    {
+        pb_set_color_format(NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5, false);
+    }
     pb_init();
     pb_show_front_screen();
 

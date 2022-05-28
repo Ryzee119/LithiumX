@@ -38,7 +38,7 @@ static const uint8_t _lv_bpp8_opa_table[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
                                                 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
                                                 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255};
 
-static void amask_to_rgba(uint32_t *dest, const uint8_t *src, int width, int height, int stride, uint8_t bpp)
+static void amask_to_a(uint8_t *dest, const uint8_t *src, int width, int height, int stride, uint8_t bpp)
 {
     int src_len = width * height;
     int cur = 0;
@@ -74,8 +74,7 @@ static void amask_to_rgba(uint32_t *dest, const uint8_t *src, int width, int hei
         while (curbit >= 0 && cur < src_len)
         {
             uint8_t src_bits = opa_mask & (src_byte >> curbit);
-            dest[(cur / width * stride) + (cur % width)] = 0x00FFFFFF;
-            dest[(cur / width * stride) + (cur % width)] |= opa_table[src_bits] << 24;
+            dest[(cur / width * stride) + (cur % width)] = opa_table[src_bits];
             curbit -= bpp;
             cur++;
         }
@@ -104,6 +103,9 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     uint32_t ih = lv_area_get_height(src_area);
     uint32_t tw = npot2pot(iw);
     uint32_t th = npot2pot(ih);
+    //Seems like there's a min texture size of 8 bytes
+    tw = LV_MAX(tw, 8 / bytes_pp);
+    th = LV_MAX(th, 8 / bytes_pp);
     uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0x03FFAFFF, 0, PAGE_WRITECOMBINE | PAGE_READWRITE);
     if (dst_buf == NULL)
     {
@@ -176,15 +178,15 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
     lv_lru_get(xgu_ctx->xgu_data->texture_cache, &bmp, sizeof(bmp), (void **)&texture);
     if (texture == NULL)
     {
-        uint8_t bytes_pp = 4;
+        uint8_t bytes_pp = 1;
         void *buf = lv_mem_alloc(g.box_w * g.box_h * bytes_pp);
         if (buf == NULL)
         {
             return;
         }
-        amask_to_rgba(buf, bmp, g.box_w, g.box_h, g.box_w, g.bpp);
+        amask_to_a(buf, bmp, g.box_w, g.box_h, g.box_w, g.bpp);
+        texture = create_texture(xgu_ctx, buf, &letter_area, XGU_TEXTURE_FORMAT_A8, bytes_pp, (uint32_t)bmp);
 
-        texture = create_texture(xgu_ctx, buf, &letter_area, XGU_TEXTURE_FORMAT_A8R8G8B8, bytes_pp, (uint32_t)bmp);
         lv_mem_free(buf);
         if (texture == NULL)
         {
@@ -262,7 +264,8 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     if (texture == NULL)
     {
         uint8_t bytes_pp = sizeof(lv_color_t);
-        texture = create_texture(xgu_ctx, src_buf, src_area, XGU_TEXTURE_FORMAT_A8R8G8B8, bytes_pp, (uint32_t)key);
+        texture = create_texture(xgu_ctx, src_buf, src_area,
+            (bytes_pp == 4) ? XGU_TEXTURE_FORMAT_A8R8G8B8 : XGU_TEXTURE_FORMAT_R5G6B5, bytes_pp, (uint32_t)key);
         if (texture == NULL)
         {
             return;
