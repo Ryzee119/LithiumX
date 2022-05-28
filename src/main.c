@@ -47,17 +47,6 @@ void lvgl_removelock(void)
     SDL_UnlockMutex(lvgl_mutex);
 }
 
-static char launch_title[256];
-void dash_set_launch_folder(const char *path)
-{
-    strncpy(launch_title, path, sizeof(launch_title) - 1);
-}
-
-const char *dash_get_launch_folder(void)
-{
-    return launch_title;
-}
-
 int main(int argc, char *argv[])
 {
     int w,h;

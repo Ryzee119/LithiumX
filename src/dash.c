@@ -7,7 +7,9 @@
 #include "dash_styles.h"
 #include "dash_titlelist.h"
 #include "dash_synop.h"
-#include "dash_menu.h"
+#include "dash_mainmenu.h"
+#include "dash_filebrowser.h"
+#include "helpers/menu.h"
 #include "helpers/fileio.h"
 #include "jpg_decoder.h"
 #include "helpers/nano_debug.h"
@@ -133,12 +135,28 @@ static void change_page(int new_index)
     lv_obj_set_tile_id(page_tiles, current_tile_index, 0, LV_ANIM_ON);
 }
 
+static char launch_title[256];
+void dash_set_launch_exe(const char *format, ...)
+{
+    char buf[256];
+    va_list args;
+    va_start(args, format);
+    lv_vsnprintf(buf, sizeof(buf), format, args);
+    va_end(args);
+    strncpy(launch_title, buf, sizeof(launch_title) - 1);
+}
+
+const char *dash_get_launch_exe(void)
+{
+    return launch_title;
+}
+
 // About to launch a title. Add it to the recent titles file (if enabled) and launch it
-static void launch_title(void)
+void dash_launch_title()
 {
     lv_fs_file_t fp;
     uint32_t brw;
-    const char *launch_folder = dash_get_launch_folder();
+    const char *launch_exe = dash_get_launch_exe();
 
     // Recent items page isnt enabled, so just prepare launch and leave
     if (recent_parser == NULL)
@@ -155,7 +173,7 @@ static void launch_title(void)
         {
             goto leave;
         }
-        if (strcmp(recent_titles[i], launch_folder) == 0)
+        if (strcmp(recent_titles[i], launch_exe) == 0)
         {
             for (int k = i; k < num_items; k++)
             {
@@ -171,7 +189,7 @@ static void launch_title(void)
     int recent_title_cnt_new = LV_MIN(RECENT_TITLES_MAX, num_items + 1);
     const char **recent_titles_new = (const char **)lv_mem_alloc(sizeof(char *) * recent_title_cnt_new);
     lv_memset(recent_titles_new, 0, sizeof(char *) * recent_title_cnt_new);
-    recent_titles_new[0] = launch_folder;
+    recent_titles_new[0] = launch_exe;
     for (int i = 1; i < recent_title_cnt_new; i++)
     {
         recent_titles_new[i] = recent_titles[i - 1];
@@ -259,11 +277,8 @@ static void input_callback(lv_event_t *event)
         // Launch Title
         if (key == LV_KEY_ENTER)
         {
-            dash_set_launch_folder(current_title->title_folder);
-            char *confirm_box_text = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
-            lv_snprintf(confirm_box_text, DASH_MAX_PATHLEN, "%s \"%s\"", "Launch", current_title->title_str);
-            confirmbox_open(confirm_box_text, launch_title);
-            lv_mem_free(confirm_box_text);
+            dash_set_launch_exe("%s%c%s", current_title->title_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+            confirmbox_open(dash_launch_title, "%s \"%s\"", "Launch", current_title->title_str);
             return;
         }
 
@@ -398,7 +413,7 @@ static void game_parser_task(parse_handle_t *p)
 
             // Looks like we found a launch filename. Add it to the list and register the appropriate callbacks
             title_t *new_title = &p->title[lv_obj_get_child_cnt(p->scroller)];
-            if (titlelist_add(new_title, p->cwd, p->scroller) != 0)
+            if (titlelist_add(new_title, p->cwd, fname, p->scroller) != 0)
             {
                 nano_debug(LEVEL_TRACE, "TRACE: Found item %s\n", new_title->title_str);
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_KEY, p);
@@ -614,6 +629,7 @@ void dash_init(void)
     titlelist_init();
     synop_menu_init();
     main_menu_init();
+    file_browser_init();
 
     // Create a gradient background
     lv_obj_t *grad = lv_obj_create(ROOT_PARENT);
@@ -741,21 +757,23 @@ void dash_init(void)
             recent_titles = (char **)lv_mem_alloc(sizeof(char *) * (recent_title_cnt + 1));
             // Add all the recent titles to the recent items page
             int i = 0;
-            char *launch_folder = NULL;
+            char *launch_exe = NULL;
             char *launch_path = lv_mem_alloc(DASH_MAX_PATHLEN);
             while (i < recent_title_cnt)
             {
                 title_t *new_title = &recent_parser->title[lv_obj_get_child_cnt(recent_parser->scroller)];
-                launch_folder = (launch_folder == NULL) ? data : strchr(launch_folder, '\0') + 1;
-                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", launch_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
-                if (lv_fs_exists(launch_path) == false)
+                launch_exe = (launch_exe == NULL) ? data : strchr(launch_exe, '\0') + 1;
+                if (lv_fs_exists(launch_exe) == false)
                 {
-                    nano_debug(LEVEL_WARN, "WARN: %s no longer exists. Skipping\n", launch_path);
+                    nano_debug(LEVEL_WARN, "WARN: %s no longer exists. Skipping\n", launch_exe);
                     recent_title_cnt--;
                     continue;
                 }
-                recent_titles[i] = launch_folder;
-                if (titlelist_add(new_title, launch_folder, recent_parser->scroller) != 0)
+                recent_titles[i] = launch_exe;
+                strcpy(launch_path, launch_exe);
+                launch_path = lv_fs_up(launch_path);
+                const char *exe = lv_fs_get_last(launch_exe);
+                if (titlelist_add(new_title, launch_path, exe, recent_parser->scroller) != 0)
                 {
                     nano_debug(LEVEL_TRACE, "TRACE: Found recent item %s in %s\n", new_title->title_str, RECENT_TITLES);
                     lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_KEY, recent_parser);
@@ -805,6 +823,7 @@ void dash_deinit(void)
     }
     titlelist_deinit();
     main_menu_deinit();
+    file_browser_deinit();
     synop_menu_deinit();
     dash_styles_deinit();
 }

@@ -89,6 +89,7 @@ typedef struct title
     void *jpeg_handle;
     char title_str[64];                      // Clean title
     char title_folder[DASH_MAX_PATHLEN]; // String of the folder containing the executable
+    char title_exe[DASH_MAX_PATHLEN];    // String of the name of the launch executable
     bool has_thumbnail;
     bool has_xml;
     struct xml_document *xbe_xml; // Struct of the above XML data
@@ -96,7 +97,7 @@ typedef struct title
 
 void titlelist_init(void);
 void titlelist_deinit(void);
-int titlelist_add(title_t *xbe, char *title_folder, lv_obj_t *parent);
+int titlelist_add(title_t *xbe, char *title_folder, char *title_exe, lv_obj_t *parent);
 void titlelist_remove(title_t *title);
 struct xml_string *title_get_synopsis(struct xml_document *xml, const char *node_name);
 void xbe_use_default_thumbail(title_t *xbe);

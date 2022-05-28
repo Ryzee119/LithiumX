@@ -42,5 +42,6 @@ void platform_quit(lv_quit_event_t event)
     else if (event == LV_QUIT_OTHER)
     {
         printf("Other quit event\n");
+        const char* launch = dash_get_launch_exe();
     }
 }

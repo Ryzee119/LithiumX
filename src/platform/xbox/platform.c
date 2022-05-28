@@ -30,6 +30,23 @@ static const char *tray_state_str(uint32_t tray_state);
 extern int jpg_cache_size;
 extern int lv_texture_cache_size;
 
+//FIXME: Not currently in nxdk
+int strcasecmp (const char *s1, const char *s2)
+{
+  const unsigned char *p1 = (const unsigned char *) s1;
+  const unsigned char *p2 = (const unsigned char *) s2;
+  int result;
+
+  if (p1 == p2)
+    return 0;
+
+  while ((result = tolower(*p1) - tolower (*p2++)) == 0)
+    if (*p1++ == '\0')
+      break;
+
+  return result;
+}
+
 void platform_init(int *w, int *h)
 {
     //First try 720p. This is the preferred resolution
@@ -124,7 +141,7 @@ void platform_launch_dvd()
     // Check if media detected
     if (NT_SUCCESS(status) && tray_state == 0x60)
     {
-        dash_set_launch_folder("DVDROM");
+        dash_set_launch_exe("%s", "DVDROM");
         lv_set_quit(LV_QUIT_OTHER);
     }
 }
@@ -245,7 +262,7 @@ void platform_quit(lv_quit_event_t event)
     }
     else if (event == LV_QUIT_OTHER)
     {
-        const char *path = dash_get_launch_folder();
+        const char *path = dash_get_launch_exe();
         if (strcmp(path, "MSDASH") == 0)
         {
             // FIXME: Do we need to eject disk?
@@ -258,7 +275,7 @@ void platform_quit(lv_quit_event_t event)
         else
         {
             // Drop the first two characters from path as they are lvgl specific
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", &path[2], DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s", &path[2]);
         }
         nano_debug(LEVEL_TRACE, "TRACE: Launching %s\n", launch_path);
         debugPrint("Launching\n");

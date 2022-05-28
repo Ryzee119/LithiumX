@@ -106,7 +106,7 @@ static void jpg_delayed_queue(lv_timer_t *timer)
         else
         {
             /*Drop the first two characters in the filename. These are lvgl specific*/
-            int path_len = strlen(title->title_folder) + 1 + strlen(DASH_LAUNCH_EXE) + 1;
+            int path_len = strlen(title->title_folder) + 1 + strlen(DASH_GAME_THUMBNAIL) + 1;
             char *thumbnail_path = (char *)lv_mem_alloc(path_len);
             lv_snprintf(thumbnail_path, path_len, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, DASH_GAME_THUMBNAIL);
             title->jpeg_handle = jpeg_decoder_queue(&thumbnail_path[2], jpg_decompression_complete_cb, title);
@@ -147,7 +147,7 @@ static int title_parse(title_t *title)
     char *launch_path = (char *)lv_mem_alloc(DASH_MAX_PATHLEN);
     do
     {
-        lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+        lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, title->title_exe);
         if (lv_fs_open(&fp, launch_path, LV_FS_MODE_RD) != LV_FS_RES_OK)
         {
             nano_debug(LEVEL_ERROR, "ERROR: Could not open %s. Skipping title\n.", launch_path);
@@ -253,7 +253,7 @@ struct xml_string *title_get_synopsis(struct xml_document *title_xml, const char
     return node_string;
 }
 
-int titlelist_add(title_t *title, char *title_folder, lv_obj_t *parent)
+int titlelist_add(title_t *title, char *title_folder, char *title_exe, lv_obj_t *parent)
 {
     unsigned int br, success;
     bool xml_parsed = false;
@@ -262,6 +262,7 @@ int titlelist_add(title_t *title, char *title_folder, lv_obj_t *parent)
 
     success = 0;
     strncpy(title->title_folder, title_folder, sizeof(title->title_folder) - 1);
+    strncpy(title->title_exe, title_exe, sizeof(title->title_exe) - 1);
 
     title->has_xml = true;
     title->has_thumbnail = true;

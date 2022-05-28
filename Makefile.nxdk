@@ -11,12 +11,14 @@ GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
 SRCS += \
 	$(CURDIR)/src/main.c \
 	$(CURDIR)/src/dash.c \
-	$(CURDIR)/src/dash_menu.c \
+	$(CURDIR)/src/dash_mainmenu.c \
+	$(CURDIR)/src/dash_filebrowser.c \
 	$(CURDIR)/src/dash_styles.c \
 	$(CURDIR)/src/dash_synop.c \
 	$(CURDIR)/src/dash_titlelist.c \
 	$(CURDIR)/src/helpers/fileio.c \
 	$(CURDIR)/src/helpers/nano_debug.c \
+	$(CURDIR)/src/helpers/menu.c \
 	$(CURDIR)/src/platform/xbox/platform.c \
 	$(CURDIR)/src/platform/xbox/network.c \
 	$(CURDIR)/src/dash_resources/default_tbn.c \

@@ -91,9 +91,10 @@ extern unsigned int settings_auto_launch_dvd;
 
 void dash_init(void);
 void dash_deinit(void);
-void dash_set_launch_folder(const char *path);
+void dash_set_launch_exe(const char *format, ...);
 void dash_clear_recent_list(void);
-const char *dash_get_launch_folder(void);
+const char *dash_get_launch_exe(void);
+void dash_launch_title();
 
 void lvgl_getlock(void);
 void lvgl_removelock(void);
