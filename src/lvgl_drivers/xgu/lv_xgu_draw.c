@@ -39,6 +39,7 @@ void lv_draw_xgu_init_ctx(lv_disp_drv_t *drv, lv_draw_ctx_t *draw_ctx)
     xgu_ctx->base_draw.draw_rect = xgu_draw_rect;
     xgu_ctx->base_draw.draw_bg = xgu_draw_bg;
     xgu_ctx->base_draw.draw_letter = xgu_draw_letter;
+    xgu_ctx->base_draw.draw_img = xgu_draw_img;
     xgu_ctx->base_draw.draw_img_decoded = xgu_draw_img_decoded;
     xgu_ctx->base_draw.draw_line = xgu_draw_line;
     xgu_ctx->base_draw.draw_polygon = xgu_draw_polygon;

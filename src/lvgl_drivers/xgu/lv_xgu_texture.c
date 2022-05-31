@@ -103,10 +103,12 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     uint32_t ih = lv_area_get_height(src_area);
     uint32_t tw = npot2pot(iw);
     uint32_t th = npot2pot(ih);
-    //Seems like there's a min texture size of 8 bytes
+    //Seems like there's a min texture size of 8 bytes.
+    //Fix me, small textures will still use a whole page of memory.
     tw = LV_MAX(tw, 8 / bytes_pp);
     th = LV_MAX(th, 8 / bytes_pp);
-    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0x03FFAFFF, 0, PAGE_WRITECOMBINE | PAGE_READWRITE);
+    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0x03FFAFFF, 0,
+                                                               PAGE_WRITECOMBINE | PAGE_READWRITE);
     if (dst_buf == NULL)
     {
         return NULL;
@@ -129,6 +131,33 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     texture->bytes_pp = bytes_pp;
     lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, tw * th * bytes_pp);
     return texture;
+}
+
+static void map_textured_rect(draw_cache_value_t *texture, lv_area_t *tex_area,
+                              lv_area_t *draw_area, float zoom)
+{
+    float zm, s0, s1, t0, t1;
+    zm = zoom / 256.0f;
+    s0 = (float)(draw_area->x1 - tex_area->x1) / zm;
+    s1 = texture->iw - ((float)(tex_area->x2 - draw_area->x2) / zm);
+    t0 = (float)(draw_area->y1 - tex_area->y1) / zm;
+    t1 = texture->ih - ((float)(tex_area->y2 - draw_area->y2) / zm);
+
+    p = xgu_begin(p, XGU_TRIANGLE_STRIP);
+
+    p = xgux_set_texcoord3f(p, 0, s0, t0, 1);
+    p = xgu_vertex4f(p, (float)draw_area->x1, (float)draw_area->y1, 1, 1);
+
+    p = xgux_set_texcoord3f(p, 0, s1, t0, 1);
+    p = xgu_vertex4f(p, (float)draw_area->x2, (float)draw_area->y1, 1, 1);
+
+    p = xgux_set_texcoord3f(p, 0, s0, t1, 1);
+    p = xgu_vertex4f(p, (float)draw_area->x1, (float)draw_area->y2, 1, 1);
+
+    p = xgux_set_texcoord3f(p, 0, s1, t1, 1);
+    p = xgu_vertex4f(p, (float)draw_area->x2, (float)draw_area->y2, 1, 1);
+
+    p = xgu_end(p);
 }
 
 void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t *dsc,
@@ -160,7 +189,8 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
     }
 
     int32_t pos_x = pos_p->x + g.ofs_x;
-    int32_t pos_y = pos_p->y + (g.resolved_font->line_height - g.resolved_font->base_line) - g.box_h - g.ofs_y;
+    int32_t pos_y = pos_p->y + (g.resolved_font->line_height - g.resolved_font->base_line) -
+                    g.box_h - g.ofs_y;
 
     const lv_area_t letter_area = {pos_x, pos_y, pos_x + g.box_w - 1, pos_y + g.box_h - 1};
     lv_area_t draw_area;
@@ -185,7 +215,8 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
             return;
         }
         amask_to_a(buf, bmp, g.box_w, g.box_h, g.box_w, g.bpp);
-        texture = create_texture(xgu_ctx, buf, &letter_area, XGU_TEXTURE_FORMAT_A8, bytes_pp, (uint32_t)bmp);
+        texture = create_texture(xgu_ctx, buf, &letter_area,
+                                 XGU_TEXTURE_FORMAT_A8, bytes_pp, (uint32_t)bmp);
 
         lv_mem_free(buf);
         if (texture == NULL)
@@ -194,31 +225,44 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
         }
     }
 
-    p = xgux_set_color4ub(p, dsc->color.ch.red, dsc->color.ch.green, dsc->color.ch.blue, dsc->opa);
+    p = xgux_set_color4ub(p, dsc->color.ch.red, dsc->color.ch.green,
+                          dsc->color.ch.blue, dsc->opa);
 
     bind_texture(xgu_ctx, texture, (uint32_t)bmp, XGU_TEXTURE_FILTER_LINEAR);
 
-    float s0, s1, t0, t1, zm = 1.0f;
-    s0 = (float)(draw_area.x1 - letter_area.x1) / zm;
-    s1 = texture->iw - ((float)(letter_area.x2 - draw_area.x2) / zm);
-    t0 = (float)(draw_area.y1 - letter_area.y1) / zm;
-    t1 = texture->ih - ((float)(letter_area.y2 - draw_area.y2) / zm);
+    map_textured_rect(texture, &letter_area, &draw_area, 256.0f);
+}
 
-    p = xgu_begin(p, XGU_TRIANGLE_STRIP);
+lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
+                      const lv_area_t *src_area, const void *src_buf)
+{
+    lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)src_buf;
+    draw_cache_value_t *texture = NULL;
+    lv_img_src_t src_type = lv_img_src_get_type(src_buf);
 
-    p = xgux_set_texcoord3f(p, 0, s0, t0, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y1, 1, 1);
+    if (src_type != LV_IMG_SRC_VARIABLE)
+    {
+        DbgPrint("Unsupported img type %d\n", src_type);
+        return LV_RES_INV;
+    }
 
-    p = xgux_set_texcoord3f(p, 0, s1, t0, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y1, 1, 1);
-
-    p = xgux_set_texcoord3f(p, 0, s0, t1, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y2, 1, 1);
-
-    p = xgux_set_texcoord3f(p, 0, s1, t1, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y2, 1, 1);
-
-    p = xgu_end(p);
+    switch (img_dsc->header.cf)
+    {
+    case LV_IMG_CF_TRUE_COLOR:
+    case LV_IMG_CF_RGB888:
+    case LV_IMG_CF_RGBA8888:
+    case LV_IMG_CF_RGBX8888:
+    case LV_IMG_CF_RGB565:
+        break;
+    case LV_IMG_CF_TRUE_COLOR_ALPHA:
+        if (sizeof(lv_color_t) == 4) break;
+        //Fallthrough on other than 32bpp
+    default:
+        DbgPrint("Unsupported texture format %d\n", img_dsc->header.cf);
+        return LV_RES_INV;
+    }
+    xgu_draw_img_decoded(draw_ctx, dsc, src_area, img_dsc->data, img_dsc->header.cf);
+    return LV_RES_OK;
 }
 
 void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
@@ -248,7 +292,8 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
 
     // Create a checksum of some initial data to create a unique key for the texture cache
     uint32_t key = 0;
-    int max = (lv_area_get_width(src_area) * lv_area_get_width(src_area) * sizeof(lv_color_t)) / 4;
+    int max = (lv_area_get_width(src_area) *
+               lv_area_get_width(src_area) * sizeof(lv_color_t)) / 4;
     uint32_t *_src = (uint32_t *)src_buf;
     int i = 0, end = LV_MIN(i + 16, max);
     while (i < end) key += _src[i++];
@@ -256,16 +301,44 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     while (i < end) key += _src[i++];
     if (xgu_ctx->xgu_data->combiner_mode != 1)
     {
-#include "xgu/texture.inl"
+        #include "xgu/texture.inl"
         xgu_ctx->xgu_data->combiner_mode = 1;
     }
 
     lv_lru_get(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), (void **)&texture);
     if (texture == NULL)
     {
-        uint8_t bytes_pp = sizeof(lv_color_t);
-        texture = create_texture(xgu_ctx, src_buf, src_area,
-            (bytes_pp == 4) ? XGU_TEXTURE_FORMAT_A8R8G8B8 : XGU_TEXTURE_FORMAT_R5G6B5, bytes_pp, (uint32_t)key);
+        XguTexFormatColor xgu_cf;
+        uint8_t bytes_pp;
+        switch (cf)
+        {
+        case LV_IMG_CF_TRUE_COLOR:
+            xgu_cf = (sizeof(lv_color_t) == 2) ? 
+                XGU_TEXTURE_FORMAT_R5G6B5 : XGU_TEXTURE_FORMAT_A8R8G8B8;
+            bytes_pp = sizeof(lv_color_t);
+            break;
+        case LV_IMG_CF_TRUE_COLOR_ALPHA:
+            if (sizeof(lv_color_t) == 2) return;
+            xgu_cf = XGU_TEXTURE_FORMAT_A8R8G8B8;
+            bytes_pp = sizeof(lv_color_t);
+        case LV_IMG_CF_RGB888:
+            xgu_cf = XGU_TEXTURE_FORMAT_X8R8G8B8;
+            bytes_pp = 4;
+            break;
+        case LV_IMG_CF_RGBA8888:
+        case LV_IMG_CF_RGBX8888:
+            xgu_cf = XGU_TEXTURE_FORMAT_R8G8B8A8;
+            bytes_pp = 4;
+            break;
+        case LV_IMG_CF_RGB565:
+            xgu_cf = XGU_TEXTURE_FORMAT_R5G6B5;
+            bytes_pp = 2;
+            break;
+        default:
+            DbgPrint("Unsupported texture format %d\n", cf);
+            return;
+        }
+        texture = create_texture(xgu_ctx, src_buf, src_area, xgu_cf, bytes_pp, (uint32_t)key);
         if (texture == NULL)
         {
             return;
@@ -274,7 +347,8 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
 
     if (dsc->recolor_opa > LV_OPA_TRANSP)
     {
-        p = xgux_set_color4ub(p, dsc->recolor.ch.red, dsc->recolor.ch.green, dsc->recolor.ch.blue, dsc->recolor_opa);
+        p = xgux_set_color4ub(p, dsc->recolor.ch.red, dsc->recolor.ch.green,
+                              dsc->recolor.ch.blue, dsc->recolor_opa);
     }
     else
     {
@@ -284,26 +358,5 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     bind_texture(xgu_ctx, texture, (uint32_t)key,
                  (dsc->antialias) ? XGU_TEXTURE_FILTER_LINEAR : XGU_TEXTURE_FILTER_NEAREST);
 
-    float zm, s0, s1, t0, t1;
-    zm = (float)dsc->zoom / 256.0f;
-    s0 = (float)(draw_area.x1 - src_area_transformed.x1) / zm;
-    s1 = texture->iw - ((float)(src_area_transformed.x2 - draw_area.x2) / zm);
-    t0 = (float)(draw_area.y1 - src_area_transformed.y1) / zm;
-    t1 = texture->ih - ((float)(src_area_transformed.y2 - draw_area.y2) / zm);
-
-    p = xgu_begin(p, XGU_TRIANGLE_STRIP);
-
-    p = xgux_set_texcoord3f(p, 0, s0, t0, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y1, 1, 1);
-
-    p = xgux_set_texcoord3f(p, 0, s1, t0, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y1, 1, 1);
-
-    p = xgux_set_texcoord3f(p, 0, s0, t1, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y2, 1, 1);
-
-    p = xgux_set_texcoord3f(p, 0, s1, t1, 1);
-    p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y2, 1, 1);
-
-    p = xgu_end(p);
+    map_textured_rect(texture, &src_area_transformed, &draw_area, (float)dsc->zoom);
 }

@@ -25,11 +25,7 @@ static void end_frame()
 static void begin_frame()
 {
     static int last_swap = 0;
-    int now = pb_get_vbl_counter();
-    while ((now - last_swap) < 2)
-    {
-        now = pb_wait_for_vbl();
-    }
+    pb_wait_for_vbl();
     pb_reset();
     pb_target_back_buffer();
     while (pb_busy());

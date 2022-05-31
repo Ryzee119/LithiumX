@@ -73,6 +73,8 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
                      uint32_t letter);
 void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
                           const lv_area_t *src_area, const uint8_t *src_buf, lv_img_cf_t cf);
+lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
+                      const lv_area_t *src_area, const void *src_buf);
 
 #ifdef __cplusplus
 } /*extern "C"*/
