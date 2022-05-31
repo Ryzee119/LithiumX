@@ -624,7 +624,12 @@ void dash_init(void)
     }
 
     // Init other parts of the dash
+    #ifdef NXDK
+    jpeg_decoder_init(16, 256); //Force 16bit color on xobx
+    #else
     jpeg_decoder_init(LV_COLOR_DEPTH, 256);
+    #endif
+
     dash_styles_init();
     titlelist_init();
     synop_menu_init();

@@ -67,7 +67,12 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         lvgl_getlock();
         title->thumb_jpeg = lv_canvas_create(title->image_container);
         title->thumb_jpeg->user_data = img;
+        #ifdef NXDK
+        //We are using RGB565 on xbox
+        lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_RGB565);
+        #else
         lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_TRUE_COLOR);
+        #endif
         lv_obj_set_size(title->image_container, DASH_THUMBNAIL_WIDTH, DASH_THUMBNAIL_HEIGHT);
         lv_img_set_size_mode(title->thumb_jpeg, LV_IMG_SIZE_MODE_REAL);
         lv_img_set_zoom(title->thumb_jpeg, DASH_THUMBNAIL_WIDTH * 256 / w);
