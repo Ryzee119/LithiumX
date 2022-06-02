@@ -83,8 +83,12 @@ void lv_port_disp_init(int width, int height)
     data->current_tex = NULL;
     data->tex_enabled = 0;
 
-    const float m_identity[4 * 4] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
+    int widescreen = (XVideoGetEncoderSettings() & 0x00010000) ? 1 : 0;
+    float x_scale =  (DISPLAY_WIDTH == 640 && widescreen == 1) ? 0.75f : 1.0f;
+    float x_offset = (DISPLAY_WIDTH == 640 && widescreen == 1) ? 80.0f : 0.0f;
+
+    float m_identity[4 * 4] = {
+        x_scale, 0.0f, 0.0f, x_offset,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 1.0f};
