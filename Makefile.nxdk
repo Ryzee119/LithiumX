@@ -16,6 +16,7 @@ SRCS += \
 	$(CURDIR)/src/dash_styles.c \
 	$(CURDIR)/src/dash_synop.c \
 	$(CURDIR)/src/dash_titlelist.c \
+	$(CURDIR)/src/dash_eeprom.c \
 	$(CURDIR)/src/helpers/fileio.c \
 	$(CURDIR)/src/helpers/nano_debug.c \
 	$(CURDIR)/src/helpers/menu.c \

@@ -15,6 +15,7 @@ lv_style_t titleview_style;
 lv_style_t titleview_image_container_style;
 lv_style_t titleview_image_text_style;
 lv_style_t titleview_header_footer_style;
+lv_style_t eeprom_items_style;
 
 void dash_styles_init(void)
 {
@@ -101,6 +102,18 @@ void dash_styles_init(void)
     lv_style_set_bg_color(&titleview_header_footer_style, lv_color_make(0, 72, 16));
     lv_style_set_text_color(&titleview_header_footer_style, lv_color_white());
     lv_style_set_text_font(&titleview_header_footer_style, &lv_font_montserrat_26);
+
+    //Style for the eeprom setting screen
+    lv_style_init(&eeprom_items_style);
+    lv_style_set_border_width(&eeprom_items_style, 1);
+    lv_style_set_border_color(&eeprom_items_style, lv_color_white());
+    lv_style_set_bg_color(&eeprom_items_style, lv_color_make(15, 15, 15));
+
+    lv_style_set_text_color(&eeprom_items_style, lv_color_white());
+    lv_style_set_text_font(&eeprom_items_style, &lv_font_montserrat_20);
+    lv_style_set_color_filter_opa(&eeprom_items_style, 0);
+    lv_style_set_radius(&eeprom_items_style, 0);
+    lv_style_set_outline_width(&eeprom_items_style, 0);
 }
 
 void dash_styles_deinit(void)
@@ -115,4 +128,5 @@ void dash_styles_deinit(void)
     lv_style_reset(&titleview_image_container_style);
     lv_style_reset(&titleview_image_text_style);
     lv_style_reset(&titleview_header_footer_style);
+    lv_style_reset(&eeprom_items_style);
 }

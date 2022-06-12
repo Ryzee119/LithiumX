@@ -9,6 +9,7 @@
 #include "dash_synop.h"
 #include "dash_mainmenu.h"
 #include "dash_filebrowser.h"
+#include "dash_eeprom.h"
 #include "helpers/menu.h"
 #include "helpers/fileio.h"
 #include "jpg_decoder.h"
@@ -635,6 +636,7 @@ void dash_init(void)
     synop_menu_init();
     main_menu_init();
     file_browser_init();
+    eeprom_init();
 
     // Create a gradient background
     lv_obj_t *grad = lv_obj_create(ROOT_PARENT);

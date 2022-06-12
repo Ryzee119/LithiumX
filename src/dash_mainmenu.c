@@ -7,6 +7,7 @@
 #include "dash_styles.h"
 #include "dash_mainmenu.h"
 #include "dash_filebrowser.h"
+#include "dash_eeprom.h"
 #include "platform/platform.h"
 #include "helpers/menu.h"
 #include "helpers/nano_debug.h"
@@ -29,6 +30,7 @@ enum
     MENU_FLUSH_CACHE_PARTITION,
 #endif
     MENU_XBE_BROWSER,
+    MENU_EEPROM_CONFIG,
     MENU_ABOUT,
     MENU_REBOOT,
     MENU_SHUTDOWN,
@@ -45,6 +47,7 @@ static const char *menu_items[] =
         "Flush Cache Partitions",
 #endif
         "XBE Browser",
+        "EEPROM Config",
         "About",
         "Reboot",
         "Shutdown",
@@ -195,6 +198,10 @@ static void menu_pressed(lv_event_t *e)
     else if (row == MENU_XBE_BROWSER)
     {
         file_browser_open();
+    }
+    else if (row == MENU_EEPROM_CONFIG)
+    {
+        eeprom_open();
     }
     else if (row == MENU_CLEAR_RECENT)
     {

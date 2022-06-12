@@ -20,6 +20,7 @@ extern lv_style_t titleview_style;
 extern lv_style_t titleview_image_container_style;
 extern lv_style_t titleview_image_text_style;
 extern lv_style_t titleview_header_footer_style;
+extern lv_style_t eeprom_items_style;
 
 void dash_styles_init(void);
 void dash_styles_deinit(void);
