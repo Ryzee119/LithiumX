@@ -50,7 +50,6 @@ void lv_port_disp_init(int width, int height)
 {
     DISPLAY_WIDTH = width;
     DISPLAY_HEIGHT = height;
-    XVideoSetMode(DISPLAY_WIDTH, DISPLAY_HEIGHT, LV_COLOR_DEPTH, REFRESH_DEFAULT);
 
     lv_disp_draw_buf_init(&draw_buf, NULL, NULL, DISPLAY_WIDTH * DISPLAY_HEIGHT);
     lv_disp_drv_init(&disp_drv);
