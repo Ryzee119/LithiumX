@@ -212,6 +212,11 @@ leave:
     lv_set_quit(LV_QUIT_OTHER);
 }
 
+static void scroll_finished(lv_event_t *event)
+{
+    titlelist_abort_offscreen();
+}
+
 // User input callback function.
 // This handles changing page (LB, RB), selecting a new titles (Up,Down,Left,Right)
 // show the game info screen (synopsis screen) and the settings screen (Main menu)
@@ -679,6 +684,7 @@ void dash_init(void)
 
         // Register the scroller container with our input driver. lv_obj dont have input callbacks by default.
         lv_obj_add_event_cb(parsers[i].scroller, input_callback, LV_EVENT_KEY, &parsers[i]);
+        lv_obj_add_event_cb(parsers[i].scroller, scroll_finished, LV_EVENT_SCROLL_END, NULL);
         lv_group_add_obj(lv_group_get_default(), parsers[i].scroller);
 
         parse_handle_t *parser = &parsers[i];

@@ -13,9 +13,6 @@ static const uint8_t _lv_bpp1_opa_table[2] = {0, 255};          /*Opacity mappin
 
 static const uint8_t _lv_bpp2_opa_table[4] = {0, 85, 170, 255}; /*Opacity mapping with bpp = 2*/
 
-static const uint8_t _lv_bpp3_opa_table[8] = {0, 36, 73, 109, /*Opacity mapping with bpp = 3*/
-                                              146, 182, 219, 255};
-
 static const uint8_t _lv_bpp4_opa_table[16] = {0, 17, 34, 51, /*Opacity mapping with bpp = 4*/
                                                68, 85, 102, 119,
                                                136, 153, 170, 187,
@@ -133,7 +130,7 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     return texture;
 }
 
-static void map_textured_rect(draw_cache_value_t *texture, lv_area_t *tex_area,
+static void map_textured_rect(draw_cache_value_t *texture, const lv_area_t *tex_area,
                               lv_area_t *draw_area, float zoom)
 {
     float zm, s0, s1, t0, t1;
@@ -237,7 +234,6 @@ lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
                       const lv_area_t *src_area, const void *src_buf)
 {
     lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)src_buf;
-    draw_cache_value_t *texture = NULL;
     lv_img_src_t src_type = lv_img_src_get_type(src_buf);
 
     if (src_type != LV_IMG_SRC_VARIABLE)

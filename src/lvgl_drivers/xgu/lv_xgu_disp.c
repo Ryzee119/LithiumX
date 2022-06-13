@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <hal/video.h>
+#include <hal/debug.h>
 #include <lvgl.h>
 #include <xgu.h>
 #include <xgux.h>
@@ -24,7 +25,6 @@ static void end_frame()
 
 static void begin_frame()
 {
-    static int last_swap = 0;
     pb_wait_for_vbl();
     pb_reset();
     pb_target_back_buffer();
@@ -67,7 +67,6 @@ void lv_port_disp_init(int width, int height)
     disp_drv.user_data = data;
     lv_disp_drv_register(&disp_drv);
 
-    Sleep(100);
     if (LV_COLOR_DEPTH == 16)
     {
         pb_set_color_format(NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5, false);

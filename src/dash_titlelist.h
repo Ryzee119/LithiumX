@@ -99,6 +99,7 @@ void titlelist_init(void);
 void titlelist_deinit(void);
 int titlelist_add(title_t *xbe, char *title_folder, char *title_exe, lv_obj_t *parent);
 void titlelist_remove(title_t *title);
+void titlelist_abort_offscreen(void);
 struct xml_string *title_get_synopsis(struct xml_document *xml, const char *node_name);
 void xbe_use_default_thumbail(title_t *xbe);
 

@@ -203,7 +203,7 @@ static void cache_free(jpg_cache_value_t *jpg)
     lv_mem_free(jpg);
 }
 
-static void abort_offscreen(lv_timer_t *t)
+void titlelist_abort_offscreen(void)
 {
     title_ll_value_t *llist = _lv_ll_get_head(&title_llist);
     while (llist)
@@ -224,7 +224,6 @@ void titlelist_init(void)
 {
     jpg_cache = lv_lru_create(jpg_cache_size, 0x40000, (lv_lru_free_t *)cache_free, NULL);
     _lv_ll_init(&title_llist, sizeof(title_ll_value_t));
-    lv_timer_create(abort_offscreen, DELAYED_DECOMPRESS_PERIOD, NULL);
 }
 
 void titlelist_deinit(void)
