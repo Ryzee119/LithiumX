@@ -104,7 +104,7 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     //Fix me, small textures will still use a whole page of memory.
     tw = LV_MAX(tw, 8 / bytes_pp);
     th = LV_MAX(th, 8 / bytes_pp);
-    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0x03FFAFFF, 0,
+    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0xFFFFFFFF, 0,
                                                                PAGE_WRITECOMBINE | PAGE_READWRITE);
     if (dst_buf == NULL)
     {
