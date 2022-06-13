@@ -59,6 +59,7 @@ static void jpg_clean(title_t *title)
 static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, void *user_data)
 {
     title_t *title = (title_t *)user_data;
+    int bpp;
     nano_debug(LEVEL_TRACE, "TRACE: jpg_decompression_complete_cb %s\n", title->title_str);
     // If buffer == NULL. decompression was aborted or had an error.
     if (title->thumb_jpeg == NULL && img != NULL)
@@ -70,8 +71,10 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         #ifdef NXDK
         //We are using RGB565 on xbox
         lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_RGB565);
+        bpp = 2;
         #else
         lv_canvas_set_buffer(title->thumb_jpeg, img, w, h, LV_IMG_CF_TRUE_COLOR);
+        bpp = sizeof(lv_color_t);
         #endif
         lv_obj_set_size(title->image_container, DASH_THUMBNAIL_WIDTH, DASH_THUMBNAIL_HEIGHT);
         lv_img_set_size_mode(title->thumb_jpeg, LV_IMG_SIZE_MODE_REAL);
@@ -86,7 +89,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
         jpg->mem = mem;
         jpg->w = w;
         jpg->h = h;
-        lv_lru_set(jpg_cache, &title, sizeof(title), jpg, w * h * sizeof(lv_color_t));
+        lv_lru_set(jpg_cache, &title, sizeof(title), jpg, w * h * bpp);
 
         lvgl_removelock();
     }
