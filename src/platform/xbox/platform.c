@@ -105,8 +105,8 @@ void platform_init(int *w, int *h)
     MemoryStatistics.Length = sizeof(MM_STATISTICS);
     MmQueryStatistics(&MemoryStatistics);
     uint32_t mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE);
-    lv_texture_cache_size = mem_size / 4;
-    jpg_cache_size = mem_size / 8;
+    lv_texture_cache_size = mem_size / 16;
+    jpg_cache_size = mem_size / 4;
 }
 
 // Xbox specific
