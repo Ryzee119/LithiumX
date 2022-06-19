@@ -11,6 +11,8 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 * Will run at 720p if available, otherwise it will automatically fallback to 480p.
 * FTP Server (Xbox build only)
 * GPU Accelerated
+* EEPROM configuration and backup
+* XBE Browser (Browse and launch XBEs on your HDD or DVD drive.
 
 ## Controls
 * Black/White - Change page
