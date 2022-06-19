@@ -73,6 +73,41 @@ static void eeprom_update(void *param)
                                          (audio_settings & AUDIO_MODE_SURROUND) ? 1 : lv_roller_get_selected(roller_audio), LV_ANIM_ON);
 }
 
+void eeprom_backup_cb(lv_timer_t *t)
+{
+    lv_obj_t *label = t->user_data;
+    lv_label_set_text(label, "Backup EEPROM");
+}
+
+static void eeprom_backup(lv_obj_t *obj)
+{
+    const char *outcome = "Failed to write to E:\\eeprom.bin";
+    lv_obj_t *label = lv_obj_get_child(obj, 0);
+    #ifdef NXDK
+    uint8_t buffer[0x100];
+    uint16_t *ptr = (uint16_t *)buffer;
+    for (int i = 0; i < sizeof(buffer); i += 2)
+    {
+        ULONG value;
+        if (!NT_SUCCESS(HalReadSMBusValue(0xA9, (UCHAR)i, TRUE, (PULONG)&value)))
+        {
+            fflush(stdout);
+        }
+        *ptr++ = (uint16_t)value;
+    }
+    lv_fs_file_t fp;
+    uint32_t bw;
+    if (lv_fs_open(&fp, "A:E:\\eeprom.bin", LV_FS_MODE_WR) == LV_FS_RES_OK)
+    {
+        lv_fs_write(&fp, buffer, sizeof(buffer), &bw);
+        lv_fs_close(&fp);
+        outcome = "Wrote to E:\\eeprom.bin";
+    }
+    #endif
+    lv_label_set_text(label, outcome);
+    lv_timer_set_repeat_count(lv_timer_create(eeprom_backup_cb, 1000, label), 1);
+}
+
 static void key_press(lv_event_t *e)
 {
     static int child_index = 0;
@@ -119,6 +154,10 @@ static void key_press(lv_event_t *e)
             }
             lv_roller_set_selected(child, selected, LV_ANIM_ON);
             lv_event_send(child, LV_EVENT_VALUE_CHANGED, NULL);
+        }
+        else if (lv_obj_check_type(child, &lv_btn_class))
+        {
+            eeprom_backup(child);
         }
         else
         {
@@ -249,6 +288,11 @@ void eeprom_init(void)
     uint32_t mask[] = {VIDEO_MODE_480P, VIDEO_MODE_720P, VIDEO_MODE_1080I, AUDIO_MODE_ENABLE_AC3, AUDIO_MODE_ENABLE_DTS};
     const char *labels[] = {"480p", "720p", "1080i", "Dolby Digital", "DTS"};
 
+    obj = lv_btn_create(eeprom_container);
+    obj = lv_label_create(obj);
+    lv_label_set_text(obj, "Backup EEPROM");
+    lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+
     for (int i = 0; i < sizeof(objs) / sizeof(lv_obj_t *); i++)
     {
         obj = lv_switch_create(eeprom_container);
@@ -299,8 +343,8 @@ void eeprom_init(void)
         lv_obj_update_layout(obj);
     }
 
-    lv_obj_set_style_bg_color(switch_480p, COLOR_SELECTED, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(switch_480p, COLOR_SELECTED, LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(lv_obj_get_child(eeprom_container, 0), COLOR_SELECTED, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(lv_obj_get_child(eeprom_container, 0), COLOR_SELECTED, LV_PART_INDICATOR | LV_STATE_CHECKED);
 
     // Hidden for now
     lv_obj_add_flag(eeprom_container, LV_OBJ_FLAG_HIDDEN);
