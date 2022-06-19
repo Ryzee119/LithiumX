@@ -108,7 +108,7 @@ void dash_styles_init(void)
     lv_style_set_border_width(&eeprom_items_style, 1);
     lv_style_set_border_color(&eeprom_items_style, lv_color_white());
     lv_style_set_bg_color(&eeprom_items_style, lv_color_make(15, 15, 15));
-
+    lv_style_set_shadow_opa(&eeprom_items_style, 0);
     lv_style_set_text_color(&eeprom_items_style, lv_color_white());
     lv_style_set_text_font(&eeprom_items_style, &lv_font_montserrat_20);
     lv_style_set_color_filter_opa(&eeprom_items_style, 0);
