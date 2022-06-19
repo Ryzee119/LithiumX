@@ -358,7 +358,6 @@ static void game_parser_task(parse_handle_t *p)
 {
     char fname[DASH_MAX_PATHLEN];
     int len;
-    lv_fs_dir_t sub_dir;
     int remaining = p->num_paths - p->current_path_index;
     if (remaining <= 0)
     {
@@ -394,32 +393,19 @@ static void game_parser_task(parse_handle_t *p)
         end++;
         strcpy(end, &fname[1]); // Skip the first '/' symbol
         // cwd should look like A:PARSE_DIR\SUB_DIR
-        if (lv_fs_dir_open(&sub_dir, p->cwd) != LV_FS_RES_OK)
+
+        lv_snprintf(fname, sizeof(fname), "%s%c%s", p->cwd, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+        //fname should look like A:PARSE_DIR\SUB_DIR\DASH_LAUNCH_EXE
+        if (lv_fs_exists(fname))
         {
-            nano_debug(LEVEL_WARN, "WARN: Could not open sub path %s. Skipping\n", p->cwd);
-            goto done_subfolder;
-        }
-        // Scan all files within subfolder for the launch filename
-        while (lv_fs_dir_read(&sub_dir, fname) == LV_FS_RES_OK)
-        {
-            // No more files
-            if (fname[0] == '\0')
-            {
-                break;
-            }
-            if (strncmp(fname, DASH_LAUNCH_EXE, sizeof(fname)) != 0)
-            {
-                continue;
-            }
             if (lv_obj_get_child_cnt(p->scroller) == DASH_MAX_GAMES)
             {
                 nano_debug(LEVEL_WARN, "WARN: Reached max title limit of %d, increase DASH_MAX_GAMES\n", DASH_MAX_GAMES);
-                break;
+                goto done_path;
             }
-
             // Looks like we found a launch filename. Add it to the list and register the appropriate callbacks
             title_t *new_title = &p->title[lv_obj_get_child_cnt(p->scroller)];
-            if (titlelist_add(new_title, p->cwd, fname, p->scroller) != 0)
+            if (titlelist_add(new_title, p->cwd, DASH_LAUNCH_EXE, p->scroller) != 0)
             {
                 nano_debug(LEVEL_TRACE, "TRACE: Found item %s\n", new_title->title_str);
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_KEY, p);
@@ -427,10 +413,13 @@ static void game_parser_task(parse_handle_t *p)
                 lv_obj_add_event_cb(new_title->image_container, input_callback, LV_EVENT_DEFOCUSED, p);
             }
         }
+        else
+        {
+            nano_debug(LEVEL_WARN, "WARN: Could not find path %s. Next\n", p->cwd);
+        }
         goto done_subfolder;
     }
 done_subfolder:
-    lv_fs_dir_close(&sub_dir);
     lv_fs_up(p->cwd);
     return;
 done_path:
