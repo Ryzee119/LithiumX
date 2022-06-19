@@ -260,7 +260,7 @@ struct xml_string *title_get_synopsis(struct xml_document *title_xml, const char
     return node_string;
 }
 
-int titlelist_add(title_t *title, char *title_folder, char *title_exe, lv_obj_t *parent)
+int titlelist_add(title_t *title, char *title_folder, const char *title_exe, lv_obj_t *parent)
 {
     unsigned int br, success;
     bool xml_parsed = false;
