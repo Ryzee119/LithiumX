@@ -50,8 +50,8 @@ cd LithiumX
 make -f Makefile.nxdk -j (Add -B if editing lv_conf.h or other header files to ensure its built correctly)
 ```
 
-## Build (Windows Xbox)
-Install MYSYS2, then from a mingw64 environment:
+## Build (Windows)
+Install MSYS2, then from a mingw64 environment:
 ```
 pacman -Syu
 pacman -S mingw-w64-x86_64-make \
