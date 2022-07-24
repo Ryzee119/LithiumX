@@ -3,9 +3,10 @@ GEN_XISO = $(XBE_TITLE).iso
 NXDK_SDL = y
 NXDK_NET = y
 
+GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
+
 LVGL_DIR     = src/lib/lvgl
 LV_CONF_PATH = "lv_conf.h"
-GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
 
 # Include my files
 SRCS += \
@@ -58,16 +59,17 @@ CFLAGS += $(XGU_FLAGS)
 SRCS += $(XGU_DRV)
 SHADER_OBJS = $(CURDIR)/src/lvgl_drivers/xgu/texture.inl $(CURDIR)/src/lvgl_drivers/xgu/notexture.inl
 
-# Include ftp
-FTP_DIR = $(CURDIR)/src/lib/ftpd
-SRCS += $(FTP_DIR)/ftp_file.c $(FTP_DIR)/ftp_server.c $(FTP_DIR)/ftp.c
-
 # Include shaders
 %.inl: %.ps | fp20compiler
 	@echo "[ FP20     ] $@"
 	$(FP20COMPILER) $< > $@
 
-# Include lvgl main library
+# Include ftp server
+FTP_DIR = $(CURDIR)/src/lib/ftpd
+SRCS += $(FTP_DIR)/ftp_file.c $(FTP_DIR)/ftp_server.c $(FTP_DIR)/ftp.c
+
+# Include lvgl library
+CFLAGS += -I$(LVGL_DIR)/
 SRCS += $(shell find -L $(LVGL_DIR)/src/core -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/draw -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/extra -name \*.c)
@@ -75,7 +77,5 @@ SRCS += $(shell find -L $(LVGL_DIR)/src/font -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/hal -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/misc -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/widgets -name \*.c)
-
-CFLAGS += -I$(LVGL_DIR)/
 
 include $(NXDK_DIR)/Makefile
