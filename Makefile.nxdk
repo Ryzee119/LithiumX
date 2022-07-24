@@ -26,9 +26,7 @@ SRCS += \
 	$(CURDIR)/src/dash_resources/qrcode.c \
 	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
-	$(CURDIR)/src/lib/xml/src/xml.c \
-	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv.c \
-	$(CURDIR)/src/lib/nvnetdrv/nvnetdrv_lwip.c
+	$(CURDIR)/src/lib/xml/src/xml.c
 
 CFLAGS += \
 	-I$(CURDIR)/src \
