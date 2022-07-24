@@ -60,7 +60,8 @@ static keyboard_map_t lvgl_keyboard_map[] =
         {.sdl_map = SDLK_UP, .lvgl_map = LV_KEY_UP},
         {.sdl_map = SDLK_DOWN, .lvgl_map = LV_KEY_DOWN},
         {.sdl_map = SDLK_LEFT, .lvgl_map = LV_KEY_LEFT},
-        {.sdl_map = SDLK_RIGHT, .lvgl_map = LV_KEY_RIGHT}};
+        {.sdl_map = SDLK_RIGHT, .lvgl_map = LV_KEY_RIGHT}
+        {.sdl_map = 0, .lvgl_map = 0});
 #else
 extern keyboard_map_t lvgl_keyboard_map[];
 #endif
@@ -223,13 +224,15 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         // Handle keyboard button events
         if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP)
         {
-            for (size_t i = 0; i < (sizeof(lvgl_keyboard_map) / sizeof(keyboard_map_t)); i++)
+            int i = 0;
+            while (lvgl_keyboard_map[i].sdl_map !=0)
             {
                 if (lvgl_keyboard_map[i].sdl_map == e.key.keysym.sym)
                 {
                     data->key = lvgl_keyboard_map[i].lvgl_map;
                     data->state = (e.type == SDL_KEYUP) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
                 }
+                i++;
             }
         }
     }

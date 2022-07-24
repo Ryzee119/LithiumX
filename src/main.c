@@ -33,6 +33,19 @@ gamecontroller_map_t lvgl_gamecontroller_map[] =
     {.sdl_map = SDL_CONTROLLER_BUTTON_DPAD_LEFT, .lvgl_map = LV_KEY_LEFT},
     {.sdl_map = SDL_CONTROLLER_BUTTON_DPAD_RIGHT, .lvgl_map = LV_KEY_RIGHT}
 };
+
+keyboard_map_t lvgl_keyboard_map[] =
+{
+    {.sdl_map = SDLK_ESCAPE, .lvgl_map = DASH_SETTINGS_PAGE},
+    {.sdl_map = SDLK_BACKSPACE, .lvgl_map = LV_KEY_ESC},
+    {.sdl_map = SDLK_RETURN, .lvgl_map = LV_KEY_ENTER},
+    {.sdl_map = SDLK_PAGEDOWN, .lvgl_map = DASH_PREV_PAGE},
+    {.sdl_map = SDLK_PAGEUP, .lvgl_map = DASH_NEXT_PAGE},
+    {.sdl_map = SDLK_UP, .lvgl_map = LV_KEY_UP},
+    {.sdl_map = SDLK_DOWN, .lvgl_map = LV_KEY_DOWN},
+    {.sdl_map = SDLK_LEFT, .lvgl_map = LV_KEY_LEFT},
+    {.sdl_map = SDLK_RIGHT, .lvgl_map = LV_KEY_RIGHT}
+};
 /* clang-format on */
 
 // LVGL isn't thread safe but we can use threads if we put locks around lv_task_handler

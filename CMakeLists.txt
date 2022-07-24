@@ -18,11 +18,12 @@ set(LVGL_DIR "${PROJECT_DIR}/lib/lvgl")
 set(LV_CONF_PATH ${PROJECT_DIR}/lv_conf.h CACHE STRING "" FORCE)
 
 add_definitions(-DLVGL_USE_CUSTOM_CONTROLLER_MAP)
+add_definitions(-DLVGL_USE_CUSTOM_KEYBOARD_MAP)
 add_definitions(-DLV_LVGL_H_INCLUDE_SIMPLE)
 add_definitions(-DLV_CONF_PATH=${LV_CONF_PATH})
 add_definitions(-DJPEG_DECODER_QUEUE_SIZE=1024)
 add_definitions(-DQRURL=\"https://github.com/Ryzee119/LithiumX\")
-#add_definitions(-DDBG) #Show fps and memory usage info
+add_definitions(-DSHOW_FPS_MEM) #Show fps and memory usage info
 
 add_compile_options(-Wall -O3)
 file(GLOB PROJECT_FILES
