@@ -62,13 +62,20 @@ SHADER_OBJS = $(CURDIR)/src/lvgl_drivers/xgu/texture.inl $(CURDIR)/src/lvgl_driv
 FTP_DIR = $(CURDIR)/src/lib/ftpd
 SRCS += $(FTP_DIR)/ftp_file.c $(FTP_DIR)/ftp_server.c $(FTP_DIR)/ftp.c
 
+# Include shaders
 %.inl: %.ps | fp20compiler
 	@echo "[ FP20     ] $@"
 	$(FP20COMPILER) $< > $@
 
 # Include lvgl main library
-include $(LVGL_DIR)/lvgl.mk
-SRCS +=	$(CSRCS)
+SRCS += $(shell find -L $(LVGL_DIR)/src/core -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/draw -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/extra -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/font -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/hal -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/misc -name \*.c)
+SRCS += $(shell find -L $(LVGL_DIR)/src/widgets -name \*.c)
+
 CFLAGS += -I$(LVGL_DIR)/
 
 include $(NXDK_DIR)/Makefile
