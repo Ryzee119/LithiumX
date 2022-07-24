@@ -18,10 +18,9 @@
 #define VIDEO_MODE_720P 0x20000
 #define VIDEO_MODE_1080I 0x40000
 #define VIDEO_MODE_480P 0x80000
+#define VIDEO_WIDESCREEN 0x010000
+#define VIDEO_LETTERBOX 0x100000
 #endif
-
-#define VIDEO_MODE_WIDESCREEN 0x010000
-#define VIDEO_MODE_LETTERBOX 0x100000
 
 #define AUDIO_MODE_STEREO 0x00000
 #define AUDIO_MODE_MONO 0x00001
@@ -66,8 +65,8 @@ static void eeprom_update(void *param)
         lv_obj_set_style_bg_color(objs[i], knob_color, LV_PART_KNOB);
     }
 
-    lv_roller_set_selected(roller_video, (video_settings & VIDEO_MODE_WIDESCREEN) ? 2 :
-                                         (video_settings & VIDEO_MODE_LETTERBOX) ? 1 : lv_roller_get_selected(roller_video), LV_ANIM_ON);
+    lv_roller_set_selected(roller_video, (video_settings & VIDEO_WIDESCREEN) ? 2 :
+                                         (video_settings & VIDEO_LETTERBOX) ? 1 : lv_roller_get_selected(roller_video), LV_ANIM_ON);
 
     lv_roller_set_selected(roller_audio, (audio_settings & AUDIO_MODE_MONO) ? 2 :
                                          (audio_settings & AUDIO_MODE_SURROUND) ? 1 : lv_roller_get_selected(roller_audio), LV_ANIM_ON);
@@ -249,18 +248,18 @@ static void roller_video_handler(lv_event_t *e)
     lv_roller_get_selected_str(obj, buf, sizeof(buf));
     if (strcmp(buf, "Normal") == 0)
     {
-        video_settings &= ~VIDEO_MODE_WIDESCREEN;
-        video_settings &= ~VIDEO_MODE_LETTERBOX;
+        video_settings &= ~VIDEO_WIDESCREEN;
+        video_settings &= ~VIDEO_LETTERBOX;
     }
     else if (strcmp(buf, "Letter Box") == 0)
     {
-        video_settings &= ~VIDEO_MODE_WIDESCREEN;
-        video_settings |= VIDEO_MODE_LETTERBOX;
+        video_settings &= ~VIDEO_WIDESCREEN;
+        video_settings |= VIDEO_LETTERBOX;
     }
     else if (strcmp(buf, "Wide Screen") == 0)
     {
-        video_settings |= VIDEO_MODE_WIDESCREEN;
-        video_settings &= ~VIDEO_MODE_LETTERBOX;
+        video_settings |= VIDEO_WIDESCREEN;
+        video_settings &= ~VIDEO_LETTERBOX;
     }
 #ifdef NXDK
     ExSaveNonVolatileSetting(XC_VIDEO, 4, &video_settings, sizeof(video_settings));
