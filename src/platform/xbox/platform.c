@@ -249,9 +249,11 @@ const char *platform_show_info_cb(void)
     return info_text;
 }
 
+void nvnetdrv_stop_txrx (void);
 void platform_quit(lv_quit_event_t event)
 {
     char launch_path[DASH_MAX_PATHLEN];
+    nvnetdrv_stop_txrx();
     if (event == LV_REBOOT)
     {
         HalReturnToFirmware(HalRebootRoutine);
