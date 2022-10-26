@@ -39,7 +39,7 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 <img  src="./images/dash_synop.jpg" alt="recent" width="75%"/>
 <img  src="./images/dash_recent.jpg" alt="synopsis" width="75%"/>
 
-## Build (Original Xbox)
+## Build (Original Xbox Version)
 Setup and install nxdk, then:
 ```
 sudo apt-get update -y && sudo apt-get install -y flex bison clang lld llvm
@@ -49,7 +49,7 @@ cd LithiumX
 make -f Makefile.nxdk -j (Add -B if editing lv_conf.h or other header files to ensure its built correctly)
 ```
 
-## Build (Windows)
+## Build (Windows Version)
 Install MSYS2, then from a mingw64 environment:
 ```
 pacman -Syu
@@ -66,7 +66,7 @@ cmake .. -G "MinGW Makefiles"
 cmake --build .
 ```
 
-## Build (Linux)
+## Build (Linux Version)
 ```
 sudo apt-get update
 sudo apt install build-essential libsdl2-dev libturbojpeg-dev
