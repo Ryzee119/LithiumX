@@ -266,13 +266,15 @@ int titlelist_add(title_t *title, char *title_folder, const char *title_exe, lv_
     bool xml_parsed = false;
     struct xml_document *title_xml = NULL;
     char xml_path[DASH_MAX_PATHLEN];
+    char *thumbnail_path;
+    int thumbnail_path_len;
 
     success = 0;
     strncpy(title->title_folder, title_folder, sizeof(title->title_folder) - 1);
     strncpy(title->title_exe, title_exe, sizeof(title->title_exe) - 1);
 
     title->has_xml = true;
-    title->has_thumbnail = true;
+    title->has_thumbnail = false;
     if (title_parse(title) == 0)
     {
         nano_debug(LEVEL_ERROR, "ERROR: Could not parse %s\n.", title->title_folder);
@@ -314,6 +316,19 @@ title_no_xml:
         }
         title->title_str[sizeof(title->xbe_cert.wszTitleName) / 2] = '\0';
         title->has_xml = false;
+    }
+
+    // Check if a thumbnail is in the xbe directory
+    thumbnail_path_len = strlen(title->title_folder) + 1 + strlen(DASH_GAME_THUMBNAIL) + 1;
+    thumbnail_path = (char *)lv_mem_alloc(thumbnail_path_len);
+    if (thumbnail_path)
+    {
+        lv_snprintf(thumbnail_path, thumbnail_path_len, "%s%c%s", title->title_folder, DASH_PATH_SEPARATOR, DASH_GAME_THUMBNAIL);
+        title->has_thumbnail = lv_fs_exists(thumbnail_path);
+        lv_mem_free(thumbnail_path);
+    }
+    else
+    {
         title->has_thumbnail = false;
     }
 
