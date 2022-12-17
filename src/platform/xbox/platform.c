@@ -22,6 +22,8 @@
 #include <hal/debug.h>
 #include <windows.h>
 
+#define BASE_CLOCK_INT 16667
+
 static const char *video_region_str(uint32_t code);
 static char *game_region_str(uint32_t code);
 static const char *xbox_get_verion();
@@ -146,12 +148,44 @@ void platform_launch_dvd()
     }
 }
 
+ULONG platform_get_CPU_frequency()
+{
+    ULONGLONG f_rdtsc, s_rdtsc;
+    DWORD f_ticks, s_ticks;
+
+    f_rdtsc = __rdtsc();
+    f_ticks = KeTickCount;
+
+    Sleep(250);
+
+    s_rdtsc = __rdtsc();
+    s_ticks = KeTickCount;
+
+    s_rdtsc -= f_rdtsc;
+    s_rdtsc /= s_ticks - f_ticks;
+
+    return (ULONG)s_rdtsc;
+}
+
+ULONG platform_get_GPU_frequency()
+{
+    ULONG nvclk_reg, current_nvclk;
+    nvclk_reg = *((volatile ULONG *)0xFD680500);
+
+    current_nvclk = BASE_CLOCK_INT * ((nvclk_reg & 0xFF00) >> 8);
+    current_nvclk /= 1 << ((nvclk_reg & 0x70000) >> 16);
+    current_nvclk /= nvclk_reg & 0xFF;
+    current_nvclk /= 1000;
+
+    return current_nvclk;
+}
+
 // Small text label shown about the main menu. This is called every 2 seconds.
 // Useful to show temperatures or other occassionally changing info. Return a string with the text
 const char *platform_realtime_info_cb(void)
 {
     ULONG tray_state = 0x70, cpu_temp = 0, mb_temp = 0;
-    static char rt_text[256];
+    static char rt_text[512];
     char temp_unit = 'C';
 
     //Read current RAM and RAM usage
@@ -184,13 +218,18 @@ const char *platform_realtime_info_cb(void)
     char ip[20];
     platform_network_get_ip(ip, sizeof(ip));
 
+    ULONG cpu_speed = platform_get_CPU_frequency() / 1000;
+    ULONG gpu_speed = platform_get_GPU_frequency();
+
     lv_snprintf(rt_text, sizeof(rt_text),
                 "%s Tray State:# %s\n"
                 "%s CPU:# %lu%c, %s MB:# %lu%c\n"
+                "%s CPU Freq:# %lu.%luMHz, %s GPU Freq:# %luMHz\n"
                 "%s RAM:# %d/%d MB\n"
                 "%s IP:# %s",
                 DASH_MENU_COLOR, tray_state_str(tray_state),
                 DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
+                DASH_MENU_COLOR, cpu_speed % 1000, cpu_speed % 100, DASH_MENU_COLOR, gpu_speed,
                 DASH_MENU_COLOR, mem_used, mem_size,
                 DASH_MENU_COLOR, ip);
 
