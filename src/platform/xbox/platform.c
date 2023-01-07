@@ -148,22 +148,19 @@ void platform_launch_dvd()
     }
 }
 
-ULONG platform_get_CPU_frequency()
+ULONG platform_get_CPU_frequency(ULONGLONG *f_rdtsc, DWORD *f_ticks)
 {
-    ULONGLONG f_rdtsc, s_rdtsc;
-    DWORD f_ticks, s_ticks;
-
-    f_rdtsc = __rdtsc();
-    f_ticks = KeTickCount;
-
-    Sleep(250);
+    ULONGLONG s_rdtsc;
+    DWORD s_ticks;
 
     s_rdtsc = __rdtsc();
     s_ticks = KeTickCount;
 
-    s_rdtsc -= f_rdtsc;
-    s_rdtsc /= s_ticks - f_ticks;
+    s_rdtsc -= *f_rdtsc;
+    s_rdtsc /= s_ticks - *f_ticks;
 
+    *f_rdtsc = __rdtsc();
+    *f_ticks = KeTickCount;
     return (ULONG)s_rdtsc;
 }
 
@@ -180,13 +177,15 @@ ULONG platform_get_GPU_frequency()
     return current_nvclk;
 }
 
-// Small text label shown about the main menu. This is called every 2 seconds.
+// Small text label shown about the main menu. This is called every 1 second.
 // Useful to show temperatures or other occassionally changing info. Return a string with the text
 const char *platform_realtime_info_cb(void)
 {
     ULONG tray_state = 0x70, cpu_temp = 0, mb_temp = 0;
     static char rt_text[512];
     char temp_unit = 'C';
+    static ULONGLONG f_rdtsc = 0;
+    static DWORD f_ticks = 0;
 
     //Read current RAM and RAM usage
     uint32_t mem_size, mem_used;
@@ -218,7 +217,7 @@ const char *platform_realtime_info_cb(void)
     char ip[20];
     platform_network_get_ip(ip, sizeof(ip));
 
-    ULONG cpu_speed = platform_get_CPU_frequency() / 1000;
+    ULONG cpu_speed = platform_get_CPU_frequency(&f_rdtsc, &f_ticks) / 1000;
     ULONG gpu_speed = platform_get_GPU_frequency();
 
     lv_snprintf(rt_text, sizeof(rt_text),
