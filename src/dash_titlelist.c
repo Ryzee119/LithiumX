@@ -159,8 +159,8 @@ static int title_parse(title_t *title)
         if (lv_fs_open(&fp, launch_path, LV_FS_MODE_RD) != LV_FS_RES_OK)
         {
             nano_debug(LEVEL_ERROR, "ERROR: Could not open %s. Skipping title\n.", launch_path);
-            success = 0;
-            break;
+            lv_mem_free(launch_path);
+            return 0;
         }
 
         if (lv_fs_read(&fp, &title->xbe_header, sizeof(xbe_header_t), &br) != LV_FS_RES_OK)
