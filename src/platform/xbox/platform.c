@@ -148,7 +148,7 @@ void platform_launch_dvd()
     }
 }
 
-ULONG platform_get_CPU_frequency(ULONGLONG *f_rdtsc, DWORD *f_ticks)
+static ULONG platform_get_CPU_frequency(ULONGLONG *f_rdtsc, DWORD *f_ticks)
 {
     ULONGLONG s_rdtsc;
     DWORD s_ticks;
@@ -164,7 +164,7 @@ ULONG platform_get_CPU_frequency(ULONGLONG *f_rdtsc, DWORD *f_ticks)
     return (ULONG)s_rdtsc;
 }
 
-ULONG platform_get_GPU_frequency()
+static ULONG platform_get_GPU_frequency()
 {
     ULONG nvclk_reg, current_nvclk;
     nvclk_reg = *((volatile ULONG *)0xFD680500);
