@@ -215,8 +215,7 @@ void titlelist_abort_offscreen(void)
         {
             if (lv_obj_is_visible(llist->title->image_container) == 0)
             {
-                jpeg_decoder_abort(llist->title->jpeg_handle);
-                llist->title->jpeg_handle = NULL;
+                jpg_clean(llist->title);
             }
         }
         llist = _lv_ll_get_next(&title_llist, llist);
@@ -236,7 +235,7 @@ void titlelist_deinit(void)
     {
         if (llist->title->jpeg_handle != NULL)
         {
-            jpeg_decoder_abort(llist->title->jpeg_handle);
+            jpg_clean(llist->title);
         }
         llist = _lv_ll_get_next(&title_llist, llist);
     }

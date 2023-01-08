@@ -100,16 +100,33 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     uint32_t ih = lv_area_get_height(src_area);
     uint32_t tw = npot2pot(iw);
     uint32_t th = npot2pot(ih);
+    uint32_t sz;
     //Seems like there's a min texture size of 8 bytes.
     //Fix me, small textures will still use a whole page of memory.
     tw = LV_MAX(tw, 8 / bytes_pp);
     th = LV_MAX(th, 8 / bytes_pp);
-    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(tw * th * bytes_pp, 0, 0xFFFFFFFF, 0,
+    sz = tw * th * bytes_pp;
+
+    //Allocate it in cache
+    texture = lv_mem_alloc(sizeof(draw_cache_value_t));
+    texture->iw = iw;
+    texture->ih = ih;
+    texture->tw = tw;
+    texture->th = th;
+    texture->format = fmt;
+    texture->bytes_pp = bytes_pp;
+    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, sz + (sz % PAGE_SIZE));
+
+    uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(sz, 0, 0xFFFFFFFF, 0,
                                                                PAGE_WRITECOMBINE | PAGE_READWRITE);
     if (dst_buf == NULL)
     {
+        lv_lru_remove(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key));
+        lv_mem_free(texture);
         return NULL;
     }
+    texture->texture = dst_buf;
+
     uint32_t dst_px = 0, src_px = 0;
     for (int y = 0; y < ih; y++)
     {
@@ -118,15 +135,6 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
         src_px += iw * bytes_pp;
     }
 
-    texture = lv_mem_alloc(sizeof(draw_cache_value_t));
-    texture->texture = dst_buf;
-    texture->iw = iw;
-    texture->ih = ih;
-    texture->tw = tw;
-    texture->th = th;
-    texture->format = fmt;
-    texture->bytes_pp = bytes_pp;
-    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, tw * th * bytes_pp);
     return texture;
 }
 
