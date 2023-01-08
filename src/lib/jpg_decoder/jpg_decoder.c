@@ -44,6 +44,11 @@ static jpeg_t *jpeg_mpool_free;                    // Stores a free pointer in m
 static jpeg_t *jpegdecomp_qhead;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 static jpeg_t *jpegdecomp_qtail;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 
+static void error_exit_stub(j_common_ptr cinfo)
+{
+    (void)cinfo;
+}
+
 static int decomp_thread(void *ptr)
 {
     FILE *jfile;
@@ -74,6 +79,8 @@ static int decomp_thread(void *ptr)
 
         jpeg_create_decompress(&jinfo);
         jinfo.err = jpeg_std_error(&jerr);
+        jinfo.err->error_exit = error_exit_stub;
+
         jpeg_stdio_src(&jinfo, jfile);
         if (jpeg_read_header(&jinfo, TRUE) != JPEG_HEADER_OK)
         {
