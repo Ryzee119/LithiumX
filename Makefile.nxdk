@@ -27,7 +27,8 @@ SRCS += \
 	$(CURDIR)/src/dash_resources/qrcode.c \
 	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c \
 	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
-	$(CURDIR)/src/lib/xml/src/xml.c
+	$(CURDIR)/src/lib/xml/src/xml.c \
+	$(CURDIR)/src/lib/nxdk/lib/net/lwip/src/apps/sntp/sntp.c
 
 CFLAGS += \
 	-I$(CURDIR)/src \
@@ -45,6 +46,8 @@ CFLAGS += \
 	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
 	-DQRURL=\"https://github.com/Ryzee119/LithiumX\" \
 	-DFTP_CUSTOM_ROOT_PATH \
+	-DSNTP_SET_SYSTEM_TIME=xbox_sntp_set_time \
+	-DSNTP_SERVER_DNS=1
 	#-DSHOW_FPS_MEM \
 	#-DDBG_I2C \
 	#-DDBG

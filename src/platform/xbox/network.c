@@ -8,8 +8,24 @@
 #include "helpers/nano_debug.h"
 #include "platform/platform.h"
 
+#include <xboxkrnl/xboxkrnl.h>
 #include <windows.h>
 #include <stdio.h>
+#include <time.h>
+
+void xbox_sntp_set_time(uint32_t ntp_s)
+{
+#define NT_EPOCH_TIME_OFFSET ((LONGLONG)(369 * 365 + 89) * 24 * 3600)
+
+    LARGE_INTEGER xbox_nt_time, ntp_nt_time;
+
+    KeQuerySystemTime(&xbox_nt_time);
+    ntp_nt_time.QuadPart = ((uint64_t)ntp_s + NT_EPOCH_TIME_OFFSET) * 10000000;
+    nano_debug(LEVEL_TRACE, "Time synced to SNTP server. Changed by %d ms\n",
+               (LONG)(ntp_nt_time.LowPart - xbox_nt_time.LowPart) / 10000);
+    NtSetSystemTime(&ntp_nt_time, NULL);
+}
+
 #include "lwip/opt.h"
 #include "lwip/debug.h"
 #include "lwip/netif.h"
@@ -20,6 +36,7 @@
 #include "lwip/sys.h"
 #include "lwip/tcpip.h"
 #include "lwip/tcp.h"
+#include "lwip/apps/sntp.h"
 
 err_t nvnetif_init(struct netif *netif);
 static struct netif netif;
@@ -77,6 +94,10 @@ static void tcpip_init_done(void *arg)
     netif_set_up(&netif);
     dhcp_start(&netif);
     sys_thread_new("ftp_server", ftp_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
 }
 
 void platform_network_init(void)

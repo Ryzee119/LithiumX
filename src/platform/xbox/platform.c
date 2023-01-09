@@ -186,6 +186,20 @@ const char *platform_realtime_info_cb(void)
     char temp_unit = 'C';
     static ULONGLONG f_rdtsc = 0;
     static DWORD f_ticks = 0;
+    static const char short_months[12][4] =
+        {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+    // Read System time, adjust for timezone offset then convert to time fields. 
+    TIME_FIELDS tf;
+    LARGE_INTEGER lt;
+    LONG timezone, daylight;
+    ULONG type;
+    KeQuerySystemTime(&lt);
+    ExQueryNonVolatileSetting(XC_TIMEZONE_BIAS, &type, &timezone, sizeof(timezone), NULL);
+    ExQueryNonVolatileSetting(XC_TZ_DLT_BIAS, &type, &daylight, sizeof(daylight), NULL);
+    lt.QuadPart -= ((LONGLONG)(timezone + daylight) * 60 * 10000000);
+    RtlTimeToTimeFields(&lt, &tf);
 
     //Read current RAM and RAM usage
     uint32_t mem_size, mem_used;
@@ -221,11 +235,13 @@ const char *platform_realtime_info_cb(void)
     ULONG gpu_speed = platform_get_GPU_frequency();
 
     lv_snprintf(rt_text, sizeof(rt_text),
+                "%s Date/Time:# %02d %s %04d %02d:%02d:%02d\n"
                 "%s Tray State:# %s\n"
                 "%s CPU:# %lu%c, %s MB:# %lu%c\n"
                 "%s CPU Freq:# %lu.%luMHz, %s GPU Freq:# %luMHz\n"
                 "%s RAM:# %d/%d MB\n"
                 "%s IP:# %s",
+                DASH_MENU_COLOR, tf.Day, short_months[tf.Month - 1], tf.Year, tf.Hour, tf.Minute,tf.Second,
                 DASH_MENU_COLOR, tray_state_str(tray_state),
                 DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
                 DASH_MENU_COLOR, cpu_speed % 1000, cpu_speed % 100, DASH_MENU_COLOR, gpu_speed,
