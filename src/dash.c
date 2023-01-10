@@ -283,7 +283,7 @@ static void input_callback(lv_event_t *event)
         // Launch Title
         if (key == LV_KEY_ENTER)
         {
-            dash_set_launch_exe("%s%c%s", current_title->title_folder, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
+            dash_set_launch_exe("%s%c%s", current_title->title_folder, DASH_PATH_SEPARATOR, current_title->title_exe);
             confirmbox_open(dash_launch_title, "%s \"%s\"", "Launch", current_title->title_str);
             return;
         }
