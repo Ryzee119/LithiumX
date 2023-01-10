@@ -767,7 +767,7 @@ static void ftp_cmd_list(ftp_data_t *ftp)
 		{
 			char date_str_buff[64];
 			char *date_str = data_time_to_str(date_str_buff, ftp->finfo.fdate, ftp->finfo.ftime);
-			snprintf(dir_name_buf, _MAX_LFN, "Type=file;Size=%d;Modify=%s; %s\r\n", ftp->finfo.fsize, date_str, fname);
+			snprintf(dir_name_buf, _MAX_LFN, "Type=file;Size=%u;Modify=%s; %s\r\n", ftp->finfo.fsize, date_str, fname);
 		}
 		// write data to endpoint
 		netconn_write(ftp->dataconn, dir_name_buf, strlen(dir_name_buf), NETCONN_COPY);
