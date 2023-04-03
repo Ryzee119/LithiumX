@@ -94,7 +94,6 @@ static char *data_time_to_str(char *str, uint16_t date, uint16_t time)
 	uint32_t day = date & 0x001F;
 	if (month > 12) month = 12;
 	sprintf(str, "%s %02d %04d", month_str[month - 1], day, year);
-	DbgPrint("%s\n", str);
 	return str;
 }
 
