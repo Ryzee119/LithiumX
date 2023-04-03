@@ -84,17 +84,17 @@ static void ftp_send(ftp_data_t *ftp, const char *fmt, ...)
 
 static char *data_time_to_str(char *str, uint16_t date, uint16_t time)
 {
-	if (date == 0 || time == 0)
+	static const char *month_str[] =
 	{
-		sprintf(str, "");
-	}
-	else
-	{
-		sprintf(str, "%04d%02d%02d%02d%02d%02d", ((date & 0xFE00) >> 9) + 1980,
-				(date & 0x01E0) >> 5, date & 0x001F,
-				(time & 0xF800) >> 11, (time & 0x07E0) >> 5,
-				(time & 0x001F) << 1);
-	}
+		"Jan", "Feb" , "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	};
+	//MMM DD YYYY
+	uint32_t year =  ((date & 0xFE00) >> 9) + 1980;
+	uint32_t month = (date & 0x01E0) >> 5;
+	uint32_t day = date & 0x001F;
+	if (month > 12) month = 12;
+	sprintf(str, "%s %02d %04d", month_str[month - 1], day, year);
+	DbgPrint("%s\n", str);
 	return str;
 }
 
@@ -755,19 +755,23 @@ static void ftp_cmd_list(ftp_data_t *ftp)
 			continue;
 
 		char *fname = ftp->lfn[0] == 0 ? ftp->finfo.fname : ftp->lfn;
+		char date_str_buff[64];
+		char *date_str = data_time_to_str(date_str_buff, ftp->finfo.fdate, ftp->finfo.ftime);
 
 		// list command given? (to give support for NLST)
 		if (strcmp(ftp->command, "LIST"))
+		{
 			snprintf(dir_name_buf, _MAX_LFN, "%s\r\n", fname);
+		}
 		// is it a directory?
 		else if (ftp->finfo.fattrib & AM_DIR)
-			snprintf(dir_name_buf, _MAX_LFN, "+/,\t%s\r\n", fname);
+		{
+			snprintf(dir_name_buf, _MAX_LFN, "drwxr-xr-x 1 XBOX XBOX 0 %s %s\n", date_str, fname);
 		// just a file
+		}
 		else
 		{
-			char date_str_buff[64];
-			char *date_str = data_time_to_str(date_str_buff, ftp->finfo.fdate, ftp->finfo.ftime);
-			snprintf(dir_name_buf, _MAX_LFN, "Type=file;Size=%u;Modify=%s; %s\r\n", ftp->finfo.fsize, date_str, fname);
+			snprintf(dir_name_buf, _MAX_LFN, "-rw-r--r-- 1 XBOX XBOX %u %s %s\n", ftp->finfo.fsize, date_str, fname);
 		}
 		// write data to endpoint
 		netconn_write(ftp->dataconn, dir_name_buf, strlen(dir_name_buf), NETCONN_COPY);

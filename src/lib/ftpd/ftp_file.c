@@ -117,7 +117,13 @@ FRESULT ftps_f_stat(const char *path, FILINFO *nfo)
 #ifdef FTP_CUSTOM_ROOT_PATH
 	if (is_root_path(path))
 	{
-		nfo->fattrib = AM_DIR | AM_RDO;
+		nfo->fattrib = AM_DIR;
+
+		// Create default year and time for root dirs
+		nfo->fdate = 20 << 9; //Year 2000
+		nfo->fdate |= 1 << 5; //Jan
+		nfo->fdate |= 1 << 0; //1st
+		nfo->ftime = 0;
 		return FR_OK;
 	}
 #endif
@@ -209,7 +215,13 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 		{
 			nfo->fname[0] = root_drives[root_index++][1];
 			nfo->fname[1] = '\0';
-			nfo->fattrib = AM_DIR | AM_RDO;
+			nfo->fattrib = AM_DIR;
+
+			// Create default year and time for root dirs
+			nfo->fdate = 20 << 9; //Year 2000
+			nfo->fdate |= 1 << 5; //Jan
+			nfo->fdate |= 1 << 0; //1st
+			nfo->ftime = 0;
 		}
 		else
 		{
