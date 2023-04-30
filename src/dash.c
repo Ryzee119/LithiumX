@@ -45,7 +45,7 @@ static const char *xml_default = ""
             "\t\t\t<1>Recent</1>\n"
       "\t\t</Recent>\n"
       "\t\t<Games>\n"
-            "\t\t\t<1>A:\\Games</1>\n"
+            "\t\t\t<1>Q:\\Games</1>\n"
             "\t\t\t<2>E:\\Games</2>\n"
             "\t\t\t<3>F:\\Games</3>\n"
             "\t\t\t<4>G:\\Games</4>\n"
@@ -386,16 +386,16 @@ static void game_parser_task(parse_handle_t *p)
     // We found a folder (Folders begin with '/' in lvgl)
     if (fname[0] == '/')
     {
-        // cwd should look like A:PARSE_DIR
+        // cwd should look like Q:PARSE_DIR
         len = strlen(p->cwd);
         char *end = &p->cwd[len];
         *end = DASH_PATH_SEPARATOR;
         end++;
         strcpy(end, &fname[1]); // Skip the first '/' symbol
-        // cwd should look like A:PARSE_DIR\SUB_DIR
+        // cwd should look like Q:PARSE_DIR\SUB_DIR
 
         lv_snprintf(fname, sizeof(fname), "%s%c%s", p->cwd, DASH_PATH_SEPARATOR, DASH_LAUNCH_EXE);
-        //fname should look like A:PARSE_DIR\SUB_DIR\DASH_LAUNCH_EXE
+        //fname should look like Q:PARSE_DIR\SUB_DIR\DASH_LAUNCH_EXE
         if (lv_fs_exists(fname))
         {
             if (lv_obj_get_child_cnt(p->scroller) == DASH_MAX_GAMES)

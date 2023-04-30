@@ -78,21 +78,36 @@ void platform_init(int *w, int *h)
         nxUnmountDrive('D');
     }
 
-    /*Remount root xbe path to A:\\*/
+    /*Remount root xbe path to Q:\\*/
     char targetPath[MAX_PATH];
     nxGetCurrentXbeNtPath(targetPath);
     char *finalSeparator = strrchr(targetPath, '\\');
     *(finalSeparator + 1) = '\0';
-    nxMountDrive('A', targetPath);
+    nxMountDrive('Q', targetPath);
 
+    // Mount the DVD drive
     nxMountDrive('D', "\\Device\\CdRom0");
+
+    // Mount stock partitions
     nxMountDrive('C', "\\Device\\Harddisk0\\Partition2\\");
     nxMountDrive('E', "\\Device\\Harddisk0\\Partition1\\");
-    nxMountDrive('F', "\\Device\\Harddisk0\\Partition6\\");
-    nxMountDrive('G', "\\Device\\Harddisk0\\Partition7\\");
     nxMountDrive('X', "\\Device\\Harddisk0\\Partition3\\");
     nxMountDrive('Y', "\\Device\\Harddisk0\\Partition4\\");
     nxMountDrive('Z', "\\Device\\Harddisk0\\Partition5\\");
+
+    // Mount extended partitions
+    // NOTE: Both the retail kernel and modified kernels will mount these partitions
+    // if they exist and silently fail if they don't. So we can just try to mount them
+    // and not worry about checking if they exist.
+    nxMountDrive('F', "\\Device\\Harddisk0\\Partition6\\");
+    nxMountDrive('G', "\\Device\\Harddisk0\\Partition7\\");
+    nxMountDrive('R', "\\Device\\Harddisk0\\Partition8\\");
+    nxMountDrive('S', "\\Device\\Harddisk0\\Partition9\\");
+    nxMountDrive('V', "\\Device\\Harddisk0\\Partition10\\");
+    nxMountDrive('W', "\\Device\\Harddisk0\\Partition11\\");
+    nxMountDrive('A', "\\Device\\Harddisk0\\Partition12\\");
+    nxMountDrive('B', "\\Device\\Harddisk0\\Partition13\\");
+    nxMountDrive('P', "\\Device\\Harddisk0\\Partition14\\");
 
     CreateDirectoryA("E:\\UDATA", NULL);
     CreateDirectoryA("E:\\UDATA\\LithiumX", NULL);
@@ -190,7 +205,7 @@ const char *platform_realtime_info_cb(void)
         {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-    // Read System time, adjust for timezone offset then convert to time fields. 
+    // Read System time, adjust for timezone offset then convert to time fields.
     TIME_FIELDS tf;
     LARGE_INTEGER lt;
     LONG timezone, daylight;
