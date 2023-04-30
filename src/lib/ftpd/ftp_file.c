@@ -15,13 +15,15 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <nxdk/mount.h>
+
 #ifndef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE ((HANDLE) (LONG_PTR)-1)
 #endif
 
 #ifdef NXDK
 #include <xboxkrnl/xboxkrnl.h>
-static const char root_drives[][3] = {"/C", "/D", "/E", "/F", "/G", "/X", "/Y", "/Z"};
+static const char root_drives[][3] = {"/C", "/D", "/E", "/F", "/G", "/R", "/S", "/V", "/W", "/A", "/B", "/P", "/X", "/Y", "/Z"};
 static int root_index;
 #define FILE_DBG DbgPrint
 #else
@@ -211,9 +213,15 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 #ifdef FTP_CUSTOM_ROOT_PATH
 	if (strcmp(dp->path, "root") == 0)
 	{
-		if (root_index < (sizeof(root_drives) / sizeof(root_drives[0])))
+		// null terminate the filename in case we don't find anything
+		nfo->fname[0] = '\0';
+
+		for(root_index; root_index < (sizeof(root_drives) / sizeof(root_drives[0])); root_index++)
 		{
-			nfo->fname[0] = root_drives[root_index++][1];
+			if(!nxIsDriveMounted(root_drives[root_index][1]))
+				continue;
+
+			nfo->fname[0] = root_drives[root_index][1];
 			nfo->fname[1] = '\0';
 			nfo->fattrib = AM_DIR;
 
@@ -222,11 +230,11 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 			nfo->fdate |= 1 << 5; //Jan
 			nfo->fdate |= 1 << 0; //1st
 			nfo->ftime = 0;
+
+			// Break out of the loop once we find a valid drive
+			break;
 		}
-		else
-		{
-			nfo->fname[0] = '\0';
-		}
+
 		return FR_OK;
 	}
 #endif
