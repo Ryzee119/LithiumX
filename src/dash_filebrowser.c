@@ -154,7 +154,7 @@ static void table_key(lv_event_t *e)
                                       sizeof(LV_SYMBOL_DIRECTORY) + 1];
         if (strstr(cell_str, LV_SYMBOL_DIRECTORY))
         {
-            // Should now have "A:cwd"
+            // Should now have "Q:cwd"
             int end = strlen(cwd);
 #ifdef NXDK
             if (strcmp(ROOT_PATH, cwd) != 0)
@@ -162,9 +162,9 @@ static void table_key(lv_event_t *e)
             {
                 cwd[end++] = DASH_PATH_SEPARATOR;
             }
-            // Should now have "A:cwd/"
+            // Should now have "Q:cwd/"
             strcpy(&cwd[end], fname);
-            // Should now have "A:cwd/newfolder"
+            // Should now have "Q:cwd/newfolder"
 
             // List the new directory.
             if (!list_dir(obj))
