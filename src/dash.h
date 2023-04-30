@@ -22,21 +22,21 @@ extern "C" {
 #endif
 
 
-//All lvgl directories are prefixed with A:
-//nxdk local directory is also mounting to A: so we get A:A:..
+//All lvgl directories are prefixed with Q:
+//nxdk local directory is also mounting to Q: so we get Q:Q:..
 #ifndef DASH_XML
 #ifdef NXDK
-#define DASH_XML "A:A:\\dash.xml"
+#define DASH_XML "Q:Q:\\dash.xml"
 #else
-#define DASH_XML "A:dash.xml"
+#define DASH_XML "Q:dash.xml"
 #endif
 #endif
 
 #ifndef RECENT_TITLES
 #ifdef NXDK
-#define RECENT_TITLES "A:E:\\UDATA\\LithiumX\\recent.dat"
+#define RECENT_TITLES "Q:E:\\UDATA\\LithiumX\\recent.dat"
 #else
-#define RECENT_TITLES "A:recent.dat"
+#define RECENT_TITLES "Q:recent.dat"
 #endif
 #endif
 

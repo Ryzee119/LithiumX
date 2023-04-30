@@ -13,10 +13,10 @@
 
 #ifdef NXDK
 #include <nxdk/mount.h>
-static const char root_drives[][3] = {"C:", "D:", "E:", "F:", "G:", "X:", "Y:", "Z:"};
-#define ROOT_PATH "A:"
+static const char root_drives[][3] = {"C:", "D:", "E:", "F:", "G:", "R:", "S:", "V:", "W:", "A:", "B:", "P:", "X:", "Y:", "Z:"};
+#define ROOT_PATH "Q:"
 #else
-#define ROOT_PATH "A:."
+#define ROOT_PATH "Q:."
 #endif
 static uint8_t row_stack[256];
 static uint8_t row_stack_i;

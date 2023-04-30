@@ -96,7 +96,7 @@ static void eeprom_backup(lv_obj_t *obj)
     }
     lv_fs_file_t fp;
     uint32_t bw;
-    if (lv_fs_open(&fp, "A:E:\\eeprom.bin", LV_FS_MODE_WR) == LV_FS_RES_OK)
+    if (lv_fs_open(&fp, "Q:E:\\eeprom.bin", LV_FS_MODE_WR) == LV_FS_RES_OK)
     {
         lv_fs_write(&fp, buffer, sizeof(buffer), &bw);
         lv_fs_close(&fp);
