@@ -216,7 +216,7 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 		// null terminate the filename in case we don't find anything
 		nfo->fname[0] = '\0';
 
-		for(root_index; root_index < (sizeof(root_drives) / sizeof(root_drives[0])); root_index++)
+		for(; root_index < (sizeof(root_drives) / sizeof(root_drives[0])); root_index++)
 		{
 			if(!nxIsDriveMounted(root_drives[root_index][1]))
 				continue;
@@ -234,6 +234,9 @@ FRESULT ftps_f_readdir(DIR *dp, FILINFO *nfo)
 			// Break out of the loop once we find a valid drive
 			break;
 		}
+
+		// Increment the root index for the next call
+		root_index++;
 
 		return FR_OK;
 	}
