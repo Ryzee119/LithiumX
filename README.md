@@ -22,10 +22,8 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 * Start - Show main menu
 * A - Launch selected title
 
-## Settings
-* On the first launch, a `dash.xml` will be created alongside the default.xbe with a starting template. Edit this to modify search paths for titles.
-* The settings file only supports ASCII characters.
-* The settings file does not support comments or other text.
+## Game Search Paths
+* On the first launch, a `lithiumx.toml` will be created at "E:/UDATA/LithiumX" with a starting template. Edit this to modify search paths for titles.
 * If the template is invalid, the program will reset it back to the inbuilt default.
 
 ## Todo
@@ -45,7 +43,7 @@ Setup and install nxdk, then:
 sudo apt-get update -y && sudo apt-get install -y flex bison clang lld llvm
 git clone --recursive https://github.com/Ryzee119/LithiumX.git
 cd LithiumX
-./src/lib/nxdk/bin/activate
+./src/libs/nxdk/bin/activate
 make -f Makefile.nxdk -j (Add -B if editing lv_conf.h or other header files to ensure its built correctly)
 ```
 
@@ -66,21 +64,11 @@ cmake .. -G "MinGW Makefiles"
 cmake --build .
 ```
 
-## Build (Linux Version)
-```
-sudo apt-get update
-sudo apt install build-essential libsdl2-dev libturbojpeg-dev
-git clone --recursive https://github.com/Ryzee119/LithiumX.git
-cd LithiumX/
-mkdir build && cd build
-cmake ..
-cmake --build .
-```
-
 ## Licence and Attribution
 This project is shared under the [MIT license](https://github.com/Ryzee119/LithiumX/blob/master/LICENSE), however this project includes code by others. Refer to the list below.
 * [lvgl](https://github.com/lvgl)/**[lvgl](https://github.com/lvgl/lvgl)** shared under the [MIT License](https://github.com/lvgl/lvgl/blob/master/LICENCE.txt).
 * [charlesnicholson](https://github.com/charlesnicholson)/**[nanoprintf](https://github.com/charlesnicholson/nanoprintf)** shared under the [MIT License](https://github.com/charlesnicholson/nanoprintf/blob/main/LICENSE).
-* [ooxi](https://github.com/ooxi/)/**[xml.c](https://github.com/ooxi/xml.c)** shared under the [MIT License](https://github.com/ooxi/xml.c/blob/master/LICENSE).
+* [capmar](https://github.com/capmar/)/**[sxml](https://github.com/capmar/sxml)** shared under the [UNLICENSE](https://github.com/capmar/sxml/blob/master/UNLICENSE).
+* [cktan](https://github.com/cktan/)/**[tomlc99](https://github.com/cktan/tomlc99)** shared under the [MIT License](https://github.com/cktan/tomlc99/blob/master/LICENSE).
 * [XboxDev](https://github.com/XboxDev)/**[nxdk](https://github.com/XboxDev/nxdk)** shared under the [Various Licenses](https://github.com/XboxDev/nxdk/tree/master/LICENSES).
 * [sandertrilectronics](https://github.com/sandertrilectronics)/**[LWIP-FreeRTOS-FTP-Server](https://github.com/sandertrilectronics/LWIP-FreeRTOS-Netconn-FTP-Server)** shared under the [Apache 2.0 License](https://github.com/Ryzee119/LithiumX/blob/master/src/lib/ftpd/LICENSE).
