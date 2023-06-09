@@ -1,30 +1,43 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
-#include "lvgl.h"
-#include "dash.h"
-#include "dash_styles.h"
-#include "helpers/menu.h"
-#include "helpers/nano_debug.h"
+#include "../lithiumx.h"
 
-enum
-{
-    SUBMENU_CANCEL,
-    SUBMENU_ACCEPT,
-};
+#define MENU_WIDTH (LV_MIN(600, lv_obj_get_width(lv_scr_act()) * 2 / 3))
+#define MENU_HEIGHT (LV_MIN(440, lv_obj_get_height(lv_scr_act()) * 2 / 3))
 
-void menu_apply_style(lv_obj_t *obj)
+static void menu_pressed(lv_event_t *event)
 {
-    lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_style(obj, &menu_table_style, LV_PART_MAIN);
-    lv_obj_add_style(obj, &menu_table_style, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
-    lv_obj_add_style(obj, &menu_table_cell_style, LV_PART_ITEMS);
-    lv_obj_add_style(obj, &menu_table_highlight_style, LV_PART_ITEMS | LV_STATE_FOCUS_KEY);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+    uint16_t row, col;
+    lv_obj_t *menu = lv_event_get_target(event);
+    menu_items_t *menu_items = menu->user_data;
+    lv_table_get_selected_cell(menu, &row, &col);
+
+    if (menu_items == NULL)
+    {
+        return;
+    }
+
+    if (menu_items[row].confirm_box != NULL)
+    {
+        confirmbox_open(menu_items[row].confirm_box, menu_items[row].cb, NULL);
+    }
+    else
+    {
+        if (menu_items[row].cb)
+        {
+            menu_items[row].cb(menu_items[row].callback_param);
+        }
+    }
 }
 
-// Scroll the main menu table if the selected cell is outside of the container view
-void menu_table_scroll(lv_event_t *e)
+static void menu_clean(lv_event_t *event)
+{
+    lv_obj_t *menu = lv_event_get_target(event);
+    lv_mem_free(menu->user_data);
+}
+
+static void main_scroll(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
 
@@ -33,14 +46,14 @@ void menu_table_scroll(lv_event_t *e)
         return;
     }
 
-    uint16_t row, col;
+    uint16_t row = 0, col = 0;
     int row_height, top, sel, bot, scroll;
 
     lv_table_get_selected_cell(obj, &row, &col);
 
     row_height = lv_font_get_line_height(lv_obj_get_style_text_font(obj, LV_PART_ITEMS)) +
-                     lv_obj_get_style_pad_top(obj, LV_PART_ITEMS) +
-                     lv_obj_get_style_pad_bottom(obj, LV_PART_ITEMS);
+                 lv_obj_get_style_pad_top(obj, LV_PART_ITEMS) +
+                 lv_obj_get_style_pad_bottom(obj, LV_PART_ITEMS);
 
     top = lv_obj_get_y(obj);
     sel = top - lv_obj_get_scroll_y(obj) + (row * row_height);
@@ -52,86 +65,129 @@ void menu_table_scroll(lv_event_t *e)
     lv_obj_scroll_by_bounded(obj, 0, scroll, LV_ANIM_ON);
 }
 
-void menu_show_item(lv_obj_t *obj, confirm_cb_t confirmbox_cb)
+static void menu_close(lv_event_t *event)
 {
-    lv_group_t *gp = lv_group_get_default();
-    menu_data_t *user_data = (menu_data_t *)obj->user_data;
-    user_data->cb = confirmbox_cb;
-    user_data->old_focus = lv_group_get_focused(gp);
-    user_data->old_focus_parent = lv_obj_get_parent(user_data->old_focus);
-    lv_group_focus_freeze(gp, false);
-    lv_group_focus_obj(obj);
-    lv_group_focus_freeze(gp, true);
-    lv_obj_move_foreground(obj);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_t *menu = lv_event_get_target(event);
+    lv_key_t key = *((lv_key_t *)lv_event_get_param(event));
+
+    if (key == LV_KEY_ESC)
+    {
+        lv_obj_t *window = lv_obj_get_parent(menu);
+        lv_obj_del(window);
+        dash_focus_pop_depth();
+    }
 }
 
-void menu_hide_item(lv_obj_t *obj)
+static void menu_wrap(lv_event_t *event)
 {
-    lv_group_t *gp = lv_group_get_default();
-    menu_data_t *user_data = (menu_data_t *)obj->user_data;
-    lv_group_focus_freeze(gp, false);
-    if (lv_obj_is_valid(user_data->old_focus))
+    lv_obj_t *menu = lv_event_get_target(event);
+    lv_key_t key = *((lv_key_t *)lv_event_get_param(event));
+    lv_table_t *t = (lv_table_t *)menu;
+
+    // Jump to the start or end of menu if at each end
+    if (key == LV_KEY_UP || key == LV_KEY_DOWN)
     {
-        lv_group_focus_obj(user_data->old_focus);
+        int prev_row = (intptr_t)lv_obj_get_parent(menu)->user_data;
+        if (key == LV_KEY_UP)
+        {
+            if (t->row_act == 0 && prev_row == 0)
+            {
+                t->row_act = t->row_cnt - 1;
+            }
+        }
+
+        else if (key == LV_KEY_DOWN)
+        {
+            if (t->row_act == (t->row_cnt - 1) && prev_row == (t->row_cnt - 1))
+            {
+                t->row_act = 0;
+            }
+        }
+        lv_obj_get_parent(menu)->user_data = (void *)(intptr_t)t->row_act;
+        main_scroll(event);
+    }
+}
+
+static void main_refocus(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_set_style_bg_opa(lv_obj_get_parent(obj), LV_OPA_60, LV_PART_MAIN);
+}
+
+static void main_unfocus(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_set_style_bg_opa(lv_obj_get_parent(obj), LV_OPA_0, LV_PART_MAIN);
+}
+
+lv_obj_t *menu_open(menu_items_t *menu_items, int cnt)
+{
+    menu_items_t *i = lv_mem_alloc(sizeof(menu_items_t) * cnt);
+    lv_memcpy(i, menu_items, sizeof(menu_items_t) * cnt);
+    lv_obj_t *menu = menu_open_static(i, cnt);
+    lv_obj_add_event_cb(menu, menu_clean, LV_EVENT_DELETE, NULL);
+    return menu;
+}
+
+lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
+{
+    lv_obj_t *window = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(window, lv_obj_get_width(lv_scr_act()), lv_obj_get_height(lv_scr_act()));
+    lv_obj_add_style(window, &menu_table_style, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(window, LV_OPA_0, LV_PART_MAIN);
+    window->user_data = 0;
+
+    lv_obj_t *menu;
+    if (menu_items)
+    {
+        assert(cnt > 0);
+        menu = lv_table_create(window);
+        lv_table_set_col_cnt(menu, 1);
+        lv_table_set_row_cnt(menu, cnt);
+        lv_table_set_col_width(menu, 0, MENU_WIDTH);
+        menu->user_data = (void *)menu_items;
+        for (int i = 0; i < cnt; i++)
+        {
+            lv_table_set_cell_value(menu, i, 0, menu_items[i].str);
+        }
+        lv_obj_update_layout(menu);
+
+        lv_obj_add_event_cb(menu, menu_pressed, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(menu, menu_wrap, LV_EVENT_KEY, NULL);
+        lv_obj_add_event_cb(menu, main_scroll, LV_EVENT_VALUE_CHANGED, NULL);
+        
     }
     else
     {
-        lv_group_focus_obj(user_data->old_focus_parent);
+        menu = lv_obj_create(window);
     }
-    lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_add_event_cb(menu, menu_close, LV_EVENT_KEY, NULL);
+    lv_obj_add_event_cb(menu, main_unfocus, LV_EVENT_DEFOCUSED, NULL);
+    lv_obj_add_event_cb(menu, main_refocus, LV_EVENT_FOCUSED, NULL);
+
+    lv_obj_align(menu, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(menu, MENU_WIDTH, LV_SIZE_CONTENT);
+    lv_obj_clear_flag(menu, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_max_height(menu, MENU_HEIGHT, LV_PART_MAIN);
+
+    lv_obj_add_style(menu, &menu_table_style, LV_PART_MAIN);
+    lv_obj_add_style(menu, &menu_table_style, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_add_style(menu, &menu_table_cell_style, LV_PART_ITEMS);
+    lv_obj_add_style(menu, &menu_table_highlight_style, LV_PART_ITEMS | LV_STATE_FOCUS_KEY);
+    dash_focus_change_depth(menu);
+    return menu;
 }
 
-// Callback when submenu/confirmbox has an item selected (Either cancel or accept action)
-static void confirmbox_callback(lv_event_t *e)
+void menu_force_value(lv_obj_t *menu, int row)
 {
-    uint16_t row, col;
-    lv_obj_t *obj = lv_event_get_target(e);
-    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
-    menu_data_t *user_data = (menu_data_t *)obj->user_data;
-    lv_table_get_selected_cell(obj, &row, &col);
-    if (key == LV_KEY_ENTER)
+    assert(lv_obj_get_class(menu) == &lv_table_class);
+    lv_table_t *t = (lv_table_t *)menu;
+    if (row >= t->row_cnt)
     {
-        if (row == SUBMENU_ACCEPT && user_data->cb)
-        {
-            user_data->cb();
-        }
-        menu_hide_item(obj);
+        row = t->row_cnt - 1;
     }
-    else if (key == LV_KEY_ESC || key == DASH_SETTINGS_PAGE)
-    {
-        menu_hide_item(obj);
-    }
-}
-
-void confirmbox_open(confirm_cb_t confirmbox_cb, const char *format, ...)
-{
-    static lv_obj_t *confirm_box = NULL;
-    lv_group_t *gp = lv_group_get_default();
-
-    //On first call, create the confirmbox
-    if (confirm_box == NULL)
-    {
-        // Create a table for the confirmation box
-        confirm_box = lv_table_create(lv_scr_act());
-        menu_data_t *user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
-        lv_memset(user_data, 0, sizeof(menu_data_t));
-        confirm_box->user_data = user_data;
-        menu_apply_style(confirm_box);
-        lv_table_set_cell_value(confirm_box, 0, 0, "Cancel");
-        lv_table_set_col_width(confirm_box, 0, MENU_WIDTH);
-        lv_obj_add_event_cb(confirm_box, confirmbox_callback, LV_EVENT_KEY, NULL);
-        lv_group_add_obj(gp, confirm_box);
-        lv_obj_add_flag(confirm_box, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    char buf[256];
-    va_list args;
-    va_start(args, format);
-    lv_vsnprintf(buf, sizeof(buf), format, args);
-    va_end(args);
-    lv_table_set_cell_value_fmt(confirm_box, 1, 0, buf);
-    menu_show_item(confirm_box, confirmbox_cb);
-    lv_table_t *t = (lv_table_t *)confirm_box;
-    t->row_act = 0;
+    t->row_act = row;
+    lv_obj_get_parent(menu)->user_data = (void *)(intptr_t)t->row_act;
+    lv_event_send(menu, LV_EVENT_VALUE_CHANGED, NULL);
 }
