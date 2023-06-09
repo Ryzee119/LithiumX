@@ -29,7 +29,7 @@ jobs:
         submodules: recursive
     - name: Compile
       run: |
-        eval $(src/lib/nxdk/bin/activate -s)
+        eval $(src/libs/nxdk/bin/activate -s)
         make -f Makefile.nxdk -j$(nproc)
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
