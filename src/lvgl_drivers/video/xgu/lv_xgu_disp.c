@@ -3,12 +3,11 @@
 #include <hal/video.h>
 #include <hal/debug.h>
 #include <lvgl.h>
-#include <xgu.h>
-#include <xgux.h>
-#include "lv_port_disp.h"
+#include <src/misc/lv_lru.h>
+#include "libs/xgu/xgu.h"
+#include "libs/xgu/xgux.h"
+#include "../../lv_port_disp.h"
 #include "lv_xgu_draw.h"
-#include "lvgl/src/misc/lv_lru.h"
-
 
 static lv_disp_drv_t disp_drv;
 static lv_disp_draw_buf_t draw_buf;
@@ -76,7 +75,7 @@ void lv_port_disp_init(int width, int height)
 
     p = pb_begin();
 
-    #include "xgu/notexture.inl"
+    #include "lvgl_drivers/video/xgu/notexture.inl"
     data->combiner_mode = 0;
     data->current_tex = NULL;
     data->tex_enabled = 0;

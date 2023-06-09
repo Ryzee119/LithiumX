@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-#include "lv_port_indev.h"
+#include "../../lv_port_indev.h"
 #include "lvgl.h"
 #ifdef NXDK
 #include <SDL.h>
@@ -60,8 +60,8 @@ static keyboard_map_t lvgl_keyboard_map[] =
         {.sdl_map = SDLK_UP, .lvgl_map = LV_KEY_UP},
         {.sdl_map = SDLK_DOWN, .lvgl_map = LV_KEY_DOWN},
         {.sdl_map = SDLK_LEFT, .lvgl_map = LV_KEY_LEFT},
-        {.sdl_map = SDLK_RIGHT, .lvgl_map = LV_KEY_RIGHT}
-        {.sdl_map = 0, .lvgl_map = 0});
+        {.sdl_map = SDLK_RIGHT, .lvgl_map = LV_KEY_RIGHT},
+        {.sdl_map = 0, .lvgl_map = 0}};
 #else
 extern keyboard_map_t lvgl_keyboard_map[];
 #endif
@@ -78,6 +78,8 @@ void lv_set_quit(lv_quit_event_t event)
 
 static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
+    (void) indev_drv;
+
     if (pad == NULL)
     {
         return;
@@ -127,12 +129,13 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 
 static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
+    (void) indev_drv;
     data->key = 0;
 
     static SDL_Event e;
     if (SDL_PollEvent(&e))
     {
-        if (e.type == SDL_WINDOWEVENT)
+        if (e.type == SDL_WINDOWEVENT || e.type == SDL_QUIT)
         {
             if (e.window.event == SDL_WINDOWEVENT_CLOSE)
             {
@@ -225,14 +228,21 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP)
         {
             int i = 0;
+            data->key = 0;
             while (lvgl_keyboard_map[i].sdl_map !=0)
             {
                 if (lvgl_keyboard_map[i].sdl_map == e.key.keysym.sym)
                 {
                     data->key = lvgl_keyboard_map[i].lvgl_map;
                     data->state = (e.type == SDL_KEYUP) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+                    break;
                 }
                 i++;
+            }
+            if (data->key == 0)
+            {
+                data->key = e.key.keysym.sym;
+                data->state = (e.type == SDL_KEYUP) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
             }
         }
     }
