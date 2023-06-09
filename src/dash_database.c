@@ -20,6 +20,7 @@ void db_command_with_callback(const char *command, sqlcmd_callback callback, voi
 {
     dash_printf(LEVEL_TRACE, "Processing SQL command %s\n", command);
     SDL_LockMutex(db_mutex);
+    char *err_msg = NULL;
     int rc = sqlite3_exec(db, command, callback, param, &err_msg);
     if (rc != SQLITE_OK)
     {
