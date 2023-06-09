@@ -8,9 +8,11 @@
 extern "C" {
 #endif
 
-void file_browser_init(void);
-void file_browser_deinit(void);
-void file_browser_open(void);
+#include "lithiumx.h"
+
+typedef bool (*browser_item_selection_cb)(const char *selected_path);
+
+void dash_browser_open(char *path, browser_item_selection_cb cb);
 
 #ifdef __cplusplus
 }
