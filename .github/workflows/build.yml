@@ -39,29 +39,6 @@ jobs:
           LithiumX.iso
           bin
 
-  Linux:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install and Setup Dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt install build-essential libsdl2-dev libturbojpeg-dev -y
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - name: Compile
-      run: |
-        mkdir build && cd build
-        cmake ..
-        cmake --build .
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: dash_linux
-        path: |
-          build/LithiumX
-
   Windows:
     runs-on: windows-latest
     defaults:
