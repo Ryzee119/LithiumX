@@ -1,63 +1,83 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.13)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
-project(LithiumX LANGUAGES C)
+project(LithiumX C)
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=undefined -fsanitize-undefined-trap-on-error -fno-omit-frame-pointer")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNDEBUG")
 
-execute_process(
-  COMMAND git log -1 --format=%h
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_COMMIT_HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
+find_package(SDL2 REQUIRED)
+find_package(JPEG REQUIRED)
+
+add_library(sqlite)
+target_compile_options(sqlite PRIVATE)
+target_compile_definitions(sqlite PRIVATE
+    -DSQLITE_OS_OTHER=1 #To match xbox environment, set no OS then pull in my own OS driver
+    -DSQLITE_DEFAULT_MEMSTATUS=0
+    -DSQLITE_OMIT_DEPRECATED
+    -DSQLITE_OMIT_PROGRESS_CALLBACK
+    -DSQLITE_OMIT_SHARED_CACHE
+    -DSQLITE_OMIT_AUTOINIT
+    -DSQLITE_DISABLE_INTRINSIC
+    -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+    )
+target_include_directories(sqlite PRIVATE src/libs)
+target_sources(sqlite PRIVATE "src/libs/sqlite3/sqlite3.c" "src/platform/win32/sqlite_win32.c")
+
+add_library(toml)
+target_sources(toml PRIVATE "src/libs/toml/toml.c")
+
+add_library(sxml)
+target_sources(sxml PRIVATE "src/libs/sxml/sxml.c")
+
+add_library(jpg_decoder)
+target_sources(jpg_decoder PRIVATE "src/libs/jpg_decoder/jpg_decoder.c")
+target_link_libraries(jpg_decoder PRIVATE JPEG::JPEG SDL2::SDL2)
+
+#lvgl lib
+set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/lv_conf.h" CACHE STRING "" FORCE)
+set(LV_CONF_BUILD_DISABLE_EXAMPLES 1)
+set(LV_CONF_BUILD_DISABLE_DEMOS 1)
+include(src/libs/lvgl/CMakeLists.txt)
+
+set(SOURCES
+    src/main.c
+    src/dash_database.c
+    src/dash_main.c
+    src/dash_scroller.c
+    src/dash_styles.c
+    src/dash_synop.c
+    src/dash_mainmenu.c
+    src/dash_settings.c
+    src/dash_eeprom.c
+    src/dash_browser.c
+    src/lvgl_widgets/confirmbox.c
+    src/lvgl_widgets/menu.c
+    src/lvgl_widgets/generic_container.c
 )
-add_definitions("-DBUILD_VERSION=\"${GIT_COMMIT_HASH}\"")
+if(NXDK)
+    list(APPEND SOURCES src/lvgl_drivers/input/sdl/lv_sdl_indev.c)
+    list(APPEND SOURCES src/platform/xbox/platform.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_disp.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_draw.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_rect.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_texture.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/notexture.ps)
+    list(APPEND SOURCES src/lvgl_drivers/video/xgu/texture.ps)
+else()
+    list(APPEND SOURCES src/lvgl_drivers/input/sdl/lv_sdl_indev.c)
+    list(APPEND SOURCES src/lvgl_drivers/video/sdl/lv_sdl_disp.c)
+    list(APPEND SOURCES src/platform/win32/platform.c)
+endif()
+add_executable(LithiumX ${SOURCES})
 
-find_package(PkgConfig)
-pkg_check_modules(SDL2 REQUIRED sdl2)
+target_compile_options(LithiumX PUBLIC -Wall -Wextra -std=c99)
+target_compile_definitions(LithiumX PUBLIC "-DLVGL_USE_CUSTOM_KEYBOARD_MAP")
+target_include_directories(LithiumX PUBLIC . libs)
 
-set(PROJECT_DIR "${CMAKE_SOURCE_DIR}/src")
-set(LVGL_DIR "${PROJECT_DIR}/lib/lvgl")
-set(LV_CONF_PATH ${PROJECT_DIR}/lv_conf.h CACHE STRING "" FORCE)
+if(TARGET SDL2::SDL2main)
+    target_link_libraries(LithiumX PRIVATE SDL2::SDL2main)
+endif()
 
-add_definitions(-DLVGL_USE_CUSTOM_CONTROLLER_MAP)
-add_definitions(-DLVGL_USE_CUSTOM_KEYBOARD_MAP)
-add_definitions(-DLV_LVGL_H_INCLUDE_SIMPLE)
-add_definitions(-DLV_CONF_PATH=${LV_CONF_PATH})
-add_definitions(-DJPEG_DECODER_QUEUE_SIZE=1024)
-add_definitions(-DQRURL=\"https://github.com/Ryzee119/LithiumX\")
-add_definitions(-DSHOW_FPS_MEM) #Show fps and memory usage info
+target_link_libraries(LithiumX PRIVATE lvgl sqlite jpg_decoder toml sxml SDL2::SDL2)
 
-add_compile_options(-Wall -O3)
-file(GLOB PROJECT_FILES
-    "${PROJECT_DIR}/dash.c"
-    "${PROJECT_DIR}/dash_styles.c" 
-    "${PROJECT_DIR}/dash_mainmenu.c"
-    "${PROJECT_DIR}/dash_synop.c"
-    "${PROJECT_DIR}/dash_titlelist.c" 
-    "${PROJECT_DIR}/dash_filebrowser.c"
-    "${PROJECT_DIR}/dash_eeprom.c"
-    "${PROJECT_DIR}/main.c"
-    "${PROJECT_DIR}/helpers/nano_debug.c"
-    "${PROJECT_DIR}/helpers/fileio.c"
-    "${PROJECT_DIR}/helpers/menu.c"
-    "${PROJECT_DIR}/platform/generic/platform.c"
-    "${PROJECT_DIR}/platform/generic/network.c"
-    "${PROJECT_DIR}/dash_resources/default_tbn.c"
-    "${PROJECT_DIR}/dash_resources/qrcode.c"
-    "${PROJECT_DIR}/lvgl_drivers/lv_sdl_indev.c"
-    "${PROJECT_DIR}/lvgl_drivers/sdl/lv_sdl_disp.c"
-)
-add_executable(LithiumX ${PROJECT_FILES})
-
-include_directories(${LVGL_DIR})
-include_directories(${PROJECT_DIR})
-include_directories(${PROJECT_DIR}/lib)
-include_directories(${PROJECT_DIR}/lvgl_drivers)
-include_directories(${LIBJPEG_TURBO_DIR})
-
-add_subdirectory(${LVGL_DIR})
-add_subdirectory(${PROJECT_DIR}/lib/jpg_decoder/)
-add_subdirectory(${PROJECT_DIR}/lib/xml/)
-
-target_include_directories(LithiumX PUBLIC ${SDL2_INCLUDE_DIRS} ${TURBOJPEG_INCLUDE_DIRS})
-target_compile_options(LithiumX PUBLIC ${SDL2_CFLAGS_OTHER})
-target_link_libraries(LithiumX ${SDL2_LIBRARIES} ${TURBOJPEG_LIBRARIES}
-                           ${LIBJPEG_LIBRARIES} lvgl::lvgl xml jpg_decoder SDL2)
+#target_compile_options(LithiumX PRIVATE -O2)
