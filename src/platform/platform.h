@@ -8,26 +8,34 @@
 extern "C" {
 #endif
 
-#include "lvgl.h"
-#include "lv_port_indev.h"
+#include "lithiumx.h"
 
-#ifndef BUILD_VERSION
-#define BUILD_VERSION "BUILD_VERSION not set"
-#endif
+/*
+ * Anything you need to do to initialise your platform
+*/
 void platform_init(int *w, int *h);
-void platform_flush_cache_cb(); //Xbox only
-void platform_launch_dvd(); //Xbox only
-const char *platform_realtime_info_cb(void); //Xbox only
-const char *platform_show_info_cb(void);
+
+/*
+ * Anything you need to do when exiting lithiumX
+*/
 void platform_quit(lv_quit_event_t event);
 
-void platform_network_init(void);
-void platform_networkrestart(void);
-void platform_networkdeinit(void);
-int platform_networkget_up(void);
-uint32_t platform_network_get_ip(char *rxbuf, uint32_t max_len);
-uint32_t platform_network_get_gateway(char *rxbuf, uint32_t max_len);
-uint32_t platform_network_get_netmask(char *rxbuf, uint32_t max_len);
+/*
+ * Passes a container that you can add whatever system specific
+ * info you want.
+*/
+void platform_system_info(lv_obj_t *window);
+
+/*
+ * Xbox Specific. Flush cache partitions
+*/
+void platform_flush_cache(void);
+
+/*
+ * Retrieve the current date and time in iso 8601 format.
+ * YYYY-MM-DD HH:MM:SS
+ */
+void platform_get_iso8601_time(char time_str[20]);
 
 #ifdef __cplusplus
 }

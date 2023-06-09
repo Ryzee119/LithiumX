@@ -1,57 +1,98 @@
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2022 Ryzee119
-
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "helpers/nano_debug.h"
-#include "platform/platform.h"
-
-#include "lvgl.h"
-#include "lv_port_indev.h"
-#include "dash.h"
-#include "dash_styles.h"
-
+//make -f Makefile.nxdk -j && /d/Games/Emulators/xemu/xemu.exe -device lpc47m157 -serial stdio
 #include <xboxkrnl/xboxkrnl.h>
 #include <nxdk/format.h>
 #include <nxdk/mount.h>
 #include <nxdk/path.h>
+#include <nxdk/net.h>
 #include <hal/video.h>
 #include <hal/xbox.h>
 #include <hal/debug.h>
 #include <windows.h>
 
-#define BASE_CLOCK_INT 16667
+#include <time.h>
+#include <stdlib.h>
+#include <lvgl.h>
+#include "lithiumx.h"
+#include "../platform.h"
+#include "lvgl_drivers/lv_port_disp.h"
+#include "lvgl_drivers/lv_port_indev.h"
 
-static const char *video_region_str(uint32_t code);
-static char *game_region_str(uint32_t code);
-static const char *xbox_get_verion();
-static const char *tray_state_str(uint32_t tray_state);
+#include "lwip/api.h"
+#include "lwip/tcpip.h"
+#include "lwip/apps/sntp.h"
+#include "lwip/netif.h"
+#include "ftpd/ftp.h"
+#include "xbox_info.h"
 
-extern int jpg_cache_size;
-extern int lv_texture_cache_size;
-
-//FIXME: Not currently in nxdk
-int strcasecmp (const char *s1, const char *s2)
+void xbox_sntp_set_time(uint32_t ntp_s)
 {
-  const unsigned char *p1 = (const unsigned char *) s1;
-  const unsigned char *p2 = (const unsigned char *) s2;
-  int result;
+    DbgPrint("GOT TIME\n");
+    static const LONGLONG NT_EPOCH_TIME_OFFSET = ((LONGLONG)(369 * 365 + 89) * 24 * 3600);
+    LARGE_INTEGER xbox_nt_time, ntp_nt_time;
 
-  if (p1 == p2)
-    return 0;
+    KeQuerySystemTime(&xbox_nt_time);
+    ntp_nt_time.QuadPart = ((uint64_t)ntp_s + NT_EPOCH_TIME_OFFSET) * 10000000;
+    NtSetSystemTime(&ntp_nt_time, NULL);
+}
 
-  while ((result = tolower(*p1) - tolower (*p2++)) == 0)
-    if (*p1++ == '\0')
-      break;
+static void ftp_startup(void *param)
+{
+    DbgPrint("STARTING FTP\n");
+    ftp_server();
+}
 
-  return result;
+static void sntp_startup(void *param)
+{
+    DbgPrint("STARTING SNTP\n");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+}
+
+static void autolaunch_dvd(void *param)
+{
+    char targetPath[MAX_PATH];
+    while (1)
+    {
+        Sleep(1000);
+        if (settings_auto_launch_dvd == false)
+        {
+            continue;
+        }
+        // Check if we have media inserted in the DVD ROM
+        ULONG tray_state = 0x70;
+        HalReadSMCTrayState(&tray_state, NULL);
+        if (tray_state == 0x60)
+        {
+            // Prevent recursive launch by checking the current xbe isnt launched from the DVD itself
+            nxGetCurrentXbeNtPath(targetPath);
+            static const char *cd_path = "\\Device\\CdRom0";
+            if (strncmp(targetPath, cd_path, strlen(cd_path)) == 0)
+            {
+                continue;
+            }
+
+            // Prep to launch
+            lvgl_getlock();
+            dash_launch_path = "__DVD__";
+            lv_set_quit(LV_QUIT_OTHER);
+            lvgl_removelock();
+        }
+    }
+}
+
+static void network_startup(void *param)
+{
+    DbgPrint("STARTING NETWORK\n");
+    nxNetInit(NULL);
+    sys_thread_new("ftp_startup", ftp_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    //SNTP should be started in TCPIP thread
+    tcpip_callback(sntp_startup, NULL);
 }
 
 void platform_init(int *w, int *h)
 {
-    //First try 720p. This is the preferred resolution
+    // First try 720p. This is the preferred resolution
     *w = 1280;
     *h = 720;
     if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
@@ -61,16 +102,21 @@ void platform_init(int *w, int *h)
         *h = 480;
         if (XVideoSetMode(*w, *h, LV_COLOR_DEPTH, REFRESH_DEFAULT) == false)
         {
-            //Try whatever else the xbox is happy with
+            // Try whatever else the xbox is happy with
             VIDEO_MODE xmode;
             void *p = NULL;
-            while (XVideoListModes(&xmode, 0, 0, &p));
-            XVideoSetMode(xmode.width, xmode.height, xmode.bpp, xmode.refresh);
+            while (XVideoListModes(&xmode, 0, 0, &p))
+            {
+                if (xmode.width == 1080) continue;
+                if (xmode.width == 720) continue; // 720x480 doesnt work on pbkit for some reason
+                XVideoSetMode(xmode.width, xmode.height, xmode.bpp, xmode.refresh);;
+                break;
+            }
+            
             *w = xmode.width;
             *h = xmode.height;
         }
     }
-    debugPrint("Loading...");
 
     // nxdk automounts D to the root xbe path. Lets undo that
     if (nxIsDriveMounted('D'))
@@ -78,15 +124,14 @@ void platform_init(int *w, int *h)
         nxUnmountDrive('D');
     }
 
-    /*Remount root xbe path to Q:\\*/
-    char targetPath[MAX_PATH];
-    nxGetCurrentXbeNtPath(targetPath);
-    char *finalSeparator = strrchr(targetPath, '\\');
-    *(finalSeparator + 1) = '\0';
-    nxMountDrive('Q', targetPath);
-
     // Mount the DVD drive
     nxMountDrive('D', "\\Device\\CdRom0");
+
+    // Mount root of LithiumX xbe to Q:
+    char targetPath[MAX_PATH];
+    nxGetCurrentXbeNtPath(targetPath);
+    *(strrchr(targetPath, '\\') + 1) = '\0';
+    nxMountDrive('Q', targetPath);
 
     // Mount stock partitions
     nxMountDrive('C', "\\Device\\Harddisk0\\Partition2\\");
@@ -118,16 +163,127 @@ void platform_init(int *w, int *h)
         fclose(fp);
     }
 
-    MM_STATISTICS MemoryStatistics;
-    MemoryStatistics.Length = sizeof(MM_STATISTICS);
-    MmQueryStatistics(&MemoryStatistics);
-    uint32_t mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE);
-    lv_texture_cache_size = mem_size / 16;
-    jpg_cache_size = mem_size / 4;
+    sys_thread_new("XBOX_DVD_AUTOLAUNCH", autolaunch_dvd, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    sys_thread_new("XBOX_NETWORK", network_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 }
 
-// Xbox specific
-void platform_flush_cache_cb()
+void nvnetdrv_stop_txrx (void);
+void platform_quit(lv_quit_event_t event)
+{
+    char launch_path[DASH_MAX_PATHLEN];
+
+    nvnetdrv_stop_txrx();
+
+    if (event == LV_REBOOT)
+    {
+        printf("LV_REBOOT\n");
+        HalReturnToFirmware(HalRebootRoutine);
+    }
+    else if (event == LV_SHUTDOWN)
+    {
+        printf("SHUTDOWN\n");
+        HalInitiateShutdown();
+    }
+    else if (event == LV_QUIT_OTHER)
+    {
+        if (strcmp(dash_launch_path, "__MSDASH__") == 0)
+        {
+            // FIXME: Do we need to eject disk?
+            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "C:\\xboxdash.xbe");
+        }
+        else if (strcmp(dash_launch_path, "__DVD__") == 0)
+        {
+            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
+        }
+        else
+        {
+            strncpy(launch_path, dash_launch_path, sizeof(launch_path));
+        }
+        debugClearScreen();
+        DbgPrint("Launching %s\n", launch_path);
+        XLaunchXBE(launch_path);
+        DbgPrint("Error launching. Reboot\n");
+        Sleep(500);
+        DbgPrint("ERROR: Could not launch %s\n", launch_path);
+        HalReturnToFirmware(HalRebootRoutine);
+    }
+}
+
+void info_update_callback(lv_timer_t *timer)
+{
+    static CHAR info_text[1024];
+    lv_obj_t *window = timer->user_data;
+    lv_obj_t *label = lv_obj_get_child(window, 0);
+    lv_label_set_recolor(label, true);
+
+    const CHAR *encoder;
+    UCHAR mac_address[0x06], serial_number[0x0D], temp_unit;
+    ULONG type, video_region, game_region, encoder_check, cpu_temp, mb_temp;
+
+    static int clock_calc = 0;
+    static ULONG cpu_speed, gpu_speed;
+    if (clock_calc ^= 1)
+    {
+        static ULONGLONG f_rdtsc = 0;
+        static DWORD f_ticks = 0;
+        cpu_speed = xbox_get_cpu_frequency(&f_rdtsc, &f_ticks) / 1000;
+        gpu_speed = xbox_get_gpu_frequency();
+    }
+
+    xbox_get_temps(&cpu_temp, &mb_temp, &temp_unit);
+
+    ExQueryNonVolatileSetting(XC_FACTORY_SERIAL_NUMBER, &type, &serial_number, sizeof(serial_number), NULL);
+    ExQueryNonVolatileSetting(XC_FACTORY_ETHERNET_ADDR, &type, &mac_address, sizeof(mac_address), NULL);
+    ExQueryNonVolatileSetting(XC_FACTORY_AV_REGION, &type, &video_region, sizeof(video_region), NULL);
+    ExQueryNonVolatileSetting(XC_FACTORY_GAME_REGION, &type, &game_region, sizeof(game_region), NULL);
+    encoder = get_encoder_str();
+    lv_snprintf(info_text, sizeof(info_text),
+                "%s Date/Time:# %s\n"
+                "%s IP:# %s\n"
+                "%s Tray State:# %s\n"
+                "%s RAM:# %s MB\n"
+                "%s CPU:# %lu%c, %s MB:# %lu%c\n"
+                "%s CPU Freq:# %lu.%luMHz, %s GPU Freq:# %luMHz\n"
+                "%s Hardware Version:# %s\n"
+                "%s Serial Number:# %s\n"
+                "%s Mac Address :# %02x:%02x:%02x:%02x:%02x:%02x\n"
+                "%s Encoder:# %s\n"
+                "%s Kernel:# %u.%u.%u.%u\n"
+                "%s Video Region:# %s\n"
+                "%s Game Region:# %s\n"
+                "%s Build Commit:# %s\n",
+                DASH_MENU_COLOR, xbox_get_date_time(),
+                DASH_MENU_COLOR, xbox_get_ip_address(),
+                DASH_MENU_COLOR, tray_state_str(),
+                DASH_MENU_COLOR, xbox_get_ram_usage(),
+                DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
+                DASH_MENU_COLOR, cpu_speed % 1000, cpu_speed % 100, DASH_MENU_COLOR, gpu_speed,
+                DASH_MENU_COLOR, xbox_get_verion(),
+                DASH_MENU_COLOR, serial_number,
+                DASH_MENU_COLOR, mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
+                DASH_MENU_COLOR, encoder,
+                DASH_MENU_COLOR, XboxKrnlVersion.Major, XboxKrnlVersion.Minor, XboxKrnlVersion.Build, XboxKrnlVersion.Qfe,
+                DASH_MENU_COLOR, video_region_str(video_region),
+                DASH_MENU_COLOR, game_region_str(game_region),
+                DASH_MENU_COLOR, BUILD_VERSION);
+    lv_label_set_text_static(label, info_text);
+}
+
+static void window_closed(lv_event_t *event)
+{
+    lv_obj_t *window = lv_event_get_target(event);
+    lv_timer_del(lv_event_get_user_data(event));
+}
+
+void platform_system_info(lv_obj_t *window)
+{
+    lv_timer_t *timer = lv_timer_create(info_update_callback, 1000, window);
+    lv_obj_t *label = lv_label_create(window);
+    lv_obj_add_event_cb(window, window_closed, LV_EVENT_DELETE, timer);
+    lv_timer_ready(timer);
+}
+
+void platform_flush_cache()
 {
     // Source: https://github.com/dracc/NevolutionX/blob/master/Sources/wipeCache.cpp
     const char *partitions[] = {
@@ -140,331 +296,124 @@ void platform_flush_cache_cb()
     {
         if (nxFormatVolume(partitions[i], 0) == false)
         {
-            nano_debug(LEVEL_ERROR, "ERROR: Could not format %s\n", partitions[i]);
+            DbgPrint("ERROR: Could not format %s\n", partitions[i]);
         }
         else
         {
-            nano_debug(LEVEL_TRACE, "TRACE: Formatted %s ok!\n", partitions[i]);
+            DbgPrint("TRACE: Formatted %s ok!\n", partitions[i]);
         }
     }
 }
 
-// Xbox specific
-void platform_launch_dvd()
+// YYYY-MM-DD HH:MM:SS
+void platform_get_iso8601_time(char time_str[20])
 {
-    ULONG tray_state = 0x70;
-    NTSTATUS status = HalReadSMCTrayState(&tray_state, NULL);
-
-    // Check if media detected
-    if (NT_SUCCESS(status) && tray_state == 0x60)
-    {
-        dash_set_launch_exe("%s", "DVDROM");
-        lv_set_quit(LV_QUIT_OTHER);
-    }
-}
-
-static ULONG platform_get_CPU_frequency(ULONGLONG *f_rdtsc, DWORD *f_ticks)
-{
-    ULONGLONG s_rdtsc;
-    DWORD s_ticks;
-
-    s_rdtsc = __rdtsc();
-    s_ticks = KeTickCount;
-
-    s_rdtsc -= *f_rdtsc;
-    s_rdtsc /= s_ticks - *f_ticks;
-
-    *f_rdtsc = __rdtsc();
-    *f_ticks = KeTickCount;
-    return (ULONG)s_rdtsc;
-}
-
-static ULONG platform_get_GPU_frequency()
-{
-    ULONG nvclk_reg, current_nvclk;
-    nvclk_reg = *((volatile ULONG *)0xFD680500);
-
-    current_nvclk = BASE_CLOCK_INT * ((nvclk_reg & 0xFF00) >> 8);
-    current_nvclk /= 1 << ((nvclk_reg & 0x70000) >> 16);
-    current_nvclk /= nvclk_reg & 0xFF;
-    current_nvclk /= 1000;
-
-    return current_nvclk;
-}
-
-// Small text label shown about the main menu. This is called every 1 second.
-// Useful to show temperatures or other occassionally changing info. Return a string with the text
-const char *platform_realtime_info_cb(void)
-{
-    ULONG tray_state = 0x70, cpu_temp = 0, mb_temp = 0;
-    static char rt_text[512];
-    char temp_unit = 'C';
-    static ULONGLONG f_rdtsc = 0;
-    static DWORD f_ticks = 0;
-    static const char short_months[12][4] =
-        {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-    // Read System time, adjust for timezone offset then convert to time fields.
+    #if (1)
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    lv_snprintf(time_str, 20, "%04d-%02d-%02d %02d:%02d:%02d",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+    #else
     TIME_FIELDS tf;
     LARGE_INTEGER lt;
-    LONG timezone, daylight;
     ULONG type;
+    LONG timezone, daylight, misc_flags;
     KeQuerySystemTime(&lt);
     ExQueryNonVolatileSetting(XC_TIMEZONE_BIAS, &type, &timezone, sizeof(timezone), NULL);
     ExQueryNonVolatileSetting(XC_TZ_DLT_BIAS, &type, &daylight, sizeof(daylight), NULL);
+    ExQueryNonVolatileSetting(XC_MISC, &type, &misc_flags, sizeof(misc_flags), NULL);
+    if (misc_flags & 0x2) //This bit is set when DLT is disabled in MSDash
+    {
+        daylight = 0;
+    }
     lt.QuadPart -= ((LONGLONG)(timezone + daylight) * 60 * 10000000);
     RtlTimeToTimeFields(&lt, &tf);
-
-    //Read current RAM and RAM usage
-    uint32_t mem_size, mem_used;
-    MM_STATISTICS MemoryStatistics;
-    MemoryStatistics.Length = sizeof(MM_STATISTICS);
-    MmQueryStatistics(&MemoryStatistics);
-    mem_size = (MemoryStatistics.TotalPhysicalPages * PAGE_SIZE) / 1024U / 1024U;
-    mem_used = mem_size - ((MemoryStatistics.AvailablePages * PAGE_SIZE) / 1024U / 1024U);
-
-    // Try read temps from ADM temperature monitor
-    NTSTATUS cpu = HalReadSMBusValue(0x98, 0x01, FALSE, (ULONG *)&cpu_temp);
-    NTSTATUS mb = HalReadSMBusValue(0x98, 0x00, FALSE, (ULONG *)&mb_temp);
-    if (cpu != STATUS_SUCCESS  || mb != STATUS_SUCCESS)
-    {
-        // If it fails, its probably a 1.6. Read SMC instead
-        HalReadSMBusValue(0x20, 0x09, FALSE, (ULONG *)&cpu_temp);
-        HalReadSMBusValue(0x20, 0x0A, FALSE, (ULONG *)&mb_temp);
-    }
-
-    if (settings_use_fahrenheit)
-    {
-        cpu_temp = (ULONG)(((float)cpu_temp * 1.8f) + 32);
-        mb_temp = (ULONG)(((float)mb_temp * 1.8f) + 32);
-        temp_unit = 'F';
-    }
-
-    HalReadSMCTrayState(&tray_state, NULL);
-
-    char ip[20];
-    platform_network_get_ip(ip, sizeof(ip));
-
-    ULONG cpu_speed = platform_get_CPU_frequency(&f_rdtsc, &f_ticks) / 1000;
-    ULONG gpu_speed = platform_get_GPU_frequency();
-
-    lv_snprintf(rt_text, sizeof(rt_text),
-                "%s Date/Time:# %02d %s %04d %02d:%02d:%02d\n"
-                "%s Tray State:# %s\n"
-                "%s CPU:# %lu%c, %s MB:# %lu%c\n"
-                "%s CPU Freq:# %lu.%luMHz, %s GPU Freq:# %luMHz\n"
-                "%s RAM:# %d/%d MB\n"
-                "%s IP:# %s",
-                DASH_MENU_COLOR, tf.Day, short_months[tf.Month - 1], tf.Year, tf.Hour, tf.Minute,tf.Second,
-                DASH_MENU_COLOR, tray_state_str(tray_state),
-                DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
-                DASH_MENU_COLOR, cpu_speed % 1000, cpu_speed % 100, DASH_MENU_COLOR, gpu_speed,
-                DASH_MENU_COLOR, mem_used, mem_size,
-                DASH_MENU_COLOR, ip);
-
-    return rt_text;
+    lv_snprintf(time_str, 20, "%04d-%02d-%02d %02d:%02d:%02d",
+                tf.Year, tf.Month, tf.Day, tf.Hour, tf.Minute, tf.Second);
+    #endif
 }
 
-// Info shown in the 'System Information' screen.
-const char *platform_show_info_cb(void)
+/*
+ * Copyright (C) 2014, Galois, Inc.
+ * This sotware is distributed under a standard, three-clause BSD license.
+ * Please see the file LICENSE, distributed with this software, for specific
+ * terms and conditions.
+ */
+
+#define isdigit(c) (c >= '0' && c <= '9')
+
+double atof(const char *s)
 {
-    static char info_text[512];
-    uint8_t mac_address[0x06];
-    uint32_t video_region, game_region, encoder_check;
-    ULONG type;
-    char serial_number[0x0D];
-    const char *encoder;
-
-    ExQueryNonVolatileSetting(XC_FACTORY_SERIAL_NUMBER, &type, &serial_number, sizeof(serial_number), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_ETHERNET_ADDR, &type, &mac_address, sizeof(mac_address), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_AV_REGION, &type, &video_region, sizeof(video_region), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_GAME_REGION, &type, &game_region, sizeof(game_region), NULL);
-
-    if (HalReadSMBusValue(0xd4, 0x00, FALSE, (ULONG *)&encoder_check) == 0)
+    // This function stolen from either Rolf Neugebauer or Andrew Tolmach.
+    // Probably Rolf.
+    double a = 0.0;
+    int e = 0;
+    int c;
+    while ((c = *s++) != '\0' && isdigit(c))
     {
-        encoder = "Focus FS454";
+        a = a * 10.0 + (c - '0');
     }
-    else if (HalReadSMBusValue(0xe0, 0x00, FALSE, (ULONG *)&encoder_check) == 0)
+    if (c == '.')
     {
-        encoder = "Microsoft Xcalibur";
-    }
-    else if (HalReadSMBusValue(0x8a, 0x00, FALSE, (ULONG *)&encoder_check) == 0)
-    {
-        encoder = "Conexant CX25871";
-    }
-    else
-    {
-        encoder = "Unknown";
-    }
-
-    lv_snprintf(info_text, sizeof(info_text),
-                "%s Hardware Version:# %s\n"
-                "%s Serial Number:# %s\n"
-                "%s Mac Address :# %02x:%02x:%02x:%02x:%02x:%02x\n"
-                "%s Encoder:# %s\n"
-                "%s Kernel:# %u.%u.%u.%u\n"
-                "%s Video Region:# %s\n"
-                "%s Game Region:# %s\n"
-                "%s Build Commit:# %s\n",
-                DASH_MENU_COLOR, xbox_get_verion(),
-                DASH_MENU_COLOR, serial_number,
-                DASH_MENU_COLOR, mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
-                DASH_MENU_COLOR, encoder,
-                DASH_MENU_COLOR, XboxKrnlVersion.Major, XboxKrnlVersion.Minor, XboxKrnlVersion.Build, XboxKrnlVersion.Qfe,
-                DASH_MENU_COLOR, video_region_str(video_region),
-                DASH_MENU_COLOR, game_region_str(game_region),
-                DASH_MENU_COLOR, BUILD_VERSION);
-    return info_text;
-}
-
-void nvnetdrv_stop_txrx (void);
-void platform_quit(lv_quit_event_t event)
-{
-    char launch_path[DASH_MAX_PATHLEN];
-    nvnetdrv_stop_txrx();
-    if (event == LV_REBOOT)
-    {
-        HalReturnToFirmware(HalRebootRoutine);
-    }
-    else if (event == LV_SHUTDOWN)
-    {
-        HalInitiateShutdown();
-    }
-    else if (event == LV_QUIT_OTHER)
-    {
-        const char *path = dash_get_launch_exe();
-        if (strcmp(path, "MSDASH") == 0)
+        while ((c = *s++) != '\0' && isdigit(c))
         {
-            // FIXME: Do we need to eject disk?
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "C:\\xboxdash.xbe");
+            a = a * 10.0 + (c - '0');
+            e = e - 1;
         }
-        else if (strcmp(path, "DVDROM") == 0)
+    }
+    if (c == 'e' || c == 'E')
+    {
+        int sign = 1;
+        int i = 0;
+        c = *s++;
+        if (c == '+')
+            c = *s++;
+        else if (c == '-')
         {
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
+            c = *s++;
+            sign = -1;
         }
-        else
+        while (isdigit(c))
         {
-            // Drop the first two characters from path as they are lvgl specific
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "%s", &path[2]);
+            i = i * 10 + (c - '0');
+            c = *s++;
         }
-        nano_debug(LEVEL_TRACE, "TRACE: Launching %s\n", launch_path);
-        debugPrint("Launching\n");
-        Sleep(500);
-        debugClearScreen();
-        XLaunchXBE(launch_path);
-        // If we get here, XLaunchXBE didnt work. Reboot instead.
-        debugPrint("Error launching. Reboot\n");
-        Sleep(500);
-        nano_debug(LEVEL_ERROR, "ERROR: Could not launch %s\n", launch_path);
-        HalReturnToFirmware(HalRebootRoutine);
+        e += i * sign;
     }
+    while (e > 0)
+    {
+        a *= 10.0;
+        e--;
+    }
+    while (e < 0)
+    {
+        a *= 0.1;
+        e++;
+    }
+    return a;
 }
 
-static const char *video_region_str(uint32_t code)
+size_t strnlen(const char *s, size_t count)
 {
-    switch (code)
-    {
-    case 0x00400100:
-        return "NTSC-M";
-    case 0x00400200:
-        return "NTSC-J";
-    case 0x00800300:
-        return "PAL-I";
-    case 0x00400400:
-        return "PAL-M";
-    default:
-        return "Unknown:";
-    }
+    const char *sc;
+
+    for (sc = s; count-- && *sc != '\0'; ++sc)
+        /* nothing */;
+    return sc - s;
 }
 
-static char *game_region_str(uint32_t code)
+int strcasecmp(const char *s1, const char *s2)
 {
-    static char out[256];
-    const char *reg0 = "", *reg1 = "", *reg2 = "", *reg3 = "";
-    if (code & 0x00000001)
-        reg0 = "North America/";
-    if (code & 0x00000002)
-        reg1 = "JAP/";
-    if (code & 0x00000004)
-        reg2 = "EU/AU/";
-    if (code & 0x80000000)
-        reg3 = "DEBUG/";
-    lv_snprintf(out, sizeof(out), "%s%s%s%s", reg0, reg1, reg2, reg3);
-    int len = strlen(out);
-    out[len - 1] = '\0'; // Knock out last dash
-    return out;
-}
+  int result;
 
-static const char *xbox_get_verion()
-{
-    static const char *ver_string = NULL;
-    unsigned int encoder_check;
-    char ver[6];
+  while (1) {
+    result = tolower(*s1) - tolower(*s2);
+    if (result != 0 || *s1 == '\0')
+      break;
 
-    // Return previously calculated version
-    if (ver_string != NULL)
-    {
-        return ver_string;
-    }
+    ++s1;
+    ++s2;
+  }
 
-    HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[0]);
-    HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[1]);
-    HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[2]);
-    ver[3] = 0;
-    ver[4] = 0;
-    ver[5] = 0;
-
-    if (strchr(ver, 'D') != NULL)
-    {
-        ver_string = "DEVKIT or DEBUGKIT";
-    }
-    else if (strcmp(ver, ("B11")) == 0)
-    {
-        ver_string = "DEBUGKIT Green";
-    }
-    else if (strcmp(ver, ("P01")) == 0)
-    {
-        ver_string = "v1.0";
-    }
-    else if (strcmp(ver, ("P05")) == 0)
-    {
-        ver_string = "v1.1";
-    }
-    else if (strcmp(ver, ("P11")) == 0 || strcmp(ver, ("1P1")) == 0 || strcmp(ver, ("11P")) == 0)
-    {
-        ver_string = (HalReadSMBusValue(0xD4, 0x00, 0, (ULONG *)&encoder_check) == 0) ? "v1.4" : "v1.2/v1.3";
-    }
-    else if (strcmp(ver, ("P2L")) == 0)
-    {
-        ver_string = "v1.6";
-    }
-    else
-    {
-        ver_string = "Unknown";
-    }
-    return ver_string;
-}
-
-static const char *tray_state_str(uint32_t tray_state)
-{
-    switch (tray_state & 0x70)
-    {
-    case 0x00:
-        return "Closed";
-    case 0x10:
-        return "Open";
-    case 0x20:
-        return "Unloading";
-    case 0x30:
-        return "Opening";
-    case 0x40:
-        return "No Media";
-    case 0x50:
-        return "Closing";
-    case 0x60:
-        return "Media Detected";
-    default:
-        return "Unknown State";
-    }
+  return result;
 }
