@@ -1,9 +1,6 @@
 [submodule "src/lib/lvgl"]
 	path = src/libs/lvgl
 	url = https://github.com/lvgl/lvgl.git
-[submodule "src/lib/xml"]
-	path = src/libs/xml
-	url = https://github.com/Ryzee119/xml_c.git
 [submodule "src/lib/nxdk"]
 	path = src/libs/nxdk
 	url = https://github.com/XboxDev/nxdk.git
