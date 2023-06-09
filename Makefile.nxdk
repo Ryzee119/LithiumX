@@ -5,72 +5,83 @@ NXDK_NET = y
 
 GIT_COMMIT_HASH := "$(shell git describe --abbrev=7 --always)"
 
-LVGL_DIR     = src/lib/lvgl
+LVGL_DIR = src/libs/lvgl
 LV_CONF_PATH = "lv_conf.h"
 
 # Include my files
 SRCS += \
-	$(CURDIR)/src/main.c \
-	$(CURDIR)/src/dash.c \
-	$(CURDIR)/src/dash_mainmenu.c \
-	$(CURDIR)/src/dash_filebrowser.c \
-	$(CURDIR)/src/dash_styles.c \
-	$(CURDIR)/src/dash_synop.c \
-	$(CURDIR)/src/dash_titlelist.c \
-	$(CURDIR)/src/dash_eeprom.c \
-	$(CURDIR)/src/helpers/fileio.c \
-	$(CURDIR)/src/helpers/nano_debug.c \
-	$(CURDIR)/src/helpers/menu.c \
-	$(CURDIR)/src/platform/xbox/platform.c \
-	$(CURDIR)/src/platform/xbox/network.c \
-	$(CURDIR)/src/dash_resources/default_tbn.c \
-	$(CURDIR)/src/dash_resources/qrcode.c \
-	$(CURDIR)/src/lvgl_drivers/lv_sdl_indev.c \
-	$(CURDIR)/src/lib/jpg_decoder/jpg_decoder.c \
-	$(CURDIR)/src/lib/xml/src/xml.c \
-	$(CURDIR)/src/lib/nxdk/lib/net/lwip/src/apps/sntp/sntp.c
+	$(CURDIR)/src/dash_database.c \
+    $(CURDIR)/src/dash_eeprom.c \
+    $(CURDIR)/src/dash_main.c \
+    $(CURDIR)/src/dash_mainmenu.c \
+    $(CURDIR)/src/dash_scroller.c \
+    $(CURDIR)/src/dash_settings.c \
+    $(CURDIR)/src/dash_styles.c \
+    $(CURDIR)/src/dash_synop.c \
+	$(CURDIR)/src/dash_browser.c \
+    $(CURDIR)/src/main.c \
+    $(CURDIR)/src/lvgl_widgets/confirmbox.c \
+    $(CURDIR)/src/lvgl_widgets/generic_container.c \
+    $(CURDIR)/src/lvgl_widgets/menu.c \
+    $(CURDIR)/src/platform/xbox/platform.c \
+    $(CURDIR)/src/lvgl_drivers/video/xgu/lv_xgu_disp.c \
+    $(CURDIR)/src/lvgl_drivers/video/xgu/lv_xgu_draw.c \
+    $(CURDIR)/src/lvgl_drivers/video/xgu/lv_xgu_rect.c \
+    $(CURDIR)/src/lvgl_drivers/video/xgu/lv_xgu_texture.c \
+    $(CURDIR)/src/lvgl_drivers/input/sdl/lv_sdl_indev.c \
+    $(CURDIR)/src/libs/jpg_decoder/jpg_decoder.c \
+    $(CURDIR)/src/libs/sxml/sxml.c \
+    $(CURDIR)/src/libs/toml/toml.c \
+	$(CURDIR)/src/libs/ftpd/ftp_file.c src/libs/ftpd/ftp_server.c src/libs/ftpd/ftp.c \
+	$(NXDK_DIR)/lib/net/lwip/src/apps/sntp/sntp.c
 
 CFLAGS += \
 	-I$(CURDIR)/src \
-	-I$(CURDIR)/src/lib \
-	-I$(CURDIR)/src/lib/jpg_decoder \
-	-I$(CURDIR)/src/lvgl_drivers \
-	-O3 \
-	-Wall \
+    -I$(CURDIR)/src/libs \
 	-DLV_LVGL_H_INCLUDE_SIMPLE -DLV_CONF_PATH=$(LV_CONF_PATH) \
 	-DWIN32 \
+	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
 	-DSDL_DISABLE_JOYSTICK_INIT_DELAY \
 	-DLVGL_USE_CUSTOM_CONTROLLER_MAP \
 	-DLVGL_USE_CUSTOM_KEYBOARD_MAP \
-	-DDEBUG_CONSOLE \
-	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
-	-DQRURL=\"https://github.com/Ryzee119/LithiumX\" \
 	-DFTP_CUSTOM_ROOT_PATH \
 	-DSNTP_SET_SYSTEM_TIME=xbox_sntp_set_time \
-	-DSNTP_SERVER_DNS=1
-	#-DSHOW_FPS_MEM \
-	#-DDBG_I2C \
-	#-DDBG
+	-DSNTP_SERVER_DNS=1 \
+	-Wno-implicit-function-declaration \
+	-DMEMP_NUM_NETBUF=6 -DMEMP_NUM_NETCONN=6 \
+	-DDEBUG_CONSOLE \
+	#-DNDEBUG \
+	#-O2 \
+
+# Include SQLITE
+SRCS += $(CURDIR)/src/libs/sqlite3/sqlite3.c $(CURDIR)/src/platform/win32/sqlite_win32.c
+CFLAGS += \
+	-DSQLITE_WITHOUT_MSIZE=1 \
+	-DSQLITE_OS_OTHER=1 \
+    -DSQLITE_DEFAULT_MEMSTATUS=0 \
+    -DSQLITE_OMIT_DEPRECATED \
+    -DSQLITE_OMIT_PROGRESS_CALLBACK \
+    -DSQLITE_OMIT_SHARED_CACHE \
+    -DSQLITE_OMIT_AUTOINIT \
+	-DSQLITE_DISABLE_INTRINSIC \
+	-DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
 
 # Include XGU
-XGU_DIR = $(CURDIR)/src/lib/xgu
+XGU_DIR = $(CURDIR)/src/libs/xgu
+XGU_LVGL_DRV_DIR = $(CURDIR)/src/lvgl_drivers/video/xgu
 XGU_FLAGS = -I$(XGU_DIR)
-XGU_DRV = $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_disp.c \
-		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_draw.c \
-		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_rect.c \
-		  $(CURDIR)/src/lvgl_drivers/xgu/lv_xgu_texture.c
+XGU_DRV = $(XGU_LVGL_DRV_DIR)/lv_xgu_disp.c \
+		  $(XGU_LVGL_DRV_DIR)/lv_xgu_draw.c \
+		  $(XGU_LVGL_DRV_DIR)/lv_xgu_rect.c \
+		  $(XGU_LVGL_DRV_DIR)/lv_xgu_texture.c
 CFLAGS += $(XGU_FLAGS)
 SRCS += $(XGU_DRV)
-SHADER_OBJS = $(CURDIR)/src/lvgl_drivers/xgu/texture.inl $(CURDIR)/src/lvgl_drivers/xgu/notexture.inl
+SHADER_OBJS = $(XGU_LVGL_DRV_DIR)/texture.inl $(XGU_LVGL_DRV_DIR)/notexture.inl
 
 # Include shaders
 %.inl: %.ps | fp20compiler
 	@echo "[ FP20     ] $@"
 	$(FP20COMPILER) $< > $@
-
-# Include ftp server
-FTP_DIR = $(CURDIR)/src/lib/ftpd
-SRCS += $(FTP_DIR)/ftp_file.c $(FTP_DIR)/ftp_server.c $(FTP_DIR)/ftp.c
 
 # Include lvgl library
 CFLAGS += -I$(LVGL_DIR)/
@@ -83,3 +94,7 @@ SRCS += $(shell find -L $(LVGL_DIR)/src/misc -name \*.c)
 SRCS += $(shell find -L $(LVGL_DIR)/src/widgets -name \*.c)
 
 include $(NXDK_DIR)/Makefile
+
+clean_local:
+	find . -name '*.obj' ! -path './libs/nxdk/*' -type f -delete
+	find . -name '*.d' ! -path './libs/nxdk/*' -type f -delete
