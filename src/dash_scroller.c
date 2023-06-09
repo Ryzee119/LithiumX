@@ -100,19 +100,21 @@ static int get_launch_path_callback(void *param, int argc, char **argv, char **a
     (void) azColName;
     (void) argc;
     assert(argc == 1);
-    
-    lvgl_getlock();
+
     char *launch_path = lv_mem_alloc(DASH_MAX_PATH);
     strncpy(launch_path, argv[0], DASH_MAX_PATH);
     dash_launch_path = launch_path;
-    lvgl_removelock();
     return 0;
 }
 
-void launch_title_callback(void *param)
+static void launch_title_callback(void *param)
 {
     char cmd[SQL_MAX_COMMAND_LEN];
     char time_str[20];
+
+    // Dash might still be parsing the database.
+    // Abort it all so we can launch immediately
+    global_sql_abort = 1;
 
     title_t *t = param;
     lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_LAUNCH_PATH, t->db_id);
@@ -255,7 +257,17 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
     assert(strcmp(azColName[DB_INDEX_TITLE], SQL_TITLE_NAME) == 0);
     assert(strcmp(azColName[DB_INDEX_LAUNCH_PATH], SQL_TITLE_LAUNCH_PATH) == 0);
 
-    lvgl_getlock();
+    // Keep trying to get lock unless we are aborted
+    while(lvgl_trylock() == false)
+    {
+        if (global_sql_abort) return 1;
+        SDL_Delay(10);
+    }
+    if (global_sql_abort)
+    {
+        lvgl_removelock();
+        return 1;
+    }
     title_t *t = lv_mem_alloc(sizeof(title_t));
     assert(t);
     lv_memset(t, 0, sizeof(title_t));
@@ -297,7 +309,7 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
         lv_mem_free(thumb_path);
         t->jpg_info = NULL;
         lvgl_removelock();
-        return 0;
+        return global_sql_abort;
     }
 
     // It has a thumbnail. Create a struct to store the info.
@@ -308,7 +320,7 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
     lv_obj_add_event_cb(item_container, update_thumbnail_callback, LV_EVENT_DRAW_MAIN_END, NULL);
 
     lvgl_removelock();
-    return 0;
+    return global_sql_abort;
 }
 
 static void dash_scroller_get_sort_strings(unsigned int sort_index, const char **sort_by, const char **order_by)
@@ -351,7 +363,10 @@ static int db_scan_thread_f(void *param)
         dash_scroller_get_sort_strings(sort_index, &sort_by, &order_by);
         lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST, "*", p->page_title, sort_by, order_by);
     }
-    db_command_with_callback(cmd, item_scan_callback, param);
+    if (!global_sql_abort)
+    {
+        db_command_with_callback(cmd, item_scan_callback, param);
+    }
     return 0;
 }
 
