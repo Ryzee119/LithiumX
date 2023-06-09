@@ -43,7 +43,7 @@
 #define LV_MEM_CUSTOM 0
 #if LV_MEM_CUSTOM == 0
     /*Size of the memory available for `lv_mem_alloc()` in bytes (>= 2kB)*/
-    #define LV_MEM_SIZE (2U * 1024U * 1024U)          /*[bytes]*/
+    #define LV_MEM_SIZE (3U * 1024U * 1024U)          /*[bytes]*/
 
     /*Set an address for the memory pool instead of allocating it as a normal array. Can be in external SRAM too.*/
     #define LV_MEM_ADR 0     /*0: unused*/
@@ -72,7 +72,7 @@
  *====================*/
 
 /*Default display refresh period. LVG will redraw changed areas with this period time*/
-#define LV_DISP_DEF_REFR_PERIOD (1000/60)      /*[ms]*/
+#define LV_DISP_DEF_REFR_PERIOD (1000/30)      /*[ms]*/
 
 /*Input device read period in milliseconds*/
 #define LV_INDEV_DEF_READ_PERIOD 30     /*[ms]*/
@@ -257,6 +257,7 @@
  *-----------*/
 
 /*1: Show CPU usage and FPS count*/
+#define SHOW_FPS_MEM
 #ifdef SHOW_FPS_MEM
 #define LV_USE_PERF_MONITOR 1
 #else
@@ -283,7 +284,7 @@
 /*Change the built in (v)snprintf functions*/
 #define LV_SPRINTF_CUSTOM 1
 #if LV_SPRINTF_CUSTOM
-    #define LV_SPRINTF_INCLUDE "nanoprintf/nanoprintf.h"
+    #define LV_SPRINTF_INCLUDE "libs/nanoprintf/nanoprintf.h"
     #define lv_snprintf  npf_snprintf
     #define lv_vsnprintf npf_vsnprintf
 #else   /*LV_SPRINTF_CUSTOM*/
