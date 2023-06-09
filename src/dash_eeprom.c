@@ -243,13 +243,60 @@ static void dash_eeprom_video_settings_open()
     lv_obj_t *menu = menu_open_static(items, num_items);
 }
 
+static void dash_eeprom_backup()
+{
+    bool success = true;
+    static const char EEPROM_PATH[] = "E:\\eeprom.bin";
+    uint8_t buffer[0x100];
+    for (int i = 0; i < sizeof(buffer); i += 1)
+    {
+        ULONG value;
+        if (!NT_SUCCESS(HalReadSMBusValue(0xA9, (UCHAR)i, FALSE, (PULONG)&value)))
+        {
+            success = false;
+            break;
+        }
+        buffer[i] = (uint8_t)value;
+    }
+    if (success)
+    {
+        int len = 0;
+        success = false;
+        FILE *fp = fopen(EEPROM_PATH, "wb");
+        if (fp)
+        {
+            len = fwrite(buffer, 1, sizeof(buffer), fp);
+            fclose(fp);
+        }
+        
+        if (len == sizeof(buffer))
+        {
+            success = true;
+        }
+    }
+
+    lv_obj_t *alert = container_open();
+    lv_obj_t *label = lv_label_create(alert);
+    if (success)
+    {
+        lv_obj_set_width(label, lv_obj_get_width(alert));
+        lv_label_set_text_fmt(label, "Successfully wrote EEPROM to %s.", EEPROM_PATH);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    }
+    else
+    {
+        lv_label_set_text_fmt(label, "Failed to write EEPROM to %s\n", EEPROM_PATH);
+    }
+}
+
 void dash_eeprom_settings_open()
 {
     static const menu_items_t items[] =
         {
-            {"Audio " LV_SYMBOL_AUDIO, dash_eeprom_audio_settings_open, NULL, NULL},
-            {"Video " LV_SYMBOL_VIDEO, dash_eeprom_video_settings_open, NULL, NULL},
+            {"Backup EEPROM to E:", dash_eeprom_backup, NULL, NULL},
             //{"Clock " LV_SYMBOL_BELL, dash_eeprom_clock_settings_open, NULL, NULL},
+            {"Video " LV_SYMBOL_VIDEO, dash_eeprom_video_settings_open, NULL, NULL},
+            {"Audio " LV_SYMBOL_AUDIO, dash_eeprom_audio_settings_open, NULL, NULL},
         };
 
     ULONG type;
