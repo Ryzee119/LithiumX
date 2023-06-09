@@ -82,41 +82,6 @@ void dash_printf(dash_debug_level_t level, const char *format, ...)
     va_end(argList);
 }
 
-
-void printTimeZoneInformation(TIME_ZONE_INFORMATION tzInfo) {
-    #ifdef NXDK
-    DbgPrint("Time Zone Information:\n");
-    DbgPrint("Standard Name: %ls\n", tzInfo.StandardName);
-    DbgPrint("Daylight Name: %ls\n", tzInfo.DaylightName);
-    DbgPrint("Bias: %ld minutes\n", tzInfo.Bias);
-    DbgPrint("Standard Bias: %ld minutes\n", tzInfo.StandardBias);
-    DbgPrint("Daylight Bias: %ld minutes\n", tzInfo.DaylightBias);
-    DbgPrint("Standard Date: Month: %ld, Day: %ld, Time: %02ld:%02ld:%02ld\n",
-           tzInfo.StandardDate.wMonth, tzInfo.StandardDate.wDay,
-           tzInfo.StandardDate.wHour, tzInfo.StandardDate.wMinute, tzInfo.StandardDate.wSecond);
-    DbgPrint("Daylight Date: Month: %ld, Day: %ld, Time: %02ld:%02ld:%02ld\n",
-           tzInfo.DaylightDate.wMonth, tzInfo.DaylightDate.wDay,
-           tzInfo.DaylightDate.wHour, tzInfo.DaylightDate.wMinute, tzInfo.DaylightDate.wSecond);
-    #else
-    printf("Time Zone Information:\n");
-    printf("Standard Name: %ls\n", tzInfo.StandardName);
-    printf("Daylight Name: %ls\n", tzInfo.DaylightName);
-    printf("Bias: %ld minutes\n", tzInfo.Bias);
-    printf("Standard Bias: %ld minutes\n", tzInfo.StandardBias);
-    printf("Daylight Bias: %ld minutes\n", tzInfo.DaylightBias);
-    printf("Standard Date: Month: %ld, Day: %ld, Time: %02ld:%02ld:%02ld\n",
-           tzInfo.StandardDate.wMonth, tzInfo.StandardDate.wDay,
-           tzInfo.StandardDate.wHour, tzInfo.StandardDate.wMinute, tzInfo.StandardDate.wSecond);
-    printf("Daylight Date: Month: %ld, Day: %ld, Time: %02ld:%02ld:%02ld\n",
-           tzInfo.DaylightDate.wMonth, tzInfo.DaylightDate.wDay,
-           tzInfo.DaylightDate.wHour, tzInfo.DaylightDate.wMinute, tzInfo.DaylightDate.wSecond);
-    #endif
-}
-
-#ifndef NXDK
-#define DbgPrint printf
-#endif
-
 int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
@@ -127,72 +92,6 @@ int main(int argc, char* argv[]) {
 
     lvgl_mutex = SDL_CreateMutex();
     assert(lvgl_mutex);
-
-#if (0)
-    const CHAR *tz_strs[] = {"TIME_ZONE_ID_UNKNOWN", "TIME_ZONE_ID_STANDARD", "TIME_ZONE_ID_DAYLIGHT"};
-
-    TIME_ZONE_INFORMATION tzInfo;
-    DWORD result = GetTimeZoneInformation(&tzInfo);
-    DbgPrint("TIMEZONE RESULT %s\n", tz_strs[result]);
-    printTimeZoneInformation(tzInfo);
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-    DbgPrint("Local time %04d-%02d-%02d %02d:%02d:%02d\n",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-    TIME_FIELDS startTimeFields;
-    LARGE_INTEGER startTime;
-    RtlZeroMemory(&startTimeFields, sizeof(TIME_FIELDS));
-    startTimeFields.Year = 2020;
-    startTimeFields.Month = 1;
-    startTimeFields.Day = 1;
-    startTimeFields.Hour = 0;
-    RtlTimeFieldsToTime(&startTimeFields, &startTime);
-    static DWORD DST_result = -1;
-    for (int i = 0; i < (365 * 24 * 2); i++)
-    {
-        NtSetSystemTime(&startTime, NULL);
-        RtlTimeToTimeFields(&startTime, &startTimeFields);
- 
-        TIME_ZONE_INFORMATION tzInfo;
-        SYSTEMTIME utc, loc;
-        DWORD result = GetTimeZoneInformation(&tzInfo);
-        if (DST_result == -1)
-        {
-           DST_result = result;
-        }
-        GetSystemTime(&utc);
-        GetLocalTime(&loc);
-    
-        if (result != DST_result)
-        {
-            DST_result = result;
-            DbgPrint( "Switched to %s, with bias %ld mins, "
-                      "Switched occurred at UTC %04d-%02d-%02d %02d:%02d:%02d, "
-                      "Local %04d-%02d-%02d %02d:%02d:%02d\n",
-                      tz_strs[result], tzInfo.Bias,
-                      utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond,
-                      loc.wYear, loc.wMonth, loc.wDay, loc.wHour, loc.wMinute, loc.wSecond);
-        }
-        //Add 30 mins
-        startTime.QuadPart += 36000000000ULL / 2ULL;
-    }
-#endif
-
-#if (0)
-    TIME_ZONE_INFORMATION tzInfo;
-    SYSTEMTIME st;
-    #ifndef NXDK
-    DWORD result = GetTimeZoneInformationForYear(2000, NULL, &tzInfo);
-    #else
-    DWORD result = GetTimeZoneInformation(&tzInfo);
-    #endif
-    DbgPrint("TIMEZONE RESULT %d\n", result);
-    printTimeZoneInformation(tzInfo);
-    GetLocalTime(&st);
-    DbgPrint("Local time %04d-%02d-%02d %02d:%02d:%02d\n",
-             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-#endif
 
     dash_printf(LEVEL_TRACE, "Initialising LVGL\n");
     lv_init();
