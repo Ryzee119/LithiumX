@@ -1,296 +1,299 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2022 Ryzee119
 
-#include "lvgl.h"
-#include "lv_port_indev.h"
-#include "dash.h"
-#include "dash_styles.h"
-#include "dash_mainmenu.h"
-#include "dash_filebrowser.h"
-#include "dash_eeprom.h"
-#include "platform/platform.h"
-#include "helpers/menu.h"
-#include "helpers/nano_debug.h"
-#include <stdlib.h>
-#include <stdio.h>
+#include "lithiumx.h"
 
-LV_IMG_DECLARE(qrcode);
+static void dash_system_info(void *param);
+static void dash_utilities(void *param);
+static void dash_settings(void *param);
+static void dash_launch_msdash(void *param);
+static void dash_launch_dvd(void *param);
+static void dash_flush_cache(void *param);
+static void dash_open_xbe_launcher(void *param);
+static void dash_open_eeprom_config(void *param);
+static void dash_open_about(void *param);
+static void dash_reboot(void *param);
+static void dash_shutdown(void *param);
 
-static lv_obj_t *main_menu = NULL;
-static lv_obj_t *sub_menu_container = NULL;
-static lv_timer_t *realtime_info = NULL;
-
-enum
+static void dash_system_info(void *param)
 {
-    MENU_SYSTEM_INFO,
-    MENU_CLEAR_RECENT,
-#ifdef NXDK
-    MENU_LAUNCH_MS_DASH,
-    MENU_LAUNCH_DVD,
-    MENU_FLUSH_CACHE_PARTITION,
-#endif
-    MENU_XBE_BROWSER,
-    MENU_EEPROM_CONFIG,
-    MENU_ABOUT,
-    MENU_REBOOT,
-    MENU_SHUTDOWN,
-    MENU_MAX,
-};
-
-static const char *menu_items[] =
-    {
-        "System Information",
-        "Clear Recent Titles",
-#ifdef NXDK
-        "Launch MS Dashboard",
-        "Launch DVD",
-        "Flush Cache Partitions",
-#endif
-        "XBE Browser",
-        "EEPROM Config",
-        "About",
-        "Reboot",
-        "Shutdown",
-};
-
-// The follow callbacks are called after the confirmation box has been accepted
-static void dash_shutdown(void)
-{
-    lv_set_quit(LV_SHUTDOWN);
+    (void)param;
+    lv_obj_t *window = container_open();
+    platform_system_info(window);
 }
 
-static void dash_reboot(void)
+static void dash_launch_msdash(void *param)
 {
-    lv_set_quit(LV_REBOOT);
-}
-
-static void dash_clear_recent(void)
-{
-    dash_clear_recent_list();
-}
-
-#ifdef NXDK
-static void dash_launch_msdash(void)
-{
-    dash_set_launch_exe("%s", "MSDASH");
+    (void)param;
+    dash_launch_path = "__MSDASH__";
     lv_set_quit(LV_QUIT_OTHER);
 }
 
-static void dash_launch_dvd(void)
+static void dash_launch_dvd(void *param)
 {
-    platform_launch_dvd();
-}
-
-static void dash_flush_cache(void)
-{
-    platform_flush_cache_cb();
-}
-#endif
-
-// Menu or submenu close callback on ESC or DASH_SETTINGS_PAGE (B or BACK) to close
-static void menu_close(lv_event_t *e)
-{
-    lv_obj_t *obj = lv_event_get_target(e);
-    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
-    if (key == LV_KEY_ESC || key == DASH_SETTINGS_PAGE)
-    {
-        menu_hide_item(obj);
-        if (realtime_info != NULL)
-        {
-            lv_timer_del(realtime_info);
-            realtime_info = NULL;
-        }
-    }
-}
-
-// Basic containers dont scroll. We registered a custom scroll callback for text boxes. This is handled here.
-static void text_scroll(lv_event_t *e)
-{
-    // objects normally scroll automatically however core object containers dont have any animations.
-    // I replace the scrolling with my own here with animation enabled.
-    lv_obj_t *obj = lv_event_get_target(e);
-    lv_key_t key = lv_indev_get_key(lv_indev_get_act());
-    if (key == LV_KEY_UP)
-    {
-        lv_obj_scroll_to_y(obj, lv_obj_get_scroll_y(obj) - lv_obj_get_height(obj) / 4, LV_ANIM_ON);
-    }
-    if (key == LV_KEY_DOWN)
-    {
-        lv_obj_scroll_to_y(obj, lv_obj_get_scroll_y(obj) + lv_obj_get_height(obj) / 4, LV_ANIM_ON);
-    }
-}
-
-// Periodic callback to update realtime info text
-static void realtime_info_cb(lv_timer_t *t)
-{
-    lv_obj_t *label = t->user_data;
-    if (lv_obj_is_valid(label))
-    {
-        lv_label_set_text(label, platform_realtime_info_cb());
-    }
-}
-
-// Callback if a button is actived on the main menu
-static void menu_pressed(lv_event_t *e)
-{
-    uint16_t row, col;
-    lv_obj_t *obj = lv_event_get_target(e);
-
-    lv_table_get_selected_cell(obj, &row, &col);
-
-    if (row == LV_TABLE_CELL_NONE)
+    #ifdef NXDK
+    // Only launch DVD if media (Xbox Game) is detected
+    ULONG tray_state = 0x70;
+    NTSTATUS status = HalReadSMCTrayState(&tray_state, NULL);
+    if (!NT_SUCCESS(status) || tray_state != 0x60)
     {
         return;
     }
-
-    if (row == MENU_SYSTEM_INFO)
-    {
-        lv_obj_t *label;
-        lv_obj_clean(sub_menu_container);
-        lv_obj_set_layout(sub_menu_container, LV_LAYOUT_FLEX);
-        lv_obj_set_flex_flow(sub_menu_container, LV_FLEX_FLOW_COLUMN);
-
-        label = lv_label_create(sub_menu_container);
-        lv_label_set_text(label, menu_items[row]);
-
-        label = lv_label_create(sub_menu_container);
-        lv_label_set_recolor(label, true);
-        realtime_info = lv_timer_create(realtime_info_cb, 1000, label);
-        lv_timer_ready(realtime_info);
-
-        label = lv_label_create(sub_menu_container);
-        lv_label_set_recolor(label, true);
-        lv_label_set_text(label, platform_show_info_cb());
-
-        lv_obj_set_height(sub_menu_container, MENU_HEIGHT);
-        lv_obj_set_width(sub_menu_container, MENU_WIDTH);
-
-        menu_show_item(sub_menu_container, NULL);
-    }
-    else if (row == MENU_ABOUT)
-    {
-        lv_obj_t *qrcode_img, *label;
-        lv_obj_clean(sub_menu_container);
-        lv_obj_set_layout(sub_menu_container, 0);
-
-        lv_obj_set_width(sub_menu_container, lv_obj_get_width(lv_scr_act()));
-        lv_obj_set_height(sub_menu_container, lv_obj_get_height(lv_scr_act()));
-
-        lv_obj_clear_flag(sub_menu_container, LV_OBJ_FLAG_SCROLLABLE);             // Use my own scroll callback
-        lv_obj_set_scroll_dir(sub_menu_container, LV_DIR_TOP);                     // Only scroll up and down
-
-        qrcode_img = lv_img_create(sub_menu_container);
-        lv_img_set_src(qrcode_img, &qrcode);
-        lv_img_set_size_mode(qrcode_img, LV_IMG_SIZE_MODE_REAL);
-        lv_img_set_antialias(qrcode_img, 0);
-        lv_img_set_zoom(qrcode_img, 2048);
-        lv_obj_align(qrcode_img, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_update_layout(qrcode_img);
-
-        label = lv_label_create(sub_menu_container);
-        lv_label_set_text_fmt(label, "Visit the Github Repo for info\n%s", QRURL);
-        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_update_layout(label);
-        lv_obj_align(label, LV_ALIGN_CENTER, 0, -(lv_obj_get_height(qrcode_img) + lv_obj_get_height(label)) / 2 - 10);
-
-        menu_show_item(sub_menu_container, NULL);
-    }
-    else if (row == MENU_XBE_BROWSER)
-    {
-        file_browser_open();
-    }
-    else if (row == MENU_EEPROM_CONFIG)
-    {
-        eeprom_open();
-    }
-    else if (row == MENU_CLEAR_RECENT)
-    {
-        confirmbox_open(dash_clear_recent, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
-#ifdef NXDK
-    else if (row == MENU_LAUNCH_MS_DASH)
-    {
-        confirmbox_open(dash_launch_msdash, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
-    else if (row == MENU_LAUNCH_DVD)
-    {
-        confirmbox_open(dash_launch_dvd, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
-    else if (row == MENU_FLUSH_CACHE_PARTITION)
-    {
-        confirmbox_open(dash_flush_cache, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
-#endif
-    else if (row == MENU_REBOOT)
-    {
-        confirmbox_open(dash_reboot, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
-    else if (row == MENU_SHUTDOWN)
-    {
-        confirmbox_open(dash_shutdown, "%s \"%s\"", "Confirm", menu_items[row]);
-    }
+    #endif
+    (void)param;
+    dash_launch_path = "__DVD__";
+    lv_set_quit(LV_QUIT_OTHER);
 }
 
-void main_menu_init(void)
+static void dash_flush_cache(void *param)
 {
-    menu_data_t *user_data;
-    lv_group_t *gp = lv_group_get_default();
-
-    // Create a table for the main menu items
-    main_menu = lv_table_create(lv_scr_act());
-    user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
-    lv_memset(user_data, 0, sizeof(menu_data_t));
-    main_menu->user_data = user_data;
-    menu_apply_style(main_menu);
-    lv_obj_set_size(main_menu, MENU_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_set_scrollbar_mode(main_menu, LV_SCROLLBAR_MODE_OFF);
-
-    int row_cnt = sizeof(menu_items) / sizeof(menu_items[0]);
-    lv_table_set_col_cnt(main_menu, 1);
-    lv_table_set_row_cnt(main_menu, row_cnt);
-    lv_table_set_col_width(main_menu, 0, MENU_WIDTH);
-    for (int i = 0; i < row_cnt; i++)
-    {
-        lv_table_set_cell_value(main_menu, i, 0, menu_items[i]);
-    }
-    lv_obj_update_layout(main_menu);
-
-    lv_obj_add_event_cb(main_menu, menu_pressed, LV_EVENT_PRESSED, NULL);
-    lv_obj_add_event_cb(main_menu, menu_close, LV_EVENT_KEY, NULL);
-    lv_obj_add_event_cb(main_menu, menu_table_scroll, LV_EVENT_VALUE_CHANGED, NULL);
-    lv_group_add_obj(gp, main_menu);
-    lv_obj_add_flag(main_menu, LV_OBJ_FLAG_HIDDEN);
-
-    lv_obj_update_layout(main_menu);
-    if (lv_obj_get_height(main_menu) > MENU_HEIGHT)
-    {
-        lv_obj_set_height(main_menu, MENU_HEIGHT);
-    }
-
-    // Create a general submenu container
-    sub_menu_container = lv_obj_create(lv_scr_act());
-    user_data = (menu_data_t *)lv_mem_alloc(sizeof(menu_data_t));
-    lv_memset(user_data, 0, sizeof(menu_data_t));
-    sub_menu_container->user_data = user_data;
-    menu_apply_style(sub_menu_container);
-    lv_obj_set_size(sub_menu_container, MENU_WIDTH, MENU_HEIGHT);
-    lv_obj_add_event_cb(sub_menu_container, menu_close, LV_EVENT_KEY, NULL);
-    lv_obj_add_event_cb(sub_menu_container, text_scroll, LV_EVENT_KEY, NULL);
-    lv_group_add_obj(gp, sub_menu_container);
-    lv_obj_add_flag(sub_menu_container, LV_OBJ_FLAG_HIDDEN);
+    (void)param;
+    platform_flush_cache();
 }
 
-void main_menu_deinit(void)
+static char *last_backslash(const char *str)
 {
-    lv_obj_del(main_menu);
-    lv_obj_del(sub_menu_container);
-    main_menu = NULL;
+    char *lastBackslash = NULL;
+    char *current = strchr(str, '\\');
+    while (current != NULL)
+    {
+        lastBackslash = current;
+        current = strchr(current + 1, '\\');
+    }
+    return lastBackslash;
 }
 
-// Create and open the main menu
-void main_menu_open(void)
+static bool is_xbe(const char *file_path, char *title, char *title_id)
 {
-    nano_debug(LEVEL_TRACE, "TRACE: Opening main menu\n");
-    menu_show_item(main_menu, NULL);
+    const int extlen = 4; //".xbe"
+    int slen = strlen(file_path);
+    if (slen > extlen)
+    {
+        const char *ext = file_path + slen - extlen;
+        if (strcasecmp(ext, ".xbe") == 0)
+        {
+            bool ret = false;
+            char *folder_path = lv_mem_alloc(strlen(file_path) + 1);
+            strcpy(folder_path, file_path);
+            char *last = last_backslash(folder_path);
+            if (last != NULL)
+            {
+                last[0] = '\0'; // Split it
+                ret = db_xbe_parse(file_path, folder_path, title, title_id);
+            }
+            lv_mem_free(folder_path);
+            return ret;
+        }
+    }
+    return false;
 }
 
+static int recent_title_exists_cb(void *param, int argc, char **argv, char **azColName)
+{
+    (void)argc; (void)argv; (void)azColName;
+    int *db_id = param;
+    *db_id = atoi(argv[0]);
+    return 0;
+}
+
+static int recent_title_get_last_id_cb(void *param, int argc, char **argv, char **azColName)
+{
+    (void)argc; (void)argv; (void)azColName;
+    int *db_id_max = param;
+    if (argv[0] != NULL)
+        *db_id_max = atoi(argv[0]);
+    return 0;
+}
+
+typedef struct xbe_launch_param
+{
+    char title[MAX_META_LEN];
+    char title_id[MAX_META_LEN];
+    char selected_path[DASH_MAX_PATH];
+} xbe_launch_param_t;
+
+static void xbe_launch_abort(lv_event_t *event)
+{
+    lv_mem_free(lv_event_get_user_data(event));
+}
+
+static void xbe_launch(void *param)
+{
+    static const char *no_meta = "No Meta-Data";
+    char cmd[SQL_MAX_COMMAND_LEN];
+    char time_str[20];
+    xbe_launch_param_t *xbe_params = param;
+    platform_get_iso8601_time(time_str);
+
+    // See if the launch paths exists in page "Recent"
+    const char *query = "SELECT " SQL_TITLE_DB_ID " FROM " SQL_TITLES_NAME
+                        " WHERE " SQL_TITLE_LAUNCH_PATH "= \"%s\" AND " SQL_TITLE_PAGE " = \"__RECENT__\"";
+    lv_snprintf(cmd, sizeof(cmd), query, xbe_params->selected_path);
+    int db_id = -1;
+    db_command_with_callback(cmd, recent_title_exists_cb, &db_id);
+    if (db_id >= 0)
+    {
+        // If it does, update the LAUNCH_DATETIME to now
+        lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, db_id);
+        db_command_with_callback(cmd, NULL, NULL);
+    }
+    else
+    {
+        // Otherwise add it to a page called "Recent" with current LAUNCH_DATETIME
+        const char *query = "SELECT MAX(" SQL_TITLE_DB_ID ") FROM " SQL_TITLES_NAME
+                            " WHERE " SQL_TITLE_PAGE " = \"__RECENT__\"";
+        int db_id_max = 10000;
+        db_command_with_callback(query, recent_title_get_last_id_cb, &db_id_max);
+        db_id_max++;
+        db_id_max = LV_MAX(10000, db_id_max);
+
+        char item_index_str[8];
+        lv_snprintf(item_index_str, sizeof(item_index_str), "%d", db_id_max);
+        db_insert(SQL_TITLE_INSERT, SQL_TITLE_INSERT_CNT, SQL_TITLE_INSERT_FORMAT,
+            item_index_str,
+            xbe_params->title_id,
+            xbe_params->title,
+            xbe_params->selected_path,
+            "__RECENT__",
+            no_meta,
+            no_meta,
+            no_meta,
+            no_meta,
+            time_str,
+            "0.0");
+    }
+
+    // Setup launch path then quit
+    dash_launch_path = xbe_params->selected_path;
+    lv_set_quit(LV_QUIT_OTHER);
+}
+
+static bool xbe_selection_cb(const char *selected_path)
+{
+    char title[MAX_META_LEN];
+    char title_id[MAX_META_LEN];
+    if (is_xbe(selected_path, title, title_id))
+    {
+        xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
+        strcpy(xbe_params->selected_path, selected_path);
+        strcpy(xbe_params->title, title);
+        strcpy(xbe_params->title_id, title_id);
+        char cb_text[DASH_MAX_PATH];
+        lv_snprintf(cb_text, DASH_MAX_PATH, "Launch \"%s\"", selected_path);
+        lv_obj_t *cb = confirmbox_open(cb_text, xbe_launch, xbe_params);
+        lv_obj_add_event_cb(cb, xbe_launch_abort, LV_EVENT_DELETE, xbe_params);
+    }
+    return false;
+}
+
+static void dash_open_xbe_launcher(void *param)
+{
+    (void)param;
+    dash_browser_open(DASH_ROOT_PATH, xbe_selection_cb);
+}
+
+static void dash_open_eeprom_config(void *param)
+{
+    (void)param;
+    dash_eeprom_settings_open();
+}
+
+static void dash_rebuild_database(void *param)
+{
+    (void)param;
+    db_command_with_callback(SQL_TITLE_DELETE_ENTRIES, NULL, NULL);
+}
+
+static void dash_clear_recent(void *param)
+{
+    (void)param;
+    // Set settings_earliest_recent_date to now which effectively clears
+    // recent items
+    platform_get_iso8601_time(settings_earliest_recent_date);
+    dash_settings_apply();
+
+    static const char *cmd = "DELETE FROM " SQL_TITLES_NAME " WHERE page = \"__RECENT__\"";
+    db_command_with_callback(cmd, NULL, NULL);
+    dash_scroller_clear_page("Recent");
+}
+
+static void dash_open_about(void *param)
+{
+    (void)param;
+    const char *url = "https://github.com/Ryzee119/LithiumX";
+
+    lv_obj_t *window = container_open();
+
+    lv_obj_t *qr = lv_qrcode_create(window, 256, lv_color_black(), lv_color_white());
+    lv_qrcode_update(qr, url, strlen(url));
+    lv_obj_align(qr, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_update_layout(window);
+
+    lv_obj_t *label = lv_label_create(window);
+    lv_label_set_text(label, "See github.com/Ryzee119/LithiumX");
+    lv_obj_update_layout(label);
+    lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+    lv_obj_set_height(window, lv_obj_get_height(qr) + lv_obj_get_height(label) + 2);
+    lv_obj_update_layout(window);
+}
+
+static void dash_reboot(void *param)
+{
+    (void)param;
+    lv_set_quit(LV_REBOOT);
+}
+
+static void dash_shutdown(void *param)
+{
+    (void)param;
+    lv_set_quit(LV_SHUTDOWN);
+}
+
+static void dash_settings(void *param)
+{
+    (void)param;
+    dash_settings_open();
+}
+
+static void dash_utilities(void *param)
+{
+    (void)param;
+    static const menu_items_t items[] =
+        {
+            {"XBE Launcher", dash_open_xbe_launcher, NULL, NULL},
+            {"EEPROM Config", dash_open_eeprom_config, NULL, NULL},
+            {"Clear Recent Titles", dash_clear_recent, NULL, "Accept \"Clear Recent Titles\""},
+            {"Flush Cache Partitions", dash_flush_cache, NULL, "Accept \"Flush Cache Partitions\""},
+            {"Mark Database Reset at Reboot", dash_rebuild_database, NULL, "Accept \"Database Reset\""},
+        };
+    menu_open_static(items, DASH_ARRAY_SIZE(items));
+}
+
+static void mainmenu_close(lv_event_t *event)
+{
+    lv_obj_t *menu = lv_event_get_target(event);
+    lv_key_t key = *((lv_key_t *)lv_event_get_param(event));
+    if (key == DASH_SETTINGS_PAGE)
+    {
+        static int key = LV_KEY_ESC;
+        lv_event_send(menu, LV_EVENT_KEY, &key);
+    }
+}
+
+void dash_mainmenu_open()
+{
+    static const menu_items_t items[] =
+        {
+            {"System Information", dash_system_info, NULL, NULL},
+            {"Launch MS Dashboard", dash_launch_msdash, NULL, "Accept \"Launch MS Dashboard\""},
+            {"Launch DVD", dash_launch_dvd, NULL, "Accept \"Launch DVD\""},
+            {"Utilities", dash_utilities, NULL, NULL},
+            {"Settings", dash_settings, NULL, NULL},
+            {"About", dash_open_about, NULL, NULL},
+            {"Reboot", dash_reboot, NULL, "Accept \"Reboot\""},
+            {"Shutdown", dash_shutdown, NULL, "Accept \"Shutdown\""},
+        };
+    lv_obj_t *menu = menu_open_static(items, DASH_ARRAY_SIZE(items));
+    lv_obj_add_event_cb(menu, mainmenu_close, LV_EVENT_KEY, NULL);
+}
