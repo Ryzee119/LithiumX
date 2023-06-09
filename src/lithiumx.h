@@ -194,7 +194,6 @@ extern int settings_auto_launch_dvd;
 extern int settings_default_page_index;
 extern int settings_theme_colour;
 extern int settings_max_recent;
-extern int global_sql_abort;
 extern char settings_page_sorts_str[4096];
 
 extern const char *dash_launch_path;
