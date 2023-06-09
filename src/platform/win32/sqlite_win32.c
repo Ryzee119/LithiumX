@@ -378,7 +378,7 @@ static int winGetLastError(sqlite3_vfs *pVfs, int nBuf, char *zBuf)
     return GetLastError();
 }
 
-static sqlite3_vfs nxdk_vfs = {
+static sqlite3_vfs win32_vfs = {
     1,                   /* iVersion */
     sizeof(winFile),     /* szOsFile */
     MAX_PATH,            /* mxPathname */
@@ -403,9 +403,70 @@ static sqlite3_vfs nxdk_vfs = {
     NULL,                /* xNextSystemCall */
 };
 
+#if (0)
+static int winMutexInit(void)
+{
+    return SQLITE_OK;
+}
+
+static int winMutexEnd(void)
+{
+    return SQLITE_OK;
+}
+
+static sqlite3_mutex *winMutexAlloc(int id)
+{
+    HANDLE mutex = CreateMutex(NULL, FALSE, NULL);
+    return (sqlite3_mutex *)mutex;
+}
+
+static void (winMutexFree)(sqlite3_mutex *mutex)
+{
+    CloseHandle((HANDLE)mutex);
+}
+
+static void winMutexEnter(sqlite3_mutex* mutex)
+{
+    WaitForSingleObject((HANDLE)mutex, INFINITE);
+}
+
+static int winMutexTry(sqlite3_mutex* mutex)
+{
+    DWORD res = WaitForSingleObject((HANDLE)mutex, 0);
+    if (res == WAIT_OBJECT_0 || res == WAIT_ABANDONED) {
+        return SQLITE_OK;
+    }
+    return SQLITE_BUSY;
+}
+
+static void winMutexLeave(sqlite3_mutex* mutex)
+{
+    ReleaseMutex((HANDLE)mutex);
+}
+
+static sqlite3_mutex_methods win32_mutex_methods = {
+    .xMutexInit = winMutexInit,
+    .xMutexEnd = winMutexEnd,
+    .xMutexAlloc = winMutexAlloc,
+    .xMutexFree = winMutexFree,
+    .xMutexEnter = winMutexEnter,
+    .xMutexTry = winMutexTry,
+    .xMutexLeave = winMutexLeave,
+    .xMutexHeld = NULL,
+    .xMutexNotheld = NULL
+};
+
+// Needs to be called before sqlite3_initialize()
+void sqlite3_register_win32_mutex()
+{
+    sqlite3_config(SQLITE_CONFIG_MUTEX, &win32_mutex_methods);
+}
+
+#endif
+
 sqlite3_vfs *sqlite_nxdk_fs(void)
 {
-    return &nxdk_vfs;
+    return &win32_vfs;
 }
 
 int sqlite3_os_init(void)
