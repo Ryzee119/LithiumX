@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <jpeglib.h>
 #include "jpg_decoder.h"
-#include "lvgl.h"
 
 typedef enum
 {
@@ -49,6 +48,17 @@ static void error_exit_stub(j_common_ptr cinfo)
     (void)cinfo;
 }
 
+static void* align_pointer(void* ptr, int align)
+{
+    uintptr_t address = (uintptr_t)ptr;
+    const size_t alignment = align;
+    const size_t mask = alignment - 1;
+    if (address & mask) {
+        address += alignment - (address & mask);
+    }
+    return (void*)address;
+}
+
 static int decomp_thread(void *ptr)
 {
     FILE *jfile;
@@ -58,6 +68,7 @@ static int decomp_thread(void *ptr)
     JSAMPARRAY line_buffer;
     int row_stride;
     void *old_line_buffer;
+    jpeg_image_state_t state;
 
     while (1)
     {
@@ -69,6 +80,12 @@ static int decomp_thread(void *ptr)
             return 0;
         }
         jpeg = jpegdecomp_qhead;
+
+        state = SDL_AtomicGet(&jpeg->state);
+        if (state == STATE_DECOMP_ABORTED)
+        {
+            goto leave_error;
+        }
 
         jfile = fopen(jpeg->fn, "rb");
         if (jfile == NULL)
@@ -100,11 +117,13 @@ static int decomp_thread(void *ptr)
             jpeg_calc_output_dimensions(&jinfo);
             max_size = (jinfo.output_width < jinfo.output_height) ? jinfo.output_height : jinfo.output_width;
             if (jinfo.scale_num == 1)
+            {
                 break;
+            }
         } while (max_size > jpeg_max_dimension);
-        jinfo.do_fancy_upsampling = false;
-        jinfo.do_block_smoothing = false;
-        jinfo.two_pass_quantize = false;
+        jinfo.do_fancy_upsampling = FALSE;
+        jinfo.do_block_smoothing = FALSE;
+        jinfo.two_pass_quantize = FALSE;
         jinfo.dct_method = JDCT_FASTEST;
         jinfo.dither_mode = JDITHER_NONE;
         jpeg_start_decompress(&jinfo);
@@ -116,11 +135,11 @@ static int decomp_thread(void *ptr)
 
         jpeg->mem = malloc(jinfo.output_width * jinfo.output_height * (jpeg_colour_depth / 8) + 16);
         //Get a 16 byte aligned pointer to return to the user
-        jpeg->decompressed_image = (uint8_t *)(((intptr_t)jpeg->mem + 16) & ~0x0F);
+        jpeg->decompressed_image = align_pointer(jpeg->mem, 16);
 
         while (jinfo.output_scanline < jinfo.output_height)
         {
-            jpeg_image_state_t state = SDL_AtomicGet(&jpeg->state);
+            state = SDL_AtomicGet(&jpeg->state);
             if (state == STATE_DECOMP_ABORTED)
             {
                 free(jpeg->mem);
@@ -254,6 +273,11 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *us
 
 void jpeg_decoder_abort(void *handle)
 {
+    SDL_LockMutex(jpegdecomp_qmutex);
     jpeg_t *jpeg = (jpeg_t *)handle;
-    SDL_AtomicCAS(&jpeg->state, STATE_DECOMP_QUEUED, STATE_DECOMP_ABORTED);
+    if (jpeg)
+    {
+        SDL_AtomicCAS(&jpeg->state, STATE_DECOMP_QUEUED, STATE_DECOMP_ABORTED);
+    }
+    SDL_UnlockMutex(jpegdecomp_qmutex);
 }
