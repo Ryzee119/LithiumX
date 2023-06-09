@@ -262,13 +262,13 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
     (void) azColName;
     int cnt = item_cb->cnt;
 
-    assert(strcmp(azColName[DB_INDEX_ID], SQL_TITLE_DB_ID) == 0);
-    assert(strcmp(azColName[DB_INDEX_TITLE], SQL_TITLE_NAME) == 0);
-    assert(strcmp(azColName[DB_INDEX_LAUNCH_PATH], SQL_TITLE_LAUNCH_PATH) == 0);
+    assert(strcmp(azColName[0], SQL_TITLE_DB_ID) == 0);
+    assert(strcmp(azColName[1], SQL_TITLE_NAME) == 0);
+    assert(strcmp(azColName[2], SQL_TITLE_LAUNCH_PATH) == 0);
 
-    strncpy(item_cb->strings[cnt].id, argv[DB_INDEX_ID], sizeof(item_cb->strings[cnt].id) - 1);
-    strncpy(item_cb->strings[cnt].title, argv[DB_INDEX_TITLE], sizeof(item_cb->strings[cnt].title) - 1);
-    strncpy(item_cb->strings[cnt].launch_path, argv[DB_INDEX_LAUNCH_PATH], sizeof(item_cb->strings[cnt].launch_path) - 1);
+    strncpy(item_cb->strings[cnt].id, argv[0], sizeof(item_cb->strings[cnt].id) - 1);
+    strncpy(item_cb->strings[cnt].title, argv[1], sizeof(item_cb->strings[cnt].title) - 1);
+    strncpy(item_cb->strings[cnt].launch_path, argv[2], sizeof(item_cb->strings[cnt].launch_path) - 1);
     item_cb->cnt++;
     return 0;
 }
@@ -361,7 +361,9 @@ static int db_scan_thread_f(void *param)
 
     if (strcmp(p->page_title, "Recent") == 0)
     {
-        lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_RECENT, settings_earliest_recent_date, settings_max_recent);
+        lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_RECENT,
+                        SQL_TITLE_DB_ID "," SQL_TITLE_NAME "," SQL_TITLE_LAUNCH_PATH,
+                        settings_earliest_recent_date, settings_max_recent);
 
         lvgl_getlock();
         item_strings_callback_t item_cb;
@@ -388,6 +390,7 @@ static int db_scan_thread_f(void *param)
         lvgl_getlock();
         item_strings_callback_t item_cb;
         item_cb.strings = lv_mem_alloc(sizeof(item_strings_t) * LIMIT);
+        item_cb.cnt = 0;
         lvgl_removelock();
 
         int offset = 0;
@@ -395,11 +398,11 @@ static int db_scan_thread_f(void *param)
         {
             offset += item_cb.cnt;
             item_cb.cnt = 0;
-            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST
-                            " LIMIT %d OFFSET %d", "*", p->page_title, sort_by, order_by, LIMIT, offset);
+            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST " LIMIT %d OFFSET %d",
+                            SQL_TITLE_DB_ID "," SQL_TITLE_NAME "," SQL_TITLE_LAUNCH_PATH,
+                            p->page_title, sort_by, order_by, LIMIT, offset);
 
             db_command_with_callback(cmd, item_scan_callback, &item_cb);
-
             lvgl_getlock();
             item_scan_add(p->scroller, &item_cb);
             lvgl_removelock();
