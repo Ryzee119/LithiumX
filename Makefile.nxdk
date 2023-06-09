@@ -50,8 +50,8 @@ CFLAGS += \
 	-Wno-implicit-function-declaration \
 	-DMEMP_NUM_NETBUF=6 -DMEMP_NUM_NETCONN=6 \
 	-DDEBUG_CONSOLE \
-	#-DNDEBUG \
-	#-O2 \
+	-DNDEBUG \
+	-O2
 
 # Include SQLITE
 SRCS += $(CURDIR)/src/libs/sqlite3/sqlite3.c $(CURDIR)/src/platform/win32/sqlite_win32.c
