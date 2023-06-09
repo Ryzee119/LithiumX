@@ -23,13 +23,14 @@ typedef struct
 {
 	HANDLE h;
 	char path[_MAX_LFN];
+    int root_index;
 } dir_handle_t;
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
 
-#define FILE_CACHE_SIZE (PAGE_SIZE * 128)
+#define FILE_CACHE_SIZE (128 * 1024)
 
 typedef struct
 {
@@ -42,8 +43,8 @@ typedef struct
     int thread_running;
     int write_total;
     int bytes_cached;
+    int pre_alloc;
 } fil_handle_t;
-
 
 #define DIR dir_handle_t
 #define FIL fil_handle_t

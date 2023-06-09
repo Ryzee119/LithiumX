@@ -1,6 +1,3 @@
-[submodule "src/nanoprintf"]
-	path = src/libs/nanoprintf
-	url = https://github.com/charlesnicholson/nanoprintf.git
 [submodule "src/lib/lvgl"]
 	path = src/libs/lvgl
 	url = https://github.com/lvgl/lvgl.git

@@ -26,7 +26,7 @@
 #include "ftp_server.h"
 
 // stack size for ftp task
-#define FTP_TASK_STACK_SIZE 1536
+#define FTP_TASK_STACK_SIZE 4096
 
 // initial FTP port
 #define FTP_SERVER_PORT 21
@@ -42,7 +42,7 @@
 #define FTP_PRINTF printf
 #else
 #define FTP_CONN_DEBUG(ftp, f, ...)
-#define FTP_PRINTF
+#define FTP_PRINTF(...)
 #endif
 
 // define a structure of parameters for a ftp thread
