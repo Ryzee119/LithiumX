@@ -112,10 +112,6 @@ static void launch_title_callback(void *param)
     char cmd[SQL_MAX_COMMAND_LEN];
     char time_str[20];
 
-    // Dash might still be parsing the database.
-    // Abort it all so we can launch immediately
-    global_sql_abort = 1;
-
     title_t *t = param;
     lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_LAUNCH_PATH, t->db_id);
     db_command_with_callback(cmd, get_launch_path_callback, NULL);
@@ -245,82 +241,95 @@ static void item_deletion_callback(lv_event_t *event)
     }
 }
 
+typedef struct item_strings
+{
+    char id[8];
+    char title[MAX_META_LEN];
+    char launch_path[DASH_MAX_PATH];
+} item_strings_t;
+
+typedef struct item_strings_callback
+{
+    item_strings_t *strings;
+    int cnt;
+} item_strings_callback_t;
+
 // Callback when a new row is read from the SQL database. This is a new item to add
 static int item_scan_callback(void *param, int argc, char **argv, char **azColName)
 {
-    parse_handle_t *p = param;
-    lv_obj_t *scroller = p->scroller;
+    item_strings_callback_t *item_cb = param;
     (void) argc;
     (void) azColName;
+    int cnt = item_cb->cnt;
 
     assert(strcmp(azColName[DB_INDEX_ID], SQL_TITLE_DB_ID) == 0);
     assert(strcmp(azColName[DB_INDEX_TITLE], SQL_TITLE_NAME) == 0);
     assert(strcmp(azColName[DB_INDEX_LAUNCH_PATH], SQL_TITLE_LAUNCH_PATH) == 0);
 
-    // Keep trying to get lock unless we are aborted
-    while(lvgl_trylock() == false)
+    strncpy(item_cb->strings[cnt].id, argv[DB_INDEX_ID], sizeof(item_cb->strings[cnt].id) - 1);
+    strncpy(item_cb->strings[cnt].title, argv[DB_INDEX_TITLE], sizeof(item_cb->strings[cnt].title) - 1);
+    strncpy(item_cb->strings[cnt].launch_path, argv[DB_INDEX_LAUNCH_PATH], sizeof(item_cb->strings[cnt].launch_path) - 1);
+    item_cb->cnt++;
+    return 0;
+}
+
+static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *items)
+{
+    for (int i = 0; i < items->cnt; i++)
     {
-        if (global_sql_abort) return 1;
-        SDL_Delay(10);
-    }
-    if (global_sql_abort)
-    {
-        lvgl_removelock();
-        return 1;
-    }
-    title_t *t = lv_mem_alloc(sizeof(title_t));
-    assert(t);
-    lv_memset(t, 0, sizeof(title_t));
-    t->db_id = atoi(argv[DB_INDEX_ID]);
-
-    lv_obj_t *item_container = lv_obj_create(scroller);
-    item_container->user_data = t;
-    lv_obj_add_style(item_container, &titleview_image_container_style, LV_PART_MAIN);
-    lv_obj_clear_flag(item_container, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_height(item_container, DASH_THUMBNAIL_HEIGHT);
-    lv_obj_set_width(item_container, DASH_THUMBNAIL_WIDTH);
-
-    // Create a label with the game title
-    lv_obj_t *label = lv_label_create(item_container);
-    lv_obj_add_style(label, &titleview_image_text_style, LV_PART_MAIN);
-    lv_obj_set_width(label, DASH_THUMBNAIL_WIDTH);
-    lv_obj_update_layout(label);
-    lv_label_set_text(label, argv[DB_INDEX_TITLE]);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-
-    lv_group_add_obj(lv_group_get_default(), item_container);
-    lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_KEY, NULL);
-    lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_FOCUSED, NULL);
-    lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_DEFOCUSED, NULL);
-    lv_obj_add_event_cb(item_container, item_deletion_callback, LV_EVENT_DELETE, NULL);
-
-    strncpy(t->title, argv[DB_INDEX_TITLE], sizeof(t->title) - 1);
-
-    // Check if a thumbnail exists
-    char *thumb_path = lv_mem_alloc(DASH_MAX_PATH);
-    assert(thumb_path);
-    strncpy(thumb_path, argv[DB_INDEX_LAUNCH_PATH], 256);
-    size_t len = strlen(thumb_path);
-    assert(len > 3);
-    strcpy(&thumb_path[len - 3], "tbn");
-    DWORD fileAttributes = GetFileAttributes(thumb_path);
-    if (fileAttributes == INVALID_FILE_ATTRIBUTES || (fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-    {
-        lv_mem_free(thumb_path);
+        item_strings_t *item = &items->strings[i];
+        title_t *t = lv_mem_alloc(sizeof(title_t));
+        assert(t);
         t->jpg_info = NULL;
-        lvgl_removelock();
-        return global_sql_abort;
+        t->title[0] = '\0';
+
+        t->db_id = atoi(item->id);
+
+        lv_obj_t *item_container = lv_obj_create(scroller);
+        item_container->user_data = t;
+        lv_obj_add_style(item_container, &titleview_image_container_style, LV_PART_MAIN);
+        lv_obj_clear_flag(item_container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_height(item_container, DASH_THUMBNAIL_HEIGHT);
+        lv_obj_set_width(item_container, DASH_THUMBNAIL_WIDTH);
+
+        // Create a label with the game title
+        lv_obj_t *label = lv_label_create(item_container);
+        lv_obj_add_style(label, &titleview_image_text_style, LV_PART_MAIN);
+        lv_obj_set_width(label, DASH_THUMBNAIL_WIDTH);
+        lv_obj_update_layout(label);
+        lv_label_set_text(label, item->title);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+
+        lv_group_add_obj(lv_group_get_default(), item_container);
+        lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_KEY, NULL);
+        lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_FOCUSED, NULL);
+        lv_obj_add_event_cb(item_container, item_selection_callback, LV_EVENT_DEFOCUSED, NULL);
+        lv_obj_add_event_cb(item_container, item_deletion_callback, LV_EVENT_DELETE, NULL);
+
+        strncpy(t->title, item->title, sizeof(t->title) - 1);
+
+        // Check if a thumbnail exists
+        char *thumb_path = lv_mem_alloc(DASH_MAX_PATH);
+        assert(thumb_path);
+        strncpy(thumb_path, item->launch_path, DASH_MAX_PATH - 1);
+        size_t len = strlen(thumb_path);
+        assert(len > 3);
+        strcpy(&thumb_path[len - 3], "tbn");
+        DWORD fileAttributes = GetFileAttributes(thumb_path);
+        if (fileAttributes == INVALID_FILE_ATTRIBUTES || (fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            lv_mem_free(thumb_path);
+            t->jpg_info = NULL;
+            continue;
+        }
+
+        // It has a thumbnail. Create a struct to store the info.
+        t->jpg_info = lv_mem_alloc(sizeof(jpg_info_t));
+        assert(t->jpg_info);
+        lv_memset(t->jpg_info, 0, sizeof(jpg_info_t));
+        t->jpg_info->thumb_path = thumb_path;
+        lv_obj_add_event_cb(item_container, update_thumbnail_callback, LV_EVENT_DRAW_MAIN_END, NULL);
     }
-
-    // It has a thumbnail. Create a struct to store the info.
-    t->jpg_info = lv_mem_alloc(sizeof(jpg_info_t));
-    assert(t->jpg_info);
-    lv_memset(t->jpg_info, 0, sizeof(jpg_info_t));
-    t->jpg_info->thumb_path = thumb_path;
-    lv_obj_add_event_cb(item_container, update_thumbnail_callback, LV_EVENT_DRAW_MAIN_END, NULL);
-
-    lvgl_removelock();
-    return global_sql_abort;
 }
 
 static void dash_scroller_get_sort_strings(unsigned int sort_index, const char **sort_by, const char **order_by)
@@ -353,19 +362,50 @@ static int db_scan_thread_f(void *param)
     if (strcmp(p->page_title, "Recent") == 0)
     {
         lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_RECENT, settings_earliest_recent_date, settings_max_recent);
+
+        lvgl_getlock();
+        item_strings_callback_t item_cb;
+        item_cb.strings = lv_mem_alloc(sizeof(item_strings_t) * settings_max_recent);
+        item_cb.cnt = 0;
+        lvgl_removelock();
+
+        db_command_with_callback(cmd, item_scan_callback, &item_cb);
+
+        lvgl_getlock();
+        item_scan_add(p->scroller, &item_cb);
+        lv_mem_free(item_cb.strings);
+        lvgl_removelock();
     }
     else
     {
         int sort_index = 0;
+        static const int LIMIT = 20;
         const char *sort_by;
         const char *order_by;
         dash_scroller_get_sort_value(p->page_title, &sort_index);
         dash_scroller_get_sort_strings(sort_index, &sort_by, &order_by);
-        lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST, "*", p->page_title, sort_by, order_by);
-    }
-    if (!global_sql_abort)
-    {
-        db_command_with_callback(cmd, item_scan_callback, param);
+    
+        lvgl_getlock();
+        item_strings_callback_t item_cb;
+        item_cb.strings = lv_mem_alloc(sizeof(item_strings_t) * LIMIT);
+        lvgl_removelock();
+
+        int offset = 0;
+        do
+        {
+            offset += item_cb.cnt;
+            item_cb.cnt = 0;
+            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST
+                            " LIMIT %d OFFSET %d", "*", p->page_title, sort_by, order_by, LIMIT, offset);
+
+            db_command_with_callback(cmd, item_scan_callback, &item_cb);
+
+            lvgl_getlock();
+            item_scan_add(p->scroller, &item_cb);
+            lvgl_removelock();
+
+        } while (item_cb.cnt > 0);
+        lv_mem_free(item_cb.strings);
     }
     return 0;
 }
