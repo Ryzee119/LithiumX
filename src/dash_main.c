@@ -10,6 +10,7 @@ int settings_auto_launch_dvd;
 int settings_default_page_index;
 int settings_theme_colour;
 int settings_max_recent;
+int global_sql_abort;
 char settings_earliest_recent_date[20] = "2000-01-01 00:00:00";
 char settings_page_sorts_str[4096];
 const char *dash_launch_path;
@@ -211,6 +212,7 @@ void dash_init(void)
     // Open up the database. If the database doesnt exist it was created
     // It it couldnt be created on disk, it is created in RAM which is not persistent so
     // will cause a warning.
+    global_sql_abort = 0;
     in_memory_warning = !db_open();
 
     // Check that the database is valid (Correct tables, and columns). Otherwise begin a database rebuild

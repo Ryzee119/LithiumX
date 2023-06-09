@@ -180,6 +180,7 @@ void dash_init(void);
 void dash_create();
 void dash_deinit(void);
 void lvgl_getlock(void);
+bool lvgl_trylock(void);
 void lvgl_removelock(void);
 
 void dash_focus_set_final(lv_obj_t *focus);
@@ -193,6 +194,7 @@ extern int settings_auto_launch_dvd;
 extern int settings_default_page_index;
 extern int settings_theme_colour;
 extern int settings_max_recent;
+extern int global_sql_abort;
 extern char settings_page_sorts_str[4096];
 
 extern const char *dash_launch_path;

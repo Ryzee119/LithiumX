@@ -47,6 +47,11 @@ void lvgl_getlock(void)
     }
 }
 
+bool lvgl_trylock(void)
+{
+    return SDL_TryLockMutex(lvgl_mutex) == 0;
+}
+
 void lvgl_removelock(void)
 {
     if (SDL_UnlockMutex(lvgl_mutex))
