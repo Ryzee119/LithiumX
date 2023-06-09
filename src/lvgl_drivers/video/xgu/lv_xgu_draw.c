@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 #include "lv_xgu_draw.h"
-#include "lvgl/src/draw/lv_draw.h"
-#include <xgu.h>
-#include <xgux.h>
+#include "src/draw/lv_draw.h"
+#include "libs/xgu/xgu.h"
+#include "libs/xgu/xgux.h"
+#include "src/misc/lv_lru.h"
 
-#include "lvgl/src/misc/lv_lru.h"
 #include <xboxkrnl/xboxkrnl.h>
 
-int lv_texture_cache_size = 16 * 1024 * 1024;
+int lv_texture_cache_size = 8 * 1024 * 1024;
 
 static void cache_free(draw_cache_value_t *texture)
 {
@@ -19,13 +19,13 @@ static void cache_free(draw_cache_value_t *texture)
 void xgu_draw_arc(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_arc_dsc_t *dsc, const lv_point_t *center,
                   uint16_t radius, uint16_t start_angle, uint16_t end_angle)
 {
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
 }
 
 void xgu_draw_line(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_line_dsc_t *dsc, const lv_point_t *point1,
                    const lv_point_t *point2)
 {
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
 }
 
 void lv_draw_xgu_init_ctx(lv_disp_drv_t *drv, lv_draw_ctx_t *draw_ctx)

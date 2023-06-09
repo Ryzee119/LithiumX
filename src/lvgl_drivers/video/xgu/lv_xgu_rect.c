@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
 #include "lv_xgu_draw.h"
-#include "lvgl/src/draw/lv_draw.h"
-#include <xgu.h>
-#include <xgux.h>
+#include "src/draw/lv_draw.h"
+#include "libs/xgu/xgu.h"
+#include "libs/xgu/xgux.h"
 
 extern uint32_t *p;
 
-static void draw_rect_simple(const lv_area_t *draw_area)
+void draw_rect_simple(const lv_area_t *draw_area)
 {
     p = xgu_begin(p, XGU_TRIANGLE_STRIP);
     p = xgu_vertex4f(p, (float)draw_area->x1, (float)draw_area->y1, 1, 1);
@@ -71,7 +71,7 @@ static void rect_draw_shadow(const lv_area_t *draw_area, const lv_draw_rect_dsc_
     {
         return;
     }
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
     /*
     lv_color_t shadow_color;
     lv_coord_t shadow_width;
@@ -90,7 +90,7 @@ static void rect_draw_image(const lv_area_t *draw_area, const lv_draw_rect_dsc_t
     {
         return;
     }
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
     /*
     const void * bg_img_src;
     const void * bg_img_symbol_font;
@@ -108,7 +108,7 @@ static void rect_draw_outline(const lv_area_t *draw_area, const lv_draw_rect_dsc
     {
         return;
     }
-    DbgPrint("%s %d\r\n", __FUNCTION__, dsc->outline_width);
+    DbgPrint("%s - Not supported %d\r\n", __FUNCTION__, dsc->outline_width);
 }
 
 void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *src_area)
@@ -122,7 +122,7 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
 
     if (xgu_ctx->xgu_data->combiner_mode != 0)
     {
-        #include "xgu/notexture.inl"
+        #include "lvgl_drivers/video/xgu/notexture.inl"
         xgu_ctx->xgu_data->combiner_mode = 0;
     }
 
@@ -164,11 +164,11 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
         p = xgux_set_color4ub(p, grad[0].ch.red, grad[0].ch.green, grad[0].ch.blue, dsc->bg_opa);
         p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y1, 1, 1);
         p = xgux_set_color4ub(p, grad[1].ch.red, grad[1].ch.green, grad[1].ch.blue, dsc->bg_opa);
-        p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y1, 1, 1);
+        p = xgu_vertex4f(p, (float)draw_area.x2 + 1, (float)draw_area.y1, 1, 1);
         p = xgux_set_color4ub(p, grad[2].ch.red, grad[2].ch.green, grad[2].ch.blue, dsc->bg_opa);
-        p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y2, 1, 1);
+        p = xgu_vertex4f(p, (float)draw_area.x1, (float)draw_area.y2 + 1, 1, 1);
         p = xgux_set_color4ub(p, grad[3].ch.red, grad[3].ch.green, grad[3].ch.blue, dsc->bg_opa);
-        p = xgu_vertex4f(p, (float)draw_area.x2, (float)draw_area.y2, 1, 1);
+        p = xgu_vertex4f(p, (float)draw_area.x2 + 1, (float)draw_area.y2 + 1, 1, 1);
         p = xgu_end(p);
     }
 
@@ -178,7 +178,7 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
 
 void xgu_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc, const lv_area_t *src_area)
 {
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
     lv_draw_xgu_ctx_t *xgu_ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
     LV_UNUSED(xgu_ctx);
 }
@@ -186,7 +186,7 @@ void xgu_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw
 void xgu_draw_polygon(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc,
                       const lv_point_t *points, uint16_t point_cnt)
 {
-    DbgPrint("%s\r\n", __FUNCTION__);
+    DbgPrint("%s - not supported\r\n", __FUNCTION__);
     lv_draw_xgu_ctx_t *xgu_ctx = (lv_draw_xgu_ctx_t *)draw_ctx;
     LV_UNUSED(xgu_ctx);
 }

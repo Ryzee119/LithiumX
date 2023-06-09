@@ -7,11 +7,11 @@
 extern "C" {
 #endif
 
-#include "lvgl/src/draw/lv_draw.h"
-#include "lvgl/src/core/lv_disp.h"
-#include "lvgl/src/misc/lv_lru.h"
-#include <xgu.h>
-#include <xgux.h>
+#include "src/draw/lv_draw.h"
+#include "src/core/lv_disp.h"
+#include "src/misc/lv_lru.h"
+#include "libs/xgu/xgu.h"
+#include "libs/xgu/xgux.h"
 
 typedef struct {
     lv_lru_t *texture_cache;

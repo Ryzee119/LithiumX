@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "lv_xgu_draw.h"
-#include "lvgl/src/draw/lv_draw.h"
-#include <xgu.h>
-#include <xgux.h>
-
-#include "lvgl/src/misc/lv_lru.h"
+#include "src/draw/lv_draw.h"
+#include "libs/xgu/xgu.h"
+#include "libs/xgu/xgux.h"
+#include "src/misc/lv_lru.h"
 
 extern uint32_t *p;
 
@@ -206,7 +205,7 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
 
     if (xgu_ctx->xgu_data->combiner_mode != 1)
     {
-#include "xgu/texture.inl"
+        #include "lvgl_drivers/video/xgu/texture.inl"
         xgu_ctx->xgu_data->combiner_mode = 1;
     }
 
@@ -257,18 +256,20 @@ lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
     case LV_IMG_CF_RGBA8888:
     case LV_IMG_CF_RGBX8888:
     case LV_IMG_CF_RGB565:
+    case LV_IMG_CF_INDEXED_1BIT:
         break;
     case LV_IMG_CF_TRUE_COLOR_ALPHA:
         if (sizeof(lv_color_t) == 4) break;
         //Fallthrough on other than 32bpp
     default:
-        DbgPrint("Unsupported texture format %d\n", img_dsc->header.cf);
+        DbgPrint("U1nsupasdsdsported texture format %d\n", img_dsc->header.cf);
         return LV_RES_INV;
     }
     xgu_draw_img_decoded(draw_ctx, dsc, src_area, img_dsc->data, img_dsc->header.cf);
     return LV_RES_OK;
 }
 
+void draw_rect_simple(const lv_area_t *draw_area);
 void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
                           const lv_area_t *src_area, const uint8_t *src_buf, lv_img_cf_t cf)
 {
@@ -294,6 +295,24 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     if (draw_area.y1 == draw_area.y2)
         draw_area.y2++;
 
+    lv_color_t recolor = lv_color_make(255, 255, 255);
+
+    // If we are about the draw 1 bit indexed image. Setup draw color froms src_buf;
+    if (cf == LV_IMG_CF_INDEXED_1BIT)
+    {
+        // Draw background
+        lv_color_t *c2 = (lv_color_t *)&src_buf[0];
+        p = xgux_set_color4ub(p, c2->ch.red, c2->ch.green,
+                                 c2->ch.blue, 0xFF);
+        draw_rect_simple(src_area);
+
+        // Prep foreground
+        lv_color_t *c1 = (lv_color_t *)&src_buf[4];
+        recolor.ch.red = c1->ch.red;
+        recolor.ch.green = c1->ch.green;
+        recolor.ch.blue = c1->ch.blue;
+    }
+
     // Create a checksum of some initial data to create a unique key for the texture cache
     uint32_t key = 0;
     int max = (lv_area_get_width(src_area) *
@@ -305,7 +324,7 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
     while (i < end) key += _src[i++];
     if (xgu_ctx->xgu_data->combiner_mode != 1)
     {
-        #include "xgu/texture.inl"
+        #include "lvgl_drivers/video/xgu/texture.inl"
         xgu_ctx->xgu_data->combiner_mode = 1;
     }
 
@@ -338,25 +357,42 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
             xgu_cf = XGU_TEXTURE_FORMAT_R5G6B5;
             bytes_pp = 2;
             break;
+        case LV_IMG_CF_INDEXED_1BIT:
+            xgu_cf = XGU_TEXTURE_FORMAT_A8;
+            bytes_pp = 1;
+            int w = lv_area_get_width(src_area);
+            int h = lv_area_get_height(src_area);
+            void *buf = lv_mem_alloc(w * h * bytes_pp);
+            if (buf == NULL)
+            {
+                return;
+            }
+            amask_to_a(buf, &src_buf[8], w, h, w, bytes_pp);
+            src_buf = buf;
+            break;
         default:
             DbgPrint("Unsupported texture format %d\n", cf);
             return;
         }
         texture = create_texture(xgu_ctx, src_buf, src_area, xgu_cf, bytes_pp, (uint32_t)key);
+        if (cf == LV_IMG_CF_INDEXED_1BIT)
+        {
+            lv_mem_free((void *)src_buf);
+        }
         if (texture == NULL)
         {
             return;
         }
     }
 
-    if (dsc->recolor_opa > LV_OPA_TRANSP)
+    if (0 && dsc->recolor_opa > LV_OPA_TRANSP)
     {
         p = xgux_set_color4ub(p, dsc->recolor.ch.red, dsc->recolor.ch.green,
-                              dsc->recolor.ch.blue, dsc->recolor_opa);
+                                 dsc->recolor.ch.blue, dsc->recolor_opa);
     }
     else
     {
-        p = xgux_set_color4ub(p, 255, 255, 255, 255);
+        p = xgux_set_color4ub(p, recolor.ch.red, recolor.ch.green, recolor.ch.blue, 255);
     }
 
     bind_texture(xgu_ctx, texture, (uint32_t)key,

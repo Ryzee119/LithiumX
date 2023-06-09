@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <SDL.h>
-#include "lv_port_disp.h"
+#include "../../lv_port_disp.h"
 #include "lvgl.h"
 
 static void *fb1, *fb2;
