@@ -257,7 +257,7 @@
  *-----------*/
 
 /*1: Show CPU usage and FPS count*/
-#define SHOW_FPS_MEM
+//#define SHOW_FPS_MEM
 #ifdef SHOW_FPS_MEM
 #define LV_USE_PERF_MONITOR 1
 #else
