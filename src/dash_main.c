@@ -158,18 +158,17 @@ static int db_rebuild_progress_thread_f(void *param)
     int *complete = label->user_data;
     while (1)
     {
-        lvgl_getlock();
         if (*complete)
         {
             lv_mem_free(complete);
             break;
         }
         extern int db_rebuild_scanned_items;
+        lvgl_getlock();
         lv_label_set_text_fmt(label, "Rebuilding Database, please wait... %d", db_rebuild_scanned_items);
         lvgl_removelock();
         SDL_Delay(100);
     }
-    lvgl_removelock();
     return 0;
 }
 

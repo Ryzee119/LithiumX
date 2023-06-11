@@ -3,6 +3,10 @@
 #include <lvgl.h>
 #include "lithiumx.h"
 
+static CRITICAL_SECTION tlsf_crit_sec;
+static tlsf_t mem_pool;
+static uint8_t mem_pool_data[3U * 1024U * 1024U];
+
 static SDL_mutex *lvgl_mutex;
 
 keyboard_map_t lvgl_keyboard_map[] =
@@ -39,17 +43,14 @@ gamecontroller_map_t lvgl_gamecontroller_map[] =
     {.sdl_map = 0, .lvgl_map = 0}
 };
 
+// lvgl isn't thread safe, but we can somewhat make it
+// by wrapping task handler and any other interactions with these locks
 void lvgl_getlock(void)
 {
     if (SDL_LockMutex(lvgl_mutex))
     {
         assert(0);
     }
-}
-
-bool lvgl_trylock(void)
-{
-    return SDL_TryLockMutex(lvgl_mutex) == 0;
 }
 
 void lvgl_removelock(void)
@@ -60,9 +61,35 @@ void lvgl_removelock(void)
     }
 }
 
+// Output handler for lvgl
 void lvgl_putstring(const char *buf)
 {
     printf("%s", buf);
+}
+
+// Replace lvgls internal allocator with basically the same thing
+// but wrapped in crit sec for thread safety.
+void *lx_mem_alloc(size_t size)
+{
+    EnterCriticalSection(&tlsf_crit_sec);
+    void *ptr = tlsf_malloc(mem_pool, size);
+    LeaveCriticalSection(&tlsf_crit_sec);
+    return ptr;
+}
+
+void *lx_mem_realloc(void *data, size_t new_size)
+{
+    EnterCriticalSection(&tlsf_crit_sec);
+    void *ptr = tlsf_realloc(mem_pool, data, new_size);
+    LeaveCriticalSection(&tlsf_crit_sec);
+    return ptr;
+}
+
+void lx_mem_free(void *data)
+{
+    EnterCriticalSection(&tlsf_crit_sec);
+    tlsf_free(mem_pool, data);
+    LeaveCriticalSection(&tlsf_crit_sec);
 }
 
 static void npf_putchar(int c, void *ctx)
@@ -92,6 +119,9 @@ int main(int argc, char* argv[]) {
     (void) argv;
 
     int w,h;
+    InitializeCriticalSection(&tlsf_crit_sec);
+    mem_pool = tlsf_create_with_pool(mem_pool_data, sizeof(mem_pool_data));
+
     dash_printf(LEVEL_TRACE, "Initialising Platform\n");
     platform_init(&w, &h);
 

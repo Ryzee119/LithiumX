@@ -42,6 +42,7 @@ int strcasecmp(const char *s1, const char *s2);
 #include "libs/jpg_decoder/jpg_decoder.h"
 #include "libs/sxml/sxml.h"
 #include "libs/toml/toml.h"
+#include "libs/tlsf/tlsf.h"
 #include "platform/platform.h"
 
 /// Macro that returns the minimum of two numbers
@@ -180,13 +181,16 @@ void dash_init(void);
 void dash_create();
 void dash_deinit(void);
 void lvgl_getlock(void);
-bool lvgl_trylock(void);
 void lvgl_removelock(void);
+void *lx_mem_alloc(size_t size);
+void *lx_mem_realloc(void *data, size_t new_size);
+void lx_mem_free(void *data);
 
 void dash_focus_set_final(lv_obj_t *focus);
 void dash_focus_change_depth(lv_obj_t *new_focus);
 lv_obj_t *dash_focus_pop_depth();
 void dash_focus_change(lv_obj_t *new_obj);
+
 
 extern toml_table_t *dash_search_paths;
 extern int settings_use_fahrenheit;

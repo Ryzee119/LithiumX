@@ -282,9 +282,9 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *items)
         assert(t);
         t->jpg_info = NULL;
         t->title[0] = '\0';
-
         t->db_id = atoi(item->id);
 
+        lvgl_getlock();
         lv_obj_t *item_container = lv_obj_create(scroller);
         item_container->user_data = t;
         lv_obj_add_style(item_container, &titleview_image_container_style, LV_PART_MAIN);
@@ -307,6 +307,7 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *items)
         lv_obj_add_event_cb(item_container, item_deletion_callback, LV_EVENT_DELETE, NULL);
 
         strncpy(t->title, item->title, sizeof(t->title) - 1);
+        lvgl_removelock();
 
         // Check if a thumbnail exists
         char *thumb_path = lv_mem_alloc(DASH_MAX_PATH);
@@ -319,16 +320,17 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *items)
         if (fileAttributes == INVALID_FILE_ATTRIBUTES || (fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
             lv_mem_free(thumb_path);
-            t->jpg_info = NULL;
             continue;
         }
 
-        // It has a thumbnail. Create a struct to store the info.
-        t->jpg_info = lv_mem_alloc(sizeof(jpg_info_t));
-        assert(t->jpg_info);
-        lv_memset(t->jpg_info, 0, sizeof(jpg_info_t));
-        t->jpg_info->thumb_path = thumb_path;
+        jpg_info_t *jpg_info = lv_mem_alloc(sizeof(jpg_info_t));
+        lv_memset(jpg_info, 0, sizeof(jpg_info_t));
+        jpg_info->thumb_path = thumb_path;
+
+        lvgl_getlock();
+        t->jpg_info = jpg_info;
         lv_obj_add_event_cb(item_container, update_thumbnail_callback, LV_EVENT_DRAW_MAIN_END, NULL);
+        lvgl_removelock();
     }
 }
 
@@ -358,6 +360,7 @@ static int db_scan_thread_f(void *param)
 {
     parse_handle_t *p = param;
     char cmd[SQL_MAX_COMMAND_LEN];
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_LOW);
 
     if (strcmp(p->page_title, "Recent") == 0)
     {
@@ -365,33 +368,27 @@ static int db_scan_thread_f(void *param)
                         SQL_TITLE_DB_ID "," SQL_TITLE_NAME "," SQL_TITLE_LAUNCH_PATH,
                         settings_earliest_recent_date, settings_max_recent);
 
-        lvgl_getlock();
         item_strings_callback_t item_cb;
         item_cb.strings = lv_mem_alloc(sizeof(item_strings_t) * settings_max_recent);
         item_cb.cnt = 0;
-        lvgl_removelock();
 
         db_command_with_callback(cmd, item_scan_callback, &item_cb);
 
-        lvgl_getlock();
         item_scan_add(p->scroller, &item_cb);
         lv_mem_free(item_cb.strings);
-        lvgl_removelock();
     }
     else
     {
         int sort_index = 0;
-        static const int LIMIT = 20;
+        static const int LIMIT = 32;
         const char *sort_by;
         const char *order_by;
         dash_scroller_get_sort_value(p->page_title, &sort_index);
         dash_scroller_get_sort_strings(sort_index, &sort_by, &order_by);
-    
-        lvgl_getlock();
+
         item_strings_callback_t item_cb;
         item_cb.strings = lv_mem_alloc(sizeof(item_strings_t) * LIMIT);
         item_cb.cnt = 0;
-        lvgl_removelock();
 
         int offset = 0;
         do
@@ -401,13 +398,11 @@ static int db_scan_thread_f(void *param)
             lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_SORTED_LIST " LIMIT %d OFFSET %d",
                             SQL_TITLE_DB_ID "," SQL_TITLE_NAME "," SQL_TITLE_LAUNCH_PATH,
                             p->page_title, sort_by, order_by, LIMIT, offset);
-
             db_command_with_callback(cmd, item_scan_callback, &item_cb);
-            lvgl_getlock();
             item_scan_add(p->scroller, &item_cb);
-            lvgl_removelock();
 
         } while (item_cb.cnt > 0);
+
         lv_mem_free(item_cb.strings);
     }
     return 0;
