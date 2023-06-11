@@ -85,7 +85,7 @@ bool db_open()
     int rc = sqlite3_open(DASH_DATABASE_PATH, &db);
     if (rc != 0)
     {
-        dash_printf(LEVEL_ERROR, "SQL WARN: Could not opened %s."
+        dash_printf(LEVEL_ERROR, "SQL WARN: Could not open %s."
                                  "Database has been opened in memory only\n", DASH_DATABASE_PATH);
         rc = sqlite3_open_v2(":memory:", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
         assert(rc == 0);

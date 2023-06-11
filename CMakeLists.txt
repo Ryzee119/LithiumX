@@ -5,8 +5,10 @@ project(LithiumX C)
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=undefined -fsanitize-undefined-trap-on-error -fno-omit-frame-pointer")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNDEBUG")
 
-find_package(SDL2 REQUIRED)
-find_package(JPEG REQUIRED)
+find_package(PkgConfig)
+pkg_check_modules(SDL2 REQUIRED sdl2)
+pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
+pkg_check_modules(LIBJPEG REQUIRED libjpeg)
 
 add_library(sqlite)
 target_compile_options(sqlite PRIVATE)
@@ -29,9 +31,14 @@ target_sources(toml PRIVATE "src/libs/toml/toml.c")
 add_library(sxml)
 target_sources(sxml PRIVATE "src/libs/sxml/sxml.c")
 
+add_library(tlsf)
+target_sources(tlsf PRIVATE "src/libs/tlsf/tlsf.c")
+
 add_library(jpg_decoder)
 target_sources(jpg_decoder PRIVATE "src/libs/jpg_decoder/jpg_decoder.c")
-target_link_libraries(jpg_decoder PRIVATE JPEG::JPEG SDL2::SDL2)
+target_include_directories(jpg_decoder PUBLIC ${SDL2_INCLUDE_DIRS} ${TURBOJPEG_INCLUDE_DIRS})
+target_compile_options(jpg_decoder PUBLIC ${SDL2_CFLAGS_OTHER})
+target_link_libraries(jpg_decoder PRIVATE ${SDL2_LIBRARIES} ${TURBOJPEG_LIBRARIES} ${LIBJPEG_LIBRARIES})
 
 #lvgl lib
 set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/lv_conf.h" CACHE STRING "" FORCE)
@@ -74,10 +81,6 @@ target_compile_options(LithiumX PUBLIC -Wall -Wextra -std=c99)
 target_compile_definitions(LithiumX PUBLIC "-DLVGL_USE_CUSTOM_KEYBOARD_MAP")
 target_include_directories(LithiumX PUBLIC . libs)
 
-if(TARGET SDL2::SDL2main)
-    target_link_libraries(LithiumX PRIVATE SDL2::SDL2main)
-endif()
-
-target_link_libraries(LithiumX PRIVATE lvgl sqlite jpg_decoder toml sxml SDL2::SDL2)
+target_link_libraries(LithiumX PRIVATE lvgl sqlite jpg_decoder toml sxml tlsf ${SDL2_LIBRARIES})
 
 #target_compile_options(LithiumX PRIVATE -O2)

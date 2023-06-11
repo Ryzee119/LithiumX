@@ -91,7 +91,6 @@ static void change_page_sort_sub_submenu_callback(void *param)
     }
     strncpy(settings_page_sorts_str, new_sorts, sizeof(settings_page_sorts_str) - 1);
     lv_mem_free(new_sorts);
-    printf("Changed Dash Sorts. Values are: %s\n", settings_page_sorts_str);
     dash_settings_apply();
     dash_scroller_resort_page(dash_scroller_get_title(page_index));
 }
@@ -331,7 +330,8 @@ static void change_search_path_submenu(void *param)
     lv_obj_t *l = lv_label_create(c);
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_obj_set_size(l, lv_obj_get_width(c), LV_SIZE_CONTENT);
-    lv_label_set_text_fmt(l, "Not supported yet. To change folder search paths, edit \"%s\". Then rebuild database", DASH_SEARCH_PATH_CONFIG);
+    lv_label_set_text_fmt(l, "Not supported yet. To change folder search paths, edit \"%s\"."
+                            " Then rebuild database", DASH_SEARCH_PATH_CONFIG);
 }
 
 void dash_settings_open()

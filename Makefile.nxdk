@@ -32,8 +32,9 @@ SRCS += \
     $(CURDIR)/src/libs/jpg_decoder/jpg_decoder.c \
     $(CURDIR)/src/libs/sxml/sxml.c \
     $(CURDIR)/src/libs/toml/toml.c \
-	$(CURDIR)/src/libs/ftpd/ftp_file.c src/libs/ftpd/ftp_server.c src/libs/ftpd/ftp.c \
-	$(NXDK_DIR)/lib/net/lwip/src/apps/sntp/sntp.c
+    $(CURDIR)/src/libs/tlsf/tlsf.c \
+    $(CURDIR)/src/libs/ftpd/ftp_file.c src/libs/ftpd/ftp_server.c src/libs/ftpd/ftp.c \
+    $(NXDK_DIR)/lib/net/lwip/src/apps/sntp/sntp.c
 
 CFLAGS += \
 	-I$(CURDIR)/src \
