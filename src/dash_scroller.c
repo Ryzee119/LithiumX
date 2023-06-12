@@ -107,22 +107,6 @@ static int get_launch_path_callback(void *param, int argc, char **argv, char **a
     return 0;
 }
 
-static void launch_title_callback(void *param)
-{
-    char cmd[SQL_MAX_COMMAND_LEN];
-    char time_str[20];
-
-    title_t *t = param;
-    lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_LAUNCH_PATH, t->db_id);
-    db_command_with_callback(cmd, get_launch_path_callback, NULL);
-
-    platform_get_iso8601_time(time_str);
-    lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, t->db_id);
-    db_command_with_callback(cmd, NULL, NULL);
-
-    lv_set_quit(LV_QUIT_OTHER);
-}
-
 static void item_selection_callback(lv_event_t *event)
 {
     lv_event_code_t e = lv_event_get_code(event);
@@ -222,7 +206,16 @@ static void item_selection_callback(lv_event_t *event)
         }
         else if (key == LV_KEY_ENTER && *current_index > 0)
         {
-            confirmbox_open(t->title, launch_title_callback, t);
+            char cmd[SQL_MAX_COMMAND_LEN];
+            char time_str[20];
+            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_LAUNCH_PATH, t->db_id);
+            db_command_with_callback(cmd, get_launch_path_callback, NULL);
+
+            platform_get_iso8601_time(time_str);
+            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, t->db_id);
+            db_command_with_callback(cmd, NULL, NULL);
+
+            lv_set_quit(LV_QUIT_OTHER);
         }
     }
 }
