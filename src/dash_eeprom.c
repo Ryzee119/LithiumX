@@ -30,10 +30,20 @@
 static DWORD video_flags;
 static DWORD audio_flags;
 
+static void show_confirm_box()
+{
+    lv_obj_t *obj = container_open();
+    lv_obj_t *label = lv_label_create(obj);
+    lv_label_set_text(label, "Setting successfully applied");
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+}
+
 /* AUDIO SETTINGS */
 static void audio_apply_settings()
 {
     ExSaveNonVolatileSetting(XC_AUDIO, 4, &audio_flags, sizeof(audio_flags));
+    show_confirm_box();
 }
 
 static void audio_mode_enable(void *param)
@@ -129,6 +139,7 @@ static void dash_eeprom_audio_settings_open()
 static void video_apply_settings()
 {
     ExSaveNonVolatileSetting(XC_VIDEO, 4, &video_flags, sizeof(video_flags));
+    show_confirm_box();
 }
 
 static void video_ratio_changed(void *param)
