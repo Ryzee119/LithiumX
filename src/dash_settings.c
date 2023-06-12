@@ -54,7 +54,7 @@ static void fahrenheit_change_callback(void *param)
     settings_use_fahrenheit = LV_MIN(1, settings_use_fahrenheit);
     settings_use_fahrenheit ^= 1;
     lv_table_set_cell_value(param, 0, 0, (settings_use_fahrenheit) ? f_on : f_off);
-    dash_settings_apply();
+    dash_settings_apply(false);
 }
 
 static void autolaunch_dvd_change_callback(void *param)
@@ -62,7 +62,7 @@ static void autolaunch_dvd_change_callback(void *param)
     settings_auto_launch_dvd = LV_MIN(1, settings_auto_launch_dvd);
     settings_auto_launch_dvd ^= 1;
     lv_table_set_cell_value(param, 1, 0, (settings_auto_launch_dvd) ? d_on : d_off);
-    dash_settings_apply();
+    dash_settings_apply(false);
 }
 
 static void change_page_sort_sub_submenu_callback(void *param)
@@ -91,7 +91,7 @@ static void change_page_sort_sub_submenu_callback(void *param)
     }
     strncpy(settings_page_sorts_str, new_sorts, sizeof(settings_page_sorts_str) - 1);
     lv_mem_free(new_sorts);
-    dash_settings_apply();
+    dash_settings_apply(true);
     dash_scroller_resort_page(dash_scroller_get_title(page_index));
 }
 
@@ -99,7 +99,7 @@ static void startup_page_change_submenu_callback(void *param)
 {
     int new_index = (int)((intptr_t)param);
     settings_default_page_index = new_index;
-    dash_settings_apply();
+    dash_settings_apply(true);
 }
 
 static void change_startup_page_submenu(void *param)
@@ -176,7 +176,7 @@ static void change_max_recent_submenu_cb(void *param)
 {
     int n = (intptr_t)param;
     settings_max_recent = n;
-    dash_settings_apply();
+    dash_settings_apply(true);
 }
 
 static void change_max_recent_submenu(void *param)
@@ -234,12 +234,16 @@ static void base_color_change_submenu_callback(lv_event_t *event)
    
     lv_obj_t *color_rect = lv_event_get_user_data(event);
     lv_table_t *table = (lv_table_t *)target;
+    lv_key_t key = *((lv_key_t *)lv_event_get_param(event));
 
     lv_color_t c = hsv_colors[(table->row_act * table->col_cnt) + table->col_act];
     lv_obj_set_style_bg_color(color_rect, c, LV_PART_MAIN);
 
     settings_theme_colour = (c.ch.red << 16) | (c.ch.green << 8) | (c.ch.blue);
-    dash_settings_apply();
+    if (key == LV_KEY_ENTER)
+    {
+        dash_settings_apply(true);
+    }
 }
 
 static void base_color_draw_hsv(lv_event_t *e)
@@ -361,7 +365,7 @@ void dash_settings_read()
     db_command_with_callback(SQL_SETTINGS_READ, dash_settings_read_callback, NULL);
 }
 
-void dash_settings_apply()
+void dash_settings_apply(bool confirm_box)
 {
     db_command_with_callback(SQL_SETTINGS_DELETE_ENTRIES, NULL, NULL);
 
@@ -385,4 +389,12 @@ void dash_settings_apply()
             settings_earliest_recent_date,
             settings_page_sorts_str,
             settings_max_recent_str);
+    if (confirm_box)
+    {
+        lv_obj_t *obj = container_open();
+        lv_obj_t *label = lv_label_create(obj);
+        lv_label_set_text(label, "Setting successfully applied");
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    }
 }

@@ -210,7 +210,7 @@ static void dash_clear_recent(void *param)
     // Set settings_earliest_recent_date to now which effectively clears
     // recent items
     platform_get_iso8601_time(settings_earliest_recent_date);
-    dash_settings_apply();
+    dash_settings_apply(false);
 
     static const char *cmd = "DELETE FROM " SQL_TITLES_NAME " WHERE page = \"__RECENT__\"";
     db_command_with_callback(cmd, NULL, NULL);

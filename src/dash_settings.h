@@ -11,7 +11,7 @@ extern "C" {
 #include "lithiumx.h"
 
 void dash_settings_open(void);
-void dash_settings_apply(void);
+void dash_settings_apply(bool confirm_box);
 void dash_settings_read(void);
 
 #ifdef __cplusplus
