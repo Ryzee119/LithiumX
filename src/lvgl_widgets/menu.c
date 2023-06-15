@@ -93,6 +93,7 @@ static void menu_wrap(lv_event_t *event)
             if (t->row_act == 0 && prev_row == 0)
             {
                 t->row_act = t->row_cnt - 1;
+                lv_obj_invalidate(t);
             }
         }
 
@@ -101,6 +102,7 @@ static void menu_wrap(lv_event_t *event)
             if (t->row_act == (t->row_cnt - 1) && prev_row == (t->row_cnt - 1))
             {
                 t->row_act = 0;
+                lv_obj_invalidate(t);
             }
         }
         lv_obj_get_parent(menu)->user_data = (void *)(intptr_t)t->row_act;
