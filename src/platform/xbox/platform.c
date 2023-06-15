@@ -118,6 +118,12 @@ void platform_init(int *w, int *h)
         }
     }
 
+    // Show a loading screen as early as possible so we indicate some sign of life
+    debugClearScreen();
+    const char *loading_str = "Mounting Partitions";
+    debugMoveCursor(*w / 2 - ((strlen(loading_str) / 2) * 8), *h / 2);
+    debugPrint("%s ", loading_str);
+
     // nxdk automounts D to the root xbe path. Lets undo that
     if (nxIsDriveMounted('D'))
     {
@@ -132,6 +138,7 @@ void platform_init(int *w, int *h)
     nxGetCurrentXbeNtPath(targetPath);
     *(strrchr(targetPath, '\\') + 1) = '\0';
     nxMountDrive('Q', targetPath);
+    debugPrint(".");
 
     // Mount stock partitions
     nxMountDrive('C', "\\Device\\Harddisk0\\Partition2\\");
@@ -139,6 +146,7 @@ void platform_init(int *w, int *h)
     nxMountDrive('X', "\\Device\\Harddisk0\\Partition3\\");
     nxMountDrive('Y', "\\Device\\Harddisk0\\Partition4\\");
     nxMountDrive('Z', "\\Device\\Harddisk0\\Partition5\\");
+    debugPrint(".");
 
     // Mount extended partitions
     // NOTE: Both the retail kernel and modified kernels will mount these partitions
@@ -153,6 +161,7 @@ void platform_init(int *w, int *h)
     nxMountDrive('A', "\\Device\\Harddisk0\\Partition12\\");
     nxMountDrive('B', "\\Device\\Harddisk0\\Partition13\\");
     nxMountDrive('P', "\\Device\\Harddisk0\\Partition14\\");
+    debugPrint(".");
 
     CreateDirectoryA("E:\\UDATA", NULL);
     CreateDirectoryA("E:\\UDATA\\LithiumX", NULL);
@@ -162,6 +171,7 @@ void platform_init(int *w, int *h)
         fprintf(fp, "TitleName=LithiumX Dashboard\r\n");
         fclose(fp);
     }
+    debugPrint(".");
 
     sys_thread_new("XBOX_DVD_AUTOLAUNCH", autolaunch_dvd, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     sys_thread_new("XBOX_NETWORK", network_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
