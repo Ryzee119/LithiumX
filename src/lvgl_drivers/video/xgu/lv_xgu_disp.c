@@ -18,7 +18,9 @@ uint32_t *p;
 static void end_frame()
 {
     pb_end(p);
-    while (pb_busy());
+    while (pb_busy()) {
+        SDL_Delay(0);
+    }
     while (pb_finished());
 }
 
@@ -27,7 +29,6 @@ static void begin_frame()
     pb_wait_for_vbl();
     pb_reset();
     pb_target_back_buffer();
-    while (pb_busy());
     p = pb_begin();
     p = xgu_set_color_clear_value(p, 0xff000000);
     p = xgu_clear_surface(p, XGU_CLEAR_Z | XGU_CLEAR_STENCIL | XGU_CLEAR_COLOR);
@@ -91,7 +92,7 @@ void lv_port_disp_init(int width, int height)
         0.0f, 0.0f, 0.0f, 1.0f};
 
     p = xgu_set_blend_enable(p, true);
-    p = xgu_set_depth_test_enable(p, true);
+    p = xgu_set_depth_test_enable(p, false);
     p = xgu_set_blend_func_sfactor(p, XGU_FACTOR_SRC_ALPHA);
     p = xgu_set_blend_func_dfactor(p, XGU_FACTOR_ONE_MINUS_SRC_ALPHA);
     p = xgu_set_depth_func(p, XGU_FUNC_LESS_OR_EQUAL);

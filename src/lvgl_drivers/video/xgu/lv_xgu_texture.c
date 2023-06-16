@@ -262,7 +262,7 @@ lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
         if (sizeof(lv_color_t) == 4) break;
         //Fallthrough on other than 32bpp
     default:
-        DbgPrint("U1nsupasdsdsported texture format %d\n", img_dsc->header.cf);
+        DbgPrint("Unsupported texture format %d\n", img_dsc->header.cf);
         return LV_RES_INV;
     }
     xgu_draw_img_decoded(draw_ctx, dsc, src_area, img_dsc->data, img_dsc->header.cf);
