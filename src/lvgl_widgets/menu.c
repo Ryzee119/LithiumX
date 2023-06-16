@@ -93,7 +93,7 @@ static void menu_wrap(lv_event_t *event)
             if (t->row_act == 0 && prev_row == 0)
             {
                 t->row_act = t->row_cnt - 1;
-                lv_obj_invalidate(t);
+                lv_obj_invalidate(menu);
             }
         }
 
@@ -102,7 +102,7 @@ static void menu_wrap(lv_event_t *event)
             if (t->row_act == (t->row_cnt - 1) && prev_row == (t->row_cnt - 1))
             {
                 t->row_act = 0;
-                lv_obj_invalidate(t);
+                lv_obj_invalidate(menu);
             }
         }
         lv_obj_get_parent(menu)->user_data = (void *)(intptr_t)t->row_act;
@@ -192,4 +192,5 @@ void menu_force_value(lv_obj_t *menu, int row)
     t->row_act = row;
     lv_obj_get_parent(menu)->user_data = (void *)(intptr_t)t->row_act;
     lv_event_send(menu, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_invalidate(menu);
 }
