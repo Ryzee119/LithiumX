@@ -10,7 +10,7 @@ LV_CONF_PATH = "lv_conf.h"
 
 # Include my files
 SRCS += \
-	$(CURDIR)/src/dash_database.c \
+    $(CURDIR)/src/dash_database.c \
     $(CURDIR)/src/dash_eeprom.c \
     $(CURDIR)/src/dash_main.c \
     $(CURDIR)/src/dash_mainmenu.c \
@@ -18,7 +18,7 @@ SRCS += \
     $(CURDIR)/src/dash_settings.c \
     $(CURDIR)/src/dash_styles.c \
     $(CURDIR)/src/dash_synop.c \
-	$(CURDIR)/src/dash_browser.c \
+    $(CURDIR)/src/dash_browser.c \
     $(CURDIR)/src/main.c \
     $(CURDIR)/src/lvgl_widgets/confirmbox.c \
     $(CURDIR)/src/lvgl_widgets/generic_container.c \
@@ -37,44 +37,45 @@ SRCS += \
     $(NXDK_DIR)/lib/net/lwip/src/apps/sntp/sntp.c
 
 CFLAGS += \
-	-I$(CURDIR)/src \
+    -I$(CURDIR)/src \
     -I$(CURDIR)/src/libs \
-	-DLV_LVGL_H_INCLUDE_SIMPLE -DLV_CONF_PATH=$(LV_CONF_PATH) \
-	-DWIN32 \
-	-DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
-	-DSDL_DISABLE_JOYSTICK_INIT_DELAY \
-	-DLVGL_USE_CUSTOM_CONTROLLER_MAP \
-	-DLVGL_USE_CUSTOM_KEYBOARD_MAP \
-	-DFTP_CUSTOM_ROOT_PATH \
-	-DSNTP_SET_SYSTEM_TIME=xbox_sntp_set_time \
-	-DSNTP_SERVER_DNS=1 \
-	-Wno-implicit-function-declaration \
-	-DMEMP_NUM_NETBUF=6 -DMEMP_NUM_NETCONN=6 \
-	-DDEBUG_CONSOLE \
-	-DNDEBUG \
-	-O2
+    -DLV_LVGL_H_INCLUDE_SIMPLE -DLV_CONF_PATH=$(LV_CONF_PATH) \
+    -DWIN32 \
+    -DBUILD_VERSION=\"$(GIT_COMMIT_HASH)\" \
+    -DSDL_DISABLE_JOYSTICK_INIT_DELAY \
+    -DLVGL_USE_CUSTOM_CONTROLLER_MAP \
+    -DLVGL_USE_CUSTOM_KEYBOARD_MAP \
+    -DFTP_CUSTOM_ROOT_PATH \
+    -DSNTP_SET_SYSTEM_TIME=xbox_sntp_set_time \
+    -DSNTP_SERVER_DNS=1 \
+    -Wno-implicit-function-declaration \
+    -DMEMP_NUM_NETBUF=6 -DMEMP_NUM_NETCONN=6 \
+    -DDEBUG_CONSOLE \
+    -DNDEBUG \
+    -O2
 
 # Include SQLITE
 SRCS += $(CURDIR)/src/libs/sqlite3/sqlite3.c $(CURDIR)/src/platform/win32/sqlite_win32.c
 CFLAGS += \
-	-DSQLITE_WITHOUT_MSIZE=1 \
-	-DSQLITE_OS_OTHER=1 \
+    -DSQLITE_WITHOUT_MSIZE=1 \
+    -DSQLITE_OS_OTHER=1 \
     -DSQLITE_DEFAULT_MEMSTATUS=0 \
     -DSQLITE_OMIT_DEPRECATED \
     -DSQLITE_OMIT_PROGRESS_CALLBACK \
     -DSQLITE_OMIT_SHARED_CACHE \
     -DSQLITE_OMIT_AUTOINIT \
-	-DSQLITE_DISABLE_INTRINSIC \
-	-DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+    -DSQLITE_DISABLE_INTRINSIC \
+    -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
 
 # Include XGU
 XGU_DIR = $(CURDIR)/src/libs/xgu
 XGU_LVGL_DRV_DIR = $(CURDIR)/src/lvgl_drivers/video/xgu
 XGU_FLAGS = -I$(XGU_DIR)
-XGU_DRV = $(XGU_LVGL_DRV_DIR)/lv_xgu_disp.c \
-		  $(XGU_LVGL_DRV_DIR)/lv_xgu_draw.c \
-		  $(XGU_LVGL_DRV_DIR)/lv_xgu_rect.c \
-		  $(XGU_LVGL_DRV_DIR)/lv_xgu_texture.c
+XGU_DRV = \
+    $(XGU_LVGL_DRV_DIR)/lv_xgu_disp.c \
+    $(XGU_LVGL_DRV_DIR)/lv_xgu_draw.c \
+    $(XGU_LVGL_DRV_DIR)/lv_xgu_rect.c \
+    $(XGU_LVGL_DRV_DIR)/lv_xgu_texture.c
 CFLAGS += $(XGU_FLAGS)
 SRCS += $(XGU_DRV)
 SHADER_OBJS = $(XGU_LVGL_DRV_DIR)/texture.inl $(XGU_LVGL_DRV_DIR)/notexture.inl
