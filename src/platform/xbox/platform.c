@@ -178,6 +178,8 @@ void platform_init(int *w, int *h)
 }
 
 void nvnetdrv_stop_txrx (void);
+int XboxGetFullLaunchPath(const char *input, char *output);
+
 void platform_quit(lv_quit_event_t event)
 {
     char launch_path[DASH_MAX_PATHLEN];
@@ -210,8 +212,13 @@ void platform_quit(lv_quit_event_t event)
             strncpy(launch_path, dash_launch_path, sizeof(launch_path));
         }
         debugClearScreen();
+
+        char xbox_launch_path[MAX_PATH];
+        XboxGetFullLaunchPath(launch_path, xbox_launch_path);
+
         DbgPrint("Launching %s\n", launch_path);
-        XLaunchXBE(launch_path);
+        DbgPrint("Launching %s\n", xbox_launch_path);
+        XLaunchXBE(xbox_launch_path);
         DbgPrint("Error launching. Reboot\n");
         Sleep(500);
         DbgPrint("ERROR: Could not launch %s\n", launch_path);
