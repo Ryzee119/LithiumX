@@ -18,15 +18,11 @@ uint32_t *p;
 static void end_frame()
 {
     pb_end(p);
-    while (pb_busy()) {
-        SDL_Delay(0);
-    }
     while (pb_finished());
 }
 
 static void begin_frame()
 {
-    pb_wait_for_vbl();
     pb_reset();
     pb_target_back_buffer();
     p = pb_begin();
@@ -39,10 +35,8 @@ void lvgl_removelock(void);
 
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
 {
-    lvgl_removelock();
     end_frame();
     begin_frame();
-    lvgl_getlock();
     lv_disp_flush_ready(disp_drv);
 }
 
