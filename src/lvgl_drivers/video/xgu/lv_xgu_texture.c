@@ -315,8 +315,8 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
 
     // Create a checksum of some initial data to create a unique key for the texture cache
     uint32_t key = 0;
-    int max = (lv_area_get_width(src_area) *
-               lv_area_get_width(src_area) * sizeof(lv_color_t)) / 4;
+    uint32_t max = (lv_area_get_width(src_area) *
+               lv_area_get_height(src_area) * sizeof(lv_color_t)) / 4;
     uint32_t *_src = (uint32_t *)src_buf;
     int i = 0, end = LV_MIN(i + 16, max);
     while (i < end) key += _src[i++];
@@ -385,7 +385,7 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
         }
     }
 
-    if (0 && dsc->recolor_opa > LV_OPA_TRANSP)
+    if (dsc->recolor_opa > LV_OPA_TRANSP)
     {
         p = xgux_set_color4ub(p, dsc->recolor.ch.red, dsc->recolor.ch.green,
                                  dsc->recolor.ch.blue, dsc->recolor_opa);
