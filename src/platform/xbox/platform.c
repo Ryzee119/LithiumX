@@ -179,12 +179,14 @@ void platform_init(int *w, int *h)
 
 void nvnetdrv_stop_txrx (void);
 int XboxGetFullLaunchPath(const char *input, char *output);
+void usbh_core_deinit();
 
 void platform_quit(lv_quit_event_t event)
 {
     char launch_path[DASH_MAX_PATHLEN];
 
     nvnetdrv_stop_txrx();
+    usbh_core_deinit();
 
     if (event == LV_REBOOT)
     {
