@@ -180,6 +180,8 @@ void platform_init(int *w, int *h)
 void nvnetdrv_stop_txrx (void);
 int XboxGetFullLaunchPath(const char *input, char *output);
 void usbh_core_deinit();
+static void platform_launch_iso(const char *path);
+extern bool is_iso(const char *file_path);
 
 void platform_quit(lv_quit_event_t event)
 {
@@ -200,32 +202,105 @@ void platform_quit(lv_quit_event_t event)
     }
     else if (event == LV_QUIT_OTHER)
     {
-        if (strcmp(dash_launch_path, "__MSDASH__") == 0)
+        if (is_iso(dash_launch_path))
         {
-            // FIXME: Do we need to eject disk?
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "C:\\xboxdash.xbe");
-        }
-        else if (strcmp(dash_launch_path, "__DVD__") == 0)
-        {
-            lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
+            debugClearScreen();
+            debugPrint("Somehow got here?? %s, %d\n", dash_launch_path, (int)is_iso(dash_launch_path));
+            Sleep(10000);
+            platform_launch_iso(dash_launch_path);
         }
         else
         {
-            strncpy(launch_path, dash_launch_path, sizeof(launch_path));
+            if (strcmp(dash_launch_path, "__MSDASH__") == 0)
+            {
+                // FIXME: Do we need to eject disk?
+                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "C:\\xboxdash.xbe");
+            }
+            else if (strcmp(dash_launch_path, "__DVD__") == 0)
+            {
+                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
+            }
+            else
+            {
+                strncpy(launch_path, dash_launch_path, sizeof(launch_path));
+            }
+            debugClearScreen();
+
+            char xbox_launch_path[MAX_PATH];
+            XboxGetFullLaunchPath(launch_path, xbox_launch_path);
+
+            DbgPrint("Launching %s\n", launch_path);
+            DbgPrint("Launching %s\n", xbox_launch_path);
+            XLaunchXBE(xbox_launch_path);
+            DbgPrint("Error launching. Reboot\n");
+            Sleep(500);
+            DbgPrint("ERROR: Could not launch %s\n", launch_path);
+            HalReturnToFirmware(HalRebootRoutine);
         }
-        debugClearScreen();
+    }
+}
 
-        char xbox_launch_path[MAX_PATH];
-        XboxGetFullLaunchPath(launch_path, xbox_launch_path);
+#define IOCTL_VIRTUAL_CDROM_ATTACH	0x1EE7CD01
+#define IOCTL_VIRTUAL_CDROM_DETACH	0x1EE7CD02
 
-        DbgPrint("Launching %s\n", launch_path);
-        DbgPrint("Launching %s\n", xbox_launch_path);
-        XLaunchXBE(xbox_launch_path);
-        DbgPrint("Error launching. Reboot\n");
-        Sleep(500);
-        DbgPrint("ERROR: Could not launch %s\n", launch_path);
+#define MAX_PATHNAME     256
+#define MAX_IMAGE_SLICES 8
+
+typedef struct attach_slice_data {
+    unsigned int num_slices;
+    ANSI_STRING slice_files[MAX_IMAGE_SLICES];
+} attach_slice_data_t;
+
+static void platform_launch_iso(const char *path)
+{
+    debugClearScreen();
+
+    // Set-up the required slices
+    attach_slice_data_t *slices = lv_mem_alloc(sizeof(attach_slice_data_t));
+    slices->num_slices = 1; // FIXME: Support split ISOs
+
+    char *xbox_path = lv_mem_alloc(MAX_PATHNAME);
+    XboxGetFullLaunchPath(path, xbox_path);
+
+    DbgPrint("Launching %s\n", path);
+    DbgPrint("Launching %s\n", xbox_path);
+
+    ANSI_STRING ansi_path;
+    RtlInitAnsiString(&ansi_path, xbox_path);
+    slices->slice_files[0] = ansi_path;
+
+    ANSI_STRING dev_name;
+    RtlInitAnsiString(&dev_name, "\\Device\\CdRom1");
+
+    OBJECT_ATTRIBUTES obj_attr;
+    InitializeObjectAttributes(&obj_attr, &dev_name, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+    HANDLE handle;
+    NTSTATUS status;
+    IO_STATUS_BLOCK io_status;
+
+    status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
+    if (!NT_SUCCESS(status))
+    {
+        DbgPrint("ERROR: Couldn't open %s\n", dev_name);
         HalReturnToFirmware(HalRebootRoutine);
     }
+
+    // Might not be needed, but historically present
+    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, IOCTL_VIRTUAL_CDROM_DETACH, NULL, 0, NULL, 0);
+
+    // Push the slices to the driver
+    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, IOCTL_VIRTUAL_CDROM_ATTACH, slices, sizeof(attach_slice_data_t), NULL, 0);
+
+    NtClose(handle);
+
+    // If the user did a quick reboot, or somehow got back to us make sure we can use the volume again
+    IoDismountVolumeByName(&dev_name);
+
+    lv_mem_free(slices);
+    lv_mem_free(xbox_path);
+
+    HalReturnToFirmware(HalQuickRebootRoutine);
 }
 
 void info_update_callback(lv_timer_t *timer)
