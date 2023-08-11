@@ -88,6 +88,21 @@ static bool is_xbe(const char *file_path, char *title, char *title_id)
     return false;
 }
 
+bool is_iso(const char *file_path)
+{
+    const int extlen = 4; //".iso" | ".cso" | ".cci"
+    int slen = strlen(file_path);
+    if (slen > extlen)
+    {
+        const char *ext = file_path + slen - extlen;
+        if (strcasecmp(ext, ".iso") == 0 || strcasecmp(ext, ".cso") == 0 || strcasecmp(ext, ".cci") == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 static int recent_title_exists_cb(void *param, int argc, char **argv, char **azColName)
 {
     (void)argc; (void)argv; (void)azColName;
@@ -168,6 +183,20 @@ static void xbe_launch(void *param)
     lv_set_quit(LV_QUIT_OTHER);
 }
 
+static void iso_launch_abort(lv_event_t *event)
+{
+    lv_mem_free(lv_event_get_user_data(event));
+}
+
+static void iso_launch(void *param)
+{
+    // Setup launch path then quit
+    xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
+    xbe_params = param;
+    dash_launch_path = xbe_params->selected_path;
+    lv_set_quit(LV_QUIT_OTHER);
+}
+
 static bool xbe_selection_cb(const char *selected_path)
 {
     char title[MAX_META_LEN];
@@ -182,6 +211,15 @@ static bool xbe_selection_cb(const char *selected_path)
         lv_snprintf(cb_text, DASH_MAX_PATH, "Launch \"%s\"", selected_path);
         lv_obj_t *cb = confirmbox_open(cb_text, xbe_launch, xbe_params);
         lv_obj_add_event_cb(cb, xbe_launch_abort, LV_EVENT_DELETE, xbe_params);
+    }
+    else if (is_iso(selected_path))
+    {
+        xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
+        strcpy(xbe_params->selected_path, selected_path);
+        char cb_text[DASH_MAX_PATH];
+        lv_snprintf(cb_text, DASH_MAX_PATH, "Launch \"%s\"", selected_path);
+        lv_obj_t *cb = confirmbox_open(cb_text, iso_launch, xbe_params);
+        lv_obj_add_event_cb(cb, iso_launch_abort, LV_EVENT_DELETE, xbe_params);
     }
     return false;
 }
