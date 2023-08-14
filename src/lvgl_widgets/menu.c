@@ -150,6 +150,7 @@ lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
         menu->user_data = (void *)menu_items;
         for (int i = 0; i < cnt; i++)
         {
+            lv_table_add_cell_ctrl(menu, i, 0, LV_TABLE_CELL_CTRL_TEXT_CROP);
             lv_table_set_cell_value(menu, i, 0, menu_items[i].str);
         }
         lv_obj_update_layout(menu);
