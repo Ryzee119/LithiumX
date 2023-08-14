@@ -362,6 +362,7 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
         lvgl_getlock();
         t->jpg_info = jpg_info;
         lv_obj_add_event_cb(item_container, update_thumbnail_callback, LV_EVENT_DRAW_MAIN_END, NULL);
+        lv_obj_invalidate(item_container);
         lvgl_removelock();
         item = item->next;
     }
