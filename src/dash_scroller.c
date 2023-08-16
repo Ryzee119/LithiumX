@@ -69,7 +69,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
 
     lv_img_set_size_mode(t->jpg_info->canvas, LV_IMG_SIZE_MODE_REAL);
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
-    lv_obj_invalidate(t->jpg_info->canvas);
+    lv_obj_mark_layout_as_dirty(t->jpg_info->canvas);
 
     lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * ((LV_COLOR_DEPTH + 7) / 8));
     lvgl_removelock();
@@ -737,5 +737,5 @@ void dash_scroller_resort_page(const char *page_title)
     }
     lv_mem_free(p->sorted_objs);
     lv_mem_free(p);
-    lv_obj_invalidate(scroller);
+    lv_obj_mark_layout_as_dirty(scroller);
 }
