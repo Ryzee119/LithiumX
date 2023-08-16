@@ -189,6 +189,7 @@ void platform_quit(lv_quit_event_t event)
 
     nvnetdrv_stop_txrx();
     usbh_core_deinit();
+    debugClearScreen();
 
     if (event == LV_REBOOT)
     {
@@ -204,10 +205,9 @@ void platform_quit(lv_quit_event_t event)
     {
         if (is_iso(dash_launch_path))
         {
-            debugClearScreen();
+            platform_launch_iso(dash_launch_path);
             debugPrint("Somehow got here?? %s, %d\n", dash_launch_path, (int)is_iso(dash_launch_path));
             Sleep(10000);
-            platform_launch_iso(dash_launch_path);
         }
         else
         {
@@ -224,7 +224,6 @@ void platform_quit(lv_quit_event_t event)
             {
                 strncpy(launch_path, dash_launch_path, sizeof(launch_path));
             }
-            debugClearScreen();
 
             char xbox_launch_path[MAX_PATH];
             XboxGetFullLaunchPath(launch_path, xbox_launch_path);
