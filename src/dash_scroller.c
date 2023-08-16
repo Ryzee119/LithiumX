@@ -591,7 +591,7 @@ void dash_scroller_scan_db()
         // Create atleast ONE item in the scroller. This is just a null item when nothing is present
         title_t *t = lv_mem_alloc(sizeof(title_t));
         t->db_id = -1;
-        strcpy(t->title, "No items found");
+        strcpy(t->title, "No item selected");
         lv_obj_t *null_item = lv_obj_create(*scroller);
         null_item->user_data = t;
         lv_obj_add_flag(null_item, LV_OBJ_FLAG_HIDDEN);
