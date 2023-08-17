@@ -206,8 +206,6 @@ void platform_quit(lv_quit_event_t event)
         if (is_iso(dash_launch_path))
         {
             platform_launch_iso(dash_launch_path);
-            debugPrint("Somehow got here?? %s, %d\n", dash_launch_path, (int)is_iso(dash_launch_path));
-            Sleep(10000);
         }
         else
         {
