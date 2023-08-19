@@ -11,6 +11,7 @@
 #include <SDL.h>
 #include <assert.h>
 #include <stdio.h>
+#include <setjmp.h>
 #include <jpeglib.h>
 #include "jpg_decoder.h"
 
@@ -43,9 +44,16 @@ static jpeg_t *jpeg_mpool_free;                    // Stores a free pointer in m
 static jpeg_t *jpegdecomp_qhead;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 static jpeg_t *jpegdecomp_qtail;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 
+struct jpeg_decoder_error_mgr {
+  struct jpeg_error_mgr pub;
+  jmp_buf setjmp_buffer;
+};
+
 static void error_exit_stub(j_common_ptr cinfo)
 {
-    (void)cinfo;
+    struct jpeg_decoder_error_mgr *myerr = (void *)cinfo->err;
+    (*cinfo->err->output_message) (cinfo);
+    longjmp(myerr->setjmp_buffer, 1);
 }
 
 static void* align_pointer(void* ptr, int align)
@@ -64,7 +72,7 @@ static int decomp_thread(void *ptr)
     FILE *jfile;
     jpeg_t *jpeg;
     struct jpeg_decompress_struct jinfo;
-    struct jpeg_error_mgr jerr;
+    struct jpeg_decoder_error_mgr jerr;
     JSAMPARRAY line_buffer;
     int row_stride;
     void *old_line_buffer;
@@ -95,8 +103,14 @@ static int decomp_thread(void *ptr)
         }
 
         jpeg_create_decompress(&jinfo);
-        jinfo.err = jpeg_std_error(&jerr);
-        jinfo.err->error_exit = error_exit_stub;
+        jinfo.err = jpeg_std_error(&jerr.pub);
+        jerr.pub.error_exit = error_exit_stub;
+
+        if (setjmp(jerr.setjmp_buffer)) {
+            jpeg_destroy_decompress(&jinfo);
+            fclose(jfile);
+            goto leave_error;
+        }
 
         jpeg_stdio_src(&jinfo, jfile);
         if (jpeg_read_header(&jinfo, TRUE) != JPEG_HEADER_OK)
