@@ -237,26 +237,22 @@ void platform_quit(lv_quit_event_t event)
     }
 }
 
-#define IOCTL_VIRTUAL_CDROM_ATTACH	0x1EE7CD01
-#define IOCTL_VIRTUAL_CDROM_DETACH	0x1EE7CD02
+#define VIRTUAL_ATTACH 0x1EE7CD01
+#define VIRTUAL_DETACH 0x1EE7CD02
 
-#define MAX_PATHNAME     256
 #define MAX_IMAGE_SLICES 8
 
+// MAX_IMAGE_SLICES + 1 is a compatibility extension required for some kernels
 typedef struct attach_slice_data {
-    unsigned int num_slices;
-    ANSI_STRING slice_files[MAX_IMAGE_SLICES];
+    uint32_t num_slices;
+    ANSI_STRING slice_files[MAX_IMAGE_SLICES + 1];
 } attach_slice_data_t;
 
 static void platform_launch_iso(const char *path)
 {
-    debugClearScreen();
+    nxUnmountDrive('D');
 
-    // Set-up the required slices
-    attach_slice_data_t *slices = lv_mem_alloc(sizeof(attach_slice_data_t));
-    slices->num_slices = 1; // FIXME: Support split ISOs
-
-    char *xbox_path = lv_mem_alloc(MAX_PATHNAME);
+    char *xbox_path = lv_mem_alloc(MAX_PATH);
     XboxGetFullLaunchPath(path, xbox_path);
 
     DbgPrint("Launching %s\n", path);
@@ -264,7 +260,24 @@ static void platform_launch_iso(const char *path)
 
     ANSI_STRING ansi_path;
     RtlInitAnsiString(&ansi_path, xbox_path);
+
+    int struct_size = sizeof(attach_slice_data_t);
+
+    attach_slice_data_t *slices = lv_mem_alloc(struct_size);
+    slices->num_slices = 1; // FIXME: Support split ISOs
     slices->slice_files[0] = ansi_path;
+
+    bool compat = false;
+
+    // CerBios has special handling of CCI images
+    if (XboxKrnlVersion.Build == 8008 && strcmp((char *)(path + strlen(path) - 3), "cci") == 0)
+    {
+        compat = true;
+        slices->num_slices |= 0x64 << 8; // CCI, 0x44 "Other"
+        ANSI_STRING cdrom_path;
+        RtlInitAnsiString(&cdrom_path, "\\Device\\CdRom0");
+        slices->slice_files[8] = cdrom_path;
+    }
 
     ANSI_STRING dev_name;
     RtlInitAnsiString(&dev_name, "\\Device\\CdRom1");
@@ -273,27 +286,23 @@ static void platform_launch_iso(const char *path)
     InitializeObjectAttributes(&obj_attr, &dev_name, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
     HANDLE handle;
-    NTSTATUS status;
     IO_STATUS_BLOCK io_status;
 
-    status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
+    NTSTATUS status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
     if (!NT_SUCCESS(status))
     {
-        DbgPrint("ERROR: Couldn't open %s\n", dev_name);
-        HalReturnToFirmware(HalRebootRoutine);
+        DbgPrint("ERROR: Could not open %s\n", dev_name.Buffer);
+        goto iso_cleanup;
     }
 
-    // Might not be needed, but historically present
-    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, IOCTL_VIRTUAL_CDROM_DETACH, NULL, 0, NULL, 0);
-
-    // Push the slices to the driver
-    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, IOCTL_VIRTUAL_CDROM_ATTACH, slices, sizeof(attach_slice_data_t), NULL, 0);
-
-    NtClose(handle);
+    // Push the slices to the driver, reference implementation handles detaching old slices
+    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, VIRTUAL_ATTACH, slices, compat ? struct_size : struct_size - sizeof(ANSI_STRING), NULL, 0);
 
     // If the user did a quick reboot, or somehow got back to us make sure we can use the volume again
     IoDismountVolumeByName(&dev_name);
 
+iso_cleanup:
+    NtClose(handle);
     lv_mem_free(slices);
     lv_mem_free(xbox_path);
 
