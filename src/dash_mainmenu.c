@@ -5,7 +5,7 @@
 
 static void dash_system_info(void *param);
 static void dash_utilities(void *param);
-static void dash_settings(void *param);
+static void dash_settings_page(void *param);
 static void dash_launch_msdash(void *param);
 static void dash_launch_dvd(void *param);
 static void dash_flush_cache(void *param);
@@ -245,9 +245,9 @@ static void dash_rebuild_database(void *param)
 static void dash_clear_recent(void *param)
 {
     (void)param;
-    // Set settings_earliest_recent_date to now which effectively clears
+    // Set dash_settings.earliest_recent_date to now which effectively clears
     // recent items
-    platform_get_iso8601_time(settings_earliest_recent_date);
+    platform_get_iso8601_time(dash_settings.earliest_recent_date);
     dash_settings_apply(false);
 
     static const char *cmd = "DELETE FROM " SQL_TITLES_NAME " WHERE page = \"__RECENT__\"";
@@ -288,7 +288,7 @@ static void dash_shutdown(void *param)
     lv_set_quit(LV_SHUTDOWN);
 }
 
-static void dash_settings(void *param)
+static void dash_settings_page(void *param)
 {
     (void)param;
     dash_settings_open();
@@ -327,7 +327,7 @@ void dash_mainmenu_open()
             {"Launch MS Dashboard", dash_launch_msdash, NULL, "Accept \"Launch MS Dashboard\""},
             {"Launch DVD", dash_launch_dvd, NULL, "Accept \"Launch DVD\""},
             {"Utilities", dash_utilities, NULL, NULL},
-            {"Settings", dash_settings, NULL, NULL},
+            {"Settings", dash_settings_page, NULL, NULL},
             {"About", dash_open_about, NULL, NULL},
             {"Reboot", dash_reboot, NULL, "Accept \"Reboot\""},
             {"Shutdown", dash_shutdown, NULL, "Accept \"Shutdown\""},

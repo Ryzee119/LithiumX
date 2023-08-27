@@ -5,15 +5,8 @@
 
 // Globals
 toml_table_t *dash_search_paths;
-int settings_use_fahrenheit;
-int settings_auto_launch_dvd;
-int settings_default_page_index;
-int settings_theme_colour;
-int settings_max_recent;
-char settings_earliest_recent_date[20] = "2000-01-01 00:00:00";
-char settings_page_sorts_str[4096];
+dash_settings_t dash_settings;
 const char *dash_launch_path;
-
 
 static lv_obj_t *focus_stack[32];
 static lv_indev_t *indev;
@@ -183,12 +176,10 @@ void dash_init(void)
     lv_memset(focus_stack, 0, sizeof(focus_stack));
 
     // Set default settings
-    settings_use_fahrenheit = 0;
-    settings_auto_launch_dvd = 0;
-    settings_default_page_index = 0;
-    settings_max_recent = 15;
-    settings_theme_colour = (22 << 16) | (111 << 8) | (15 << 0);
-    settings_page_sorts_str[0] = '\0';
+    lv_memset(&dash_settings, 0, sizeof(dash_settings));
+    dash_settings.magic = DASH_SETTINGS_MAGIC;
+    dash_settings.max_recent_items = 15;
+    dash_settings.theme_colour = (22 << 16) | (111 << 8) | (15 << 0);
 
     // Read in the toml file that has all the search paths
     check_path_toml(err_msg_toml, sizeof(err_msg_toml));
@@ -240,9 +231,9 @@ void dash_create()
     dash_settings_read();
 
     // Work out the main theme color from the settings
-    lv_color_t col = lv_color_make(settings_theme_colour >> 16,
-                                   settings_theme_colour >> 8,
-                                   settings_theme_colour >> 0);
+    lv_color_t col = lv_color_make(dash_settings.theme_colour >> 16,
+                                   dash_settings.theme_colour >> 8,
+                                   dash_settings.theme_colour >> 0);
     dash_styles_init(col);
 
     // Create a gradient background

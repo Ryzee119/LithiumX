@@ -167,7 +167,7 @@ static void xbox_get_temps(PULONG cpu, PULONG mb, UCHAR *unit)
         HalReadSMBusValue(0x20, 0x0A, FALSE, mb);
     }
 
-    if (settings_use_fahrenheit)
+    if (dash_settings.use_fahrenheit)
     {
         *cpu = (ULONG)(((float)*cpu * 1.8f) + 32);
         *mb = (ULONG)(((float)*mb * 1.8f) + 32);
