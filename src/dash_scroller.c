@@ -71,7 +71,12 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
     lv_obj_mark_layout_as_dirty(t->jpg_info->canvas);
 
-    lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * ((LV_COLOR_DEPTH + 7) / 8));
+    void *cached_t = NULL;
+    lv_lru_get(thumbnail_cache, t, sizeof(title_t *), (void **)&cached_t);
+    if (cached_t == NULL)
+    {
+        lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * ((LV_COLOR_DEPTH + 7) / 8));
+    }
     lvgl_removelock();
 }
 
