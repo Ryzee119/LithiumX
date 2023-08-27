@@ -34,6 +34,7 @@ typedef struct
     uint32_t ih;
     XguTexFormatColor format;
     uint32_t bytes_pp;
+    uint32_t key;
 } draw_cache_value_t;
 
 /**********************

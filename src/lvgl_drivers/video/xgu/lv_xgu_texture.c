@@ -114,7 +114,9 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     texture->th = th;
     texture->format = fmt;
     texture->bytes_pp = bytes_pp;
-    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, sz + (sz % PAGE_SIZE));
+
+    uint32_t r = (sz % PAGE_SIZE);
+    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, r ? (sz + PAGE_SIZE - r) : sz);
 
     uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(sz, 0, 0xFFFFFFFF, 0,
                                                                PAGE_WRITECOMBINE | PAGE_READWRITE);
@@ -257,6 +259,7 @@ lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *
     case LV_IMG_CF_RGBX8888:
     case LV_IMG_CF_RGB565:
     case LV_IMG_CF_INDEXED_1BIT:
+    case LV_IMG_CF_USER_ENCODED_0:
         break;
     case LV_IMG_CF_TRUE_COLOR_ALPHA:
         if (sizeof(lv_color_t) == 4) break;
@@ -296,93 +299,110 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
         draw_area.y2++;
 
     lv_color_t recolor = lv_color_make(255, 255, 255);
+    uint32_t key = 0;
 
-    // If we are about the draw 1 bit indexed image. Setup draw color froms src_buf;
-    if (cf == LV_IMG_CF_INDEXED_1BIT)
+    // LV_IMG_CF_USER_ENCODED_0 is a custom texture that is already contiguous
+    // power of 2 textures that can be passed directly to the GPU. We don't
+    // need to do anything extra except pull the texture info which is located at the end
+    // of the texture.
+    if (cf == LV_IMG_CF_USER_ENCODED_0)
     {
-        // Draw background
-        lv_color_t *c2 = (lv_color_t *)&src_buf[0];
-        p = xgux_set_color4ub(p, c2->ch.red, c2->ch.green,
-                                 c2->ch.blue, 0xFF);
-        draw_rect_simple(src_area);
+        uint32_t tw = npot2pot(lv_area_get_width(src_area));
+        uint32_t th = npot2pot(lv_area_get_height(src_area));
+        uint32_t sz = tw * th * sizeof(lv_color_t);
+        texture = (draw_cache_value_t*)&src_buf[sz];
+        key = texture->key;
+        texture->format = (sizeof(lv_color_t) == 2) ? 
+                    XGU_TEXTURE_FORMAT_R5G6B5 : XGU_TEXTURE_FORMAT_A8R8G8B8;
+    }
+    else
+    {
+        // If we are about the draw 1 bit indexed image. Setup draw color from src_buf;
+        if (cf == LV_IMG_CF_INDEXED_1BIT)
+        {
+            // Draw background
+            lv_color_t *c2 = (lv_color_t *)&src_buf[0];
+            p = xgux_set_color4ub(p, c2->ch.red, c2->ch.green,
+                                    c2->ch.blue, 0xFF);
+            draw_rect_simple(src_area);
 
-        // Prep foreground
-        lv_color_t *c1 = (lv_color_t *)&src_buf[4];
-        recolor.ch.red = c1->ch.red;
-        recolor.ch.green = c1->ch.green;
-        recolor.ch.blue = c1->ch.blue;
+            // Prep foreground
+            lv_color_t *c1 = (lv_color_t *)&src_buf[4];
+            recolor.ch.red = c1->ch.red;
+            recolor.ch.green = c1->ch.green;
+            recolor.ch.blue = c1->ch.blue;
+        }
+
+        // Create a checksum of some initial data to create a unique key for the texture cache
+        uint32_t max = (lv_area_get_width(src_area) *
+                        lv_area_get_height(src_area) * sizeof(lv_color_t)) / 4;
+        uint32_t *_src = (uint32_t *)src_buf;
+        int i = 0, end = LV_MIN(i + 16, max);
+        while (i < end) key += _src[i++];
+        i = max / 2; end = LV_MIN(i + 16, max);
+        while (i < end) key += _src[i++];
+        lv_lru_get(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), (void **)&texture);
+        if (texture == NULL)
+        {
+            XguTexFormatColor xgu_cf;
+            uint8_t bytes_pp;
+            switch (cf)
+            {
+            case LV_IMG_CF_TRUE_COLOR:
+                xgu_cf = (sizeof(lv_color_t) == 2) ? 
+                    XGU_TEXTURE_FORMAT_R5G6B5 : XGU_TEXTURE_FORMAT_A8R8G8B8;
+                bytes_pp = sizeof(lv_color_t);
+                break;
+            case LV_IMG_CF_TRUE_COLOR_ALPHA:
+                if (sizeof(lv_color_t) == 2) return;
+                xgu_cf = XGU_TEXTURE_FORMAT_A8R8G8B8;
+                bytes_pp = sizeof(lv_color_t);
+            case LV_IMG_CF_RGB888:
+                xgu_cf = XGU_TEXTURE_FORMAT_X8R8G8B8;
+                bytes_pp = 4;
+                break;
+            case LV_IMG_CF_RGBA8888:
+            case LV_IMG_CF_RGBX8888:
+                xgu_cf = XGU_TEXTURE_FORMAT_R8G8B8A8;
+                bytes_pp = 4;
+                break;
+            case LV_IMG_CF_RGB565:
+                xgu_cf = XGU_TEXTURE_FORMAT_R5G6B5;
+                bytes_pp = 2;
+                break;
+            case LV_IMG_CF_INDEXED_1BIT:
+                xgu_cf = XGU_TEXTURE_FORMAT_A8;
+                bytes_pp = 1;
+                int w = lv_area_get_width(src_area);
+                int h = lv_area_get_height(src_area);
+                void *buf = lv_mem_alloc(w * h * bytes_pp);
+                if (buf == NULL)
+                {
+                    return;
+                }
+                amask_to_a(buf, &src_buf[8], w, h, w, bytes_pp);
+                src_buf = buf;
+                break;
+            default:
+                DbgPrint("Unsupported texture format %d\n", cf);
+                return;
+            }
+            texture = create_texture(xgu_ctx, src_buf, src_area, xgu_cf, bytes_pp, (uint32_t)key);
+            if (cf == LV_IMG_CF_INDEXED_1BIT)
+            {
+                lv_mem_free((void *)src_buf);
+            }
+            if (texture == NULL)
+            {
+                return;
+            }
+        }
     }
 
-    // Create a checksum of some initial data to create a unique key for the texture cache
-    uint32_t key = 0;
-    uint32_t max = (lv_area_get_width(src_area) *
-               lv_area_get_height(src_area) * sizeof(lv_color_t)) / 4;
-    uint32_t *_src = (uint32_t *)src_buf;
-    int i = 0, end = LV_MIN(i + 16, max);
-    while (i < end) key += _src[i++];
-    i = max / 2; end = LV_MIN(i + 16, max);
-    while (i < end) key += _src[i++];
     if (xgu_ctx->xgu_data->combiner_mode != 1)
     {
         #include "lvgl_drivers/video/xgu/texture.inl"
         xgu_ctx->xgu_data->combiner_mode = 1;
-    }
-
-    lv_lru_get(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), (void **)&texture);
-    if (texture == NULL)
-    {
-        XguTexFormatColor xgu_cf;
-        uint8_t bytes_pp;
-        switch (cf)
-        {
-        case LV_IMG_CF_TRUE_COLOR:
-            xgu_cf = (sizeof(lv_color_t) == 2) ? 
-                XGU_TEXTURE_FORMAT_R5G6B5 : XGU_TEXTURE_FORMAT_A8R8G8B8;
-            bytes_pp = sizeof(lv_color_t);
-            break;
-        case LV_IMG_CF_TRUE_COLOR_ALPHA:
-            if (sizeof(lv_color_t) == 2) return;
-            xgu_cf = XGU_TEXTURE_FORMAT_A8R8G8B8;
-            bytes_pp = sizeof(lv_color_t);
-        case LV_IMG_CF_RGB888:
-            xgu_cf = XGU_TEXTURE_FORMAT_X8R8G8B8;
-            bytes_pp = 4;
-            break;
-        case LV_IMG_CF_RGBA8888:
-        case LV_IMG_CF_RGBX8888:
-            xgu_cf = XGU_TEXTURE_FORMAT_R8G8B8A8;
-            bytes_pp = 4;
-            break;
-        case LV_IMG_CF_RGB565:
-            xgu_cf = XGU_TEXTURE_FORMAT_R5G6B5;
-            bytes_pp = 2;
-            break;
-        case LV_IMG_CF_INDEXED_1BIT:
-            xgu_cf = XGU_TEXTURE_FORMAT_A8;
-            bytes_pp = 1;
-            int w = lv_area_get_width(src_area);
-            int h = lv_area_get_height(src_area);
-            void *buf = lv_mem_alloc(w * h * bytes_pp);
-            if (buf == NULL)
-            {
-                return;
-            }
-            amask_to_a(buf, &src_buf[8], w, h, w, bytes_pp);
-            src_buf = buf;
-            break;
-        default:
-            DbgPrint("Unsupported texture format %d\n", cf);
-            return;
-        }
-        texture = create_texture(xgu_ctx, src_buf, src_area, xgu_cf, bytes_pp, (uint32_t)key);
-        if (cf == LV_IMG_CF_INDEXED_1BIT)
-        {
-            lv_mem_free((void *)src_buf);
-        }
-        if (texture == NULL)
-        {
-            return;
-        }
     }
 
     if (dsc->recolor_opa > LV_OPA_TRANSP)

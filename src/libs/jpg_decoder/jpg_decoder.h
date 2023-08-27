@@ -44,6 +44,12 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *us
  */
 void jpeg_decoder_abort(void *handle);
 
+/**
+ * @brief Free a jpeg given to user with the callback
+ * 
+ */
+void jpeg_decoder_free(void *jpeg);
+
 #ifdef __cplusplus
 }
 #endif

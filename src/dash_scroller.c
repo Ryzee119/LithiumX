@@ -10,7 +10,7 @@ static lv_obj_t *page_tiles;
 static lv_obj_t *label_footer;
 static int page_current;
 static lv_lru_t *thumbnail_cache;
-static size_t thumbnail_cache_size = (16 * 1024 * 1024);
+static size_t thumbnail_cache_size = (25 * 1024 * 1024);
 
 typedef struct
 {
@@ -65,13 +65,18 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     t->jpg_info->decomp_handle = NULL;
 
     t->jpg_info->canvas = lv_canvas_create(image_container);
+    #ifdef NXDK
+    lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, LV_IMG_CF_USER_ENCODED_0);
+    lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, MmQueryAllocationSize(t->jpg_info->mem));
+    #else
     lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, LV_IMG_CF_TRUE_COLOR);
+    lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * sizeof(lv_color_t));
+    #endif
 
     lv_img_set_size_mode(t->jpg_info->canvas, LV_IMG_SIZE_MODE_REAL);
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
     lv_obj_mark_layout_as_dirty(t->jpg_info->canvas);
 
-    lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * ((LV_COLOR_DEPTH + 7) / 8));
     lvgl_removelock();
 }
 
@@ -438,7 +443,7 @@ static void cache_free(title_t *t)
     assert(lv_obj_is_valid(t->jpg_info->canvas));
     jpeg_decoder_abort(t->jpg_info->decomp_handle);
     assert(t->jpg_info->mem);
-    free(t->jpg_info->mem);
+    jpeg_decoder_free(t->jpg_info->mem);
     lv_obj_del(t->jpg_info->canvas);
     t->jpg_info->decomp_handle = NULL;
     t->jpg_info->mem = NULL;
@@ -497,6 +502,24 @@ static void jpeg_clear_timer(lv_timer_t *t)
     }
 }
 
+static lv_res_t jpeg_decoder_lv_hook_info(lv_img_decoder_t * decoder, const void * src, lv_img_header_t * header)
+{
+    LV_UNUSED(decoder); /*Unused*/
+
+    lv_img_src_t src_type = lv_img_src_get_type(src);
+    if(src_type == LV_IMG_SRC_VARIABLE) {
+        lv_img_cf_t cf = ((lv_img_dsc_t *)src)->header.cf;
+        if(cf == LV_IMG_CF_USER_ENCODED_0)
+        {
+            header->w  = ((lv_img_dsc_t *)src)->header.w;
+            header->h  = ((lv_img_dsc_t *)src)->header.h;
+            header->cf = ((lv_img_dsc_t *)src)->header.cf;
+            return LV_RES_OK;
+        }
+    }
+    return LV_RES_INV;
+}
+
 void dash_scroller_init()
 {
     lv_coord_t w = lv_obj_get_width(lv_scr_act());
@@ -508,6 +531,15 @@ void dash_scroller_init()
                                     (lv_lru_free_t *)cache_free, NULL);
 
     jpeg_decoder_init(LV_COLOR_DEPTH, 256);
+
+    // I want lvgl to be able to handle cases when I pass any image to the render backend,
+    // but also if I pass a GPU texture directly and bypass any backend conversion. This hook
+    // is assigned to LV_IMG_CF_USER_ENCODED_0 and achieves this.
+    lv_img_decoder_t *custom_decoder = lv_img_decoder_create();
+    lv_img_decoder_set_info_cb(custom_decoder, jpeg_decoder_lv_hook_info);
+    lv_img_decoder_set_open_cb(custom_decoder, lv_img_decoder_built_in_open);
+    lv_img_decoder_set_read_line_cb(custom_decoder, lv_img_decoder_built_in_read_line);
+    lv_img_decoder_set_close_cb(custom_decoder, lv_img_decoder_built_in_close);
 
     _lv_ll_init(&jpeg_decomp_list, sizeof(jpeg_ll_value_t));
     lv_timer_create(jpeg_clear_timer, LV_DISP_DEF_REFR_PERIOD, NULL);

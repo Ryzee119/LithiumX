@@ -64,7 +64,11 @@ void lvgl_removelock(void)
 // Output handler for lvgl
 void lvgl_putstring(const char *buf)
 {
+    #ifdef NXDK
+    DbgPrint("%s", buf);
+    #else
     printf("%s", buf);
+    #endif
 }
 
 // Replace lvgls internal allocator with basically the same thing

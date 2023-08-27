@@ -15,6 +15,12 @@
 #include <jpeglib.h>
 #include "jpg_decoder.h"
 
+#ifdef NXDK
+#include <xboxkrnl/xboxkrnl.h>
+#include "xgu.h"
+#include "lvgl_drivers/video/xgu/lv_xgu_draw.h"
+#endif
+
 typedef enum
 {
     STATE_FREE,          // Mempool item free and ready to use
@@ -65,6 +71,15 @@ static void* align_pointer(void* ptr, int align)
         address += alignment - (address & mask);
     }
     return (void*)address;
+}
+
+void jpeg_decoder_free(void *jpeg)
+{
+    #ifdef NXDK
+    MmFreeContiguousMemory(jpeg);
+    #else
+    free(jpeg);
+    #endif
 }
 
 static int decomp_thread(void *ptr)
@@ -147,16 +162,35 @@ static int decomp_thread(void *ptr)
 
         old_line_buffer = line_buffer[0]; // Save the original allocation
 
-        jpeg->mem = malloc(jinfo.output_width * jinfo.output_height * (jpeg_colour_depth / 8) + 16);
+        #ifdef NXDK
+        uint32_t sz = npot2pot(jinfo.output_width) * npot2pot(jinfo.output_height) * jinfo.output_components; 
+        jpeg->mem = (uint8_t *)MmAllocateContiguousMemoryEx(sz + sizeof(draw_cache_value_t), 0, 0xFFFFFFFF, 0,
+                                                            PAGE_WRITECOMBINE | PAGE_READWRITE);
+        jpeg->decompressed_image = jpeg->mem;
+
+        draw_cache_value_t tex;
+        tex.iw = jinfo.output_width;
+        tex.ih = jinfo.output_height;
+        tex.tw = npot2pot(jinfo.output_width);
+        tex.th = npot2pot(jinfo.output_height);
+        tex.bytes_pp = jinfo.output_components;
+        tex.texture = jpeg->decompressed_image;
+        tex.key = (uint32_t)jpeg->decompressed_image;
+        memcpy(&jpeg->decompressed_image[sz], &tex, sizeof(draw_cache_value_t));
+        row_stride = tex.tw * jinfo.output_components;
+        #else
+        jpeg->mem = malloc((jinfo.output_width * jinfo.output_height * jinfo.output_components) + 16);
         //Get a 16 byte aligned pointer to return to the user
         jpeg->decompressed_image = align_pointer(jpeg->mem, 16);
+        #endif
 
+        uint32_t offset = 0;
         while (jinfo.output_scanline < jinfo.output_height)
         {
             state = SDL_AtomicGet(&jpeg->state);
             if (state == STATE_DECOMP_ABORTED)
             {
-                free(jpeg->mem);
+                jpeg_decoder_free(jpeg->mem);
                 jpeg->decompressed_image = NULL;
             }
 
@@ -166,12 +200,13 @@ static int decomp_thread(void *ptr)
             }
 
             // Save a memcpy and put our buffer directly into JSAMPARRAY
-            line_buffer[0] = (void *)&jpeg->decompressed_image[jinfo.output_scanline * row_stride];
+            line_buffer[0] = (void *)&jpeg->decompressed_image[offset];
+            offset += row_stride;
             jpeg_read_scanlines(&jinfo, line_buffer, 1);
 
             if (jinfo.output_scanline % 100 == 0)
             {
-                SDL_Delay(20);
+                SDL_Delay(1);
             }
         }
 
