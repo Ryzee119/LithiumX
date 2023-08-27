@@ -136,6 +136,7 @@ lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
     lv_obj_t *window = lv_obj_create(lv_scr_act());
     lv_obj_set_size(window, lv_obj_get_width(lv_scr_act()), lv_obj_get_height(lv_scr_act()));
     lv_obj_add_style(window, &menu_table_style, LV_PART_MAIN);
+    lv_obj_set_style_border_width(window, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(window, LV_OPA_0, LV_PART_MAIN);
     window->user_data = 0;
 
