@@ -108,13 +108,7 @@ enum {
 #define SQL_TITLE_LAST_LAUNCH "last_launch"
 #define SQL_TITLE_RATING "rating"
 
-#define SQL_SETTINGS_FAHRENHEIT "settings_use_fahrenheit"
-#define SQL_SETTINGS_AUTOLAUNCH_DVD "settings_auto_launch_dvd"
-#define SQL_SETTINGS_DEFAULT_PAGE_INDEX "settings_default_page_index"
-#define SQL_SETTINGS_THEME_COLOR "settings_theme_colour"
-#define SQL_SETTINGS_EARLIEST_RECENT_DATE "settings_earliest_recent_date"
-#define SQL_SETTINGS_PAGE_SORTS "settings_page_sorts_str"
-#define SQL_SETTINGS_MAX_RECENT "settings_max_recent"
+#define SQL_SETTINGS_DATA "settings_data"
 
 #define SQL_TITLES_NAME "xbox_titles"
 #define SQL_SETTINGS_NAME "settings"
@@ -193,51 +187,16 @@ enum {
 
 #define SQL_SETTINGS_CREATE_TABLE                           \
     "CREATE TABLE IF NOT EXISTS " SQL_SETTINGS_NAME " ("    \
-            SQL_SETTINGS_FAHRENHEIT           " INTEGER, "  \
-            SQL_SETTINGS_AUTOLAUNCH_DVD       " INTEGER, "  \
-            SQL_SETTINGS_DEFAULT_PAGE_INDEX   " INTEGER, "  \
-            SQL_SETTINGS_THEME_COLOR          " INTEGER, "  \
-            SQL_SETTINGS_EARLIEST_RECENT_DATE " DATETIME, " \
-            SQL_SETTINGS_PAGE_SORTS           " TEXT    , " \
-            SQL_SETTINGS_MAX_RECENT           " INTEGER)"
+            SQL_SETTINGS_DATA           " BLOB)"
 
 #define SQL_SETTINGS_DELETE_ENTRIES \
     "DELETE FROM " SQL_SETTINGS_NAME
 
-#define SQL_SETTINGS_INSERT_OLD                    \
-    "INSERT INTO "SQL_SETTINGS_NAME           " (" \
-            SQL_SETTINGS_FAHRENHEIT           ", " \
-            SQL_SETTINGS_AUTOLAUNCH_DVD       ", " \
-            SQL_SETTINGS_DEFAULT_PAGE_INDEX   ", " \
-            SQL_SETTINGS_THEME_COLOR          ", " \
-            SQL_SETTINGS_EARLIEST_RECENT_DATE ", " \
-            SQL_SETTINGS_PAGE_SORTS           ", " \
-            SQL_SETTINGS_MAX_RECENT           ") " \
-            "VALUES (%d, %d, %d, %d, \"%s\", \"%s\", %d)"
-
-#define SQL_SETTINGS_INSERT                        \
-    "INSERT INTO "SQL_SETTINGS_NAME           " (" \
-            SQL_SETTINGS_FAHRENHEIT           ", " \
-            SQL_SETTINGS_AUTOLAUNCH_DVD       ", " \
-            SQL_SETTINGS_DEFAULT_PAGE_INDEX   ", " \
-            SQL_SETTINGS_THEME_COLOR          ", " \
-            SQL_SETTINGS_EARLIEST_RECENT_DATE ", " \
-            SQL_SETTINGS_PAGE_SORTS           ", " \
-            SQL_SETTINGS_MAX_RECENT           ") " \
-            "VALUES (?,?,?,?,?,?,?)"
-#define SQL_SETTINGS_INSERT_FORMAT "(%s,%s,%s,%s,%s,%s,%s)"
-#define SQL_SETTINGS_INSERT_CNT 7
+#define SQL_SETTINGS_INSERT                    \
+    "INSERT INTO " SQL_SETTINGS_NAME " (" SQL_SETTINGS_DATA ") VALUES (?)"
 
 #define SQL_SETTINGS_READ                          \
-    "SELECT "                                      \
-            SQL_SETTINGS_FAHRENHEIT           ", " \
-            SQL_SETTINGS_AUTOLAUNCH_DVD       ", " \
-            SQL_SETTINGS_DEFAULT_PAGE_INDEX   ", " \
-            SQL_SETTINGS_THEME_COLOR          ", " \
-            SQL_SETTINGS_EARLIEST_RECENT_DATE ", " \
-            SQL_SETTINGS_PAGE_SORTS           ", " \
-            SQL_SETTINGS_MAX_RECENT                \
-            " FROM " SQL_SETTINGS_NAME
+    "SELECT " SQL_SETTINGS_DATA " FROM " SQL_SETTINGS_NAME " LIMIT 1;"
 
 typedef int (*sqlcmd_callback)(void*,int,char**, char**);
 
@@ -247,6 +206,7 @@ bool db_init(char *err_msg, int err_msg_len);
 bool db_rebuild(toml_table_t *paths);
 void db_command_with_callback(const char *command, sqlcmd_callback callback, void *param);
 void db_insert(const char *command, int argc, const char *format, ...);
+void db_insert_blob(const char *command, void *blob, int len);
 bool db_xbe_parse(const char *xbe_path, const char *xbe_folder, char *title, char *title_id);
 #ifdef __cplusplus
 }

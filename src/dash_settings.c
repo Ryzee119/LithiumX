@@ -11,57 +11,35 @@ static const char *d_on = "Autolaunch DVD       ON";
 static int dash_settings_read_callback(void *param, int argc, char **argv, char **azColName)
 {
     (void)param;
-    for (int i = 0; i < argc; i++)
+    (void)azColName;
+    assert (argc == 1);
+
+    if (argc == 0)
     {
-        if (strcmp(azColName[i], SQL_SETTINGS_FAHRENHEIT) == 0)
-        {
-            settings_use_fahrenheit = atoi(argv[i]);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_AUTOLAUNCH_DVD) == 0)
-        {
-            settings_auto_launch_dvd = atoi(argv[i]);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_DEFAULT_PAGE_INDEX) == 0)
-        {
-            settings_default_page_index = atoi(argv[i]);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_THEME_COLOR) == 0)
-        {
-            settings_theme_colour = atoi(argv[i]);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_MAX_RECENT) == 0)
-        {
-            settings_max_recent = atoi(argv[i]);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_EARLIEST_RECENT_DATE) == 0)
-        {
-            strncpy(settings_earliest_recent_date, argv[i], sizeof(settings_earliest_recent_date) - 1);
-        }
-        else if (strcmp(azColName[i], SQL_SETTINGS_PAGE_SORTS) == 0)
-        {
-            int len = strlen(argv[i]);
-            if (len)
-            {
-                strncpy(settings_page_sorts_str, argv[i], sizeof(settings_page_sorts_str) - 1);
-            }
-        }
+        return 0;
+    }
+
+    dash_settings_t *_dash_settings = (dash_settings_t *)argv[0];
+    if (_dash_settings->magic == DASH_SETTINGS_MAGIC)
+    {
+        memcpy(&dash_settings, argv[0], sizeof(dash_settings));
     }
     return 0;
 }
 
 static void fahrenheit_change_callback(void *param)
 {
-    settings_use_fahrenheit = LV_MIN(1, settings_use_fahrenheit);
-    settings_use_fahrenheit ^= 1;
-    lv_table_set_cell_value(param, 0, 0, (settings_use_fahrenheit) ? f_on : f_off);
+    dash_settings.use_fahrenheit = LV_MIN(1, dash_settings.use_fahrenheit);
+    dash_settings.use_fahrenheit ^= 1;
+    lv_table_set_cell_value(param, 0, 0, (dash_settings.use_fahrenheit) ? f_on : f_off);
     dash_settings_apply(false);
 }
 
 static void autolaunch_dvd_change_callback(void *param)
 {
-    settings_auto_launch_dvd = LV_MIN(1, settings_auto_launch_dvd);
-    settings_auto_launch_dvd ^= 1;
-    lv_table_set_cell_value(param, 1, 0, (settings_auto_launch_dvd) ? d_on : d_off);
+    dash_settings.auto_launch_dvd = LV_MIN(1, dash_settings.auto_launch_dvd);
+    dash_settings.auto_launch_dvd ^= 1;
+    lv_table_set_cell_value(param, 1, 0, (dash_settings.auto_launch_dvd) ? d_on : d_off);
     dash_settings_apply(false);
 }
 
@@ -89,7 +67,7 @@ static void change_page_sort_sub_submenu_callback(void *param)
         cursor += lv_snprintf(&new_sorts[cursor], max_len - cursor, "%s=%d ",
                               page_title, (i == page_index) ? sort_index : current_sort_index);
     }
-    strncpy(settings_page_sorts_str, new_sorts, sizeof(settings_page_sorts_str) - 1);
+    strncpy(dash_settings.sort_strings, new_sorts, sizeof(dash_settings.sort_strings) - 1);
     lv_mem_free(new_sorts);
     dash_settings_apply(true);
     dash_scroller_resort_page(dash_scroller_get_title(page_index));
@@ -98,7 +76,7 @@ static void change_page_sort_sub_submenu_callback(void *param)
 static void startup_page_change_submenu_callback(void *param)
 {
     int new_index = (int)((intptr_t)param);
-    settings_default_page_index = new_index;
+    dash_settings.startup_page_index = new_index;
     dash_settings_apply(true);
 }
 
@@ -117,7 +95,7 @@ static void change_startup_page_submenu(void *param)
     }
 
     lv_obj_t *menu = menu_open(items, DASH_ARRAY_SIZE(items));
-    menu_force_value(menu, settings_default_page_index);
+    menu_force_value(menu, dash_settings.startup_page_index);
 }
 
 static void change_page_sort_sub_submenu(void *param)
@@ -175,7 +153,7 @@ static void change_page_sort_submenu(void *param)
 static void change_max_recent_submenu_cb(void *param)
 {
     int n = (intptr_t)param;
-    settings_max_recent = n;
+    dash_settings.max_recent_items = n;
     dash_settings_apply(true);
 }
 
@@ -196,8 +174,8 @@ static void change_max_recent_submenu(void *param)
     {
         lv_table_set_cell_value_fmt(number_list, i, 0, "%d", i + 1);
     }
-    settings_max_recent = LV_CLAMP(1, settings_max_recent, MAX_RECENT_ITEMS);
-    menu_force_value(number_list, settings_max_recent - 1);
+    dash_settings.max_recent_items = LV_CLAMP(1, dash_settings.max_recent_items, MAX_RECENT_ITEMS);
+    menu_force_value(number_list, dash_settings.max_recent_items - 1);
 }
 
 #define COLOR_HSV_MIN_V (1)
@@ -239,7 +217,7 @@ static void base_color_change_submenu_callback(lv_event_t *event)
     lv_color_t c = hsv_colors[(table->row_act * table->col_cnt) + table->col_act];
     lv_obj_set_style_bg_color(color_rect, c, LV_PART_MAIN);
 
-    settings_theme_colour = (c.ch.red << 16) | (c.ch.green << 8) | (c.ch.blue);
+    dash_settings.theme_colour = (c.ch.red << 16) | (c.ch.green << 8) | (c.ch.blue);
     if (key == LV_KEY_ENTER)
     {
         dash_settings_apply(true);
@@ -303,9 +281,9 @@ static void change_base_color_submenu(void *param)
     lv_obj_add_event_cb(hsv_table, base_color_draw_hsv, LV_EVENT_DRAW_PART_BEGIN, NULL);
     lv_obj_add_event_cb(hsv_table, hsv_table_clean, LV_EVENT_DELETE, NULL);
 
-    lv_color_t current_theme = lv_color_make(settings_theme_colour >> 16,
-                                             settings_theme_colour >> 8,
-                                             settings_theme_colour);
+    lv_color_t current_theme = lv_color_make(dash_settings.theme_colour >> 16,
+                                             dash_settings.theme_colour >> 8,
+                                             dash_settings.theme_colour);
 
     // Set the currently selected box to the current theme color.
     int row,col;
@@ -351,8 +329,8 @@ void dash_settings_open()
             {"Change Folder Search Paths", change_search_path_submenu, NULL, NULL},
         };
 
-    items[0].str = (settings_use_fahrenheit) ? f_on : f_off;
-    items[1].str = (settings_auto_launch_dvd) ? d_on : d_off;
+    items[0].str = (dash_settings.use_fahrenheit) ? f_on : f_off;
+    items[1].str = (dash_settings.auto_launch_dvd) ? d_on : d_off;
     lv_obj_t *menu = menu_open_static(items, DASH_ARRAY_SIZE(items));
     for (unsigned int i = 0; i < DASH_ARRAY_SIZE(items); i++)
     {
@@ -367,28 +345,12 @@ void dash_settings_read()
 
 void dash_settings_apply(bool confirm_box)
 {
+    // Delete old settings
     db_command_with_callback(SQL_SETTINGS_DELETE_ENTRIES, NULL, NULL);
 
-    char settings_use_fahrenheit_str[2];
-    char settings_auto_launch_dvd_str[2];
-    char settings_default_page_index_str[3];
-    char settings_theme_colour_str[11];
-    char settings_max_recent_str[4];
+    // Apply new settings
+    db_insert_blob(SQL_SETTINGS_INSERT, &dash_settings, sizeof(dash_settings));
 
-    lv_snprintf(settings_use_fahrenheit_str, sizeof(settings_use_fahrenheit_str), "%d", LV_MIN(1, settings_use_fahrenheit));
-    lv_snprintf(settings_auto_launch_dvd_str, sizeof(settings_auto_launch_dvd_str), "%d", LV_MIN(1, settings_auto_launch_dvd));
-    lv_snprintf(settings_default_page_index_str, sizeof(settings_default_page_index_str), "%d", settings_default_page_index);
-    lv_snprintf(settings_theme_colour_str, sizeof(settings_theme_colour_str), "%d", settings_theme_colour);
-    lv_snprintf(settings_max_recent_str, sizeof(settings_max_recent_str), "%d", settings_max_recent);
-
-    db_insert(SQL_SETTINGS_INSERT, SQL_SETTINGS_INSERT_CNT, SQL_SETTINGS_INSERT_FORMAT,
-            settings_use_fahrenheit_str,
-            settings_auto_launch_dvd_str,
-            settings_default_page_index_str,
-            settings_theme_colour_str,
-            settings_earliest_recent_date,
-            settings_page_sorts_str,
-            settings_max_recent_str);
     if (confirm_box)
     {
         lv_obj_t *obj = container_open();

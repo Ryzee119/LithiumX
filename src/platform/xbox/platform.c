@@ -55,7 +55,7 @@ static void autolaunch_dvd(void *param)
     while (1)
     {
         Sleep(1000);
-        if (settings_auto_launch_dvd == false)
+        if (dash_settings.auto_launch_dvd == false)
         {
             continue;
         }

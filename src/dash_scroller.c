@@ -403,7 +403,7 @@ static int db_scan_thread_f(void *param)
     {
         lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_RECENT,
                         SQL_TITLE_DB_ID "," SQL_TITLE_NAME "," SQL_TITLE_LAUNCH_PATH,
-                        settings_earliest_recent_date, settings_max_recent);
+                        dash_settings.earliest_recent_date, dash_settings.max_recent_items);
 
         db_command_with_callback(cmd, item_scan_callback, &item_cb);
         item_scan_add(p->scroller, &item_cb);
@@ -501,7 +501,7 @@ void dash_scroller_init()
 {
     lv_coord_t w = lv_obj_get_width(lv_scr_act());
     lv_coord_t h = lv_obj_get_height(lv_scr_act());
-    page_current = settings_default_page_index;
+    page_current = dash_settings.startup_page_index;
 
     lv_memset(parsers, 0, sizeof(parsers));
     thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * (LV_COLOR_DEPTH + 7) / 8,
@@ -631,7 +631,7 @@ bool dash_scroller_get_sort_value(const char *page_title, int *sort_value)
         return false;
     }
 
-    const char* valueStart = strstr(settings_page_sorts_str, page_title);
+    const char* valueStart = strstr(dash_settings.sort_strings, page_title);
     if (valueStart == NULL)
     {
         return false;

@@ -191,17 +191,23 @@ void dash_focus_change_depth(lv_obj_t *new_focus);
 lv_obj_t *dash_focus_pop_depth();
 void dash_focus_change(lv_obj_t *new_obj);
 
+#define DASH_SETTINGS_VERSION 0x01
+#define DASH_SETTINGS_MAGIC (0xBEEF0000+DASH_SETTINGS_VERSION)
+typedef struct dash_settings {
+    unsigned int magic;
+    bool use_fahrenheit;
+    bool auto_launch_dvd;
+    bool show_debug_info;
+    int startup_page_index;
+    int theme_colour;
+    int max_recent_items;
+    char earliest_recent_date[20]; //"YYYY-MM-DD HH:MM:SS"
+    char sort_strings[4096]; //Like "Games=1 Apps=1\0" etc.
+} dash_settings_t;
 
 extern toml_table_t *dash_search_paths;
-extern int settings_use_fahrenheit;
-extern int settings_auto_launch_dvd;
-extern int settings_default_page_index;
-extern int settings_theme_colour;
-extern int settings_max_recent;
-extern char settings_page_sorts_str[4096];
-
+extern dash_settings_t dash_settings;
 extern const char *dash_launch_path;
-extern char settings_earliest_recent_date[20];
 
 #ifdef __cplusplus
 }

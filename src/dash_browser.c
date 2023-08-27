@@ -120,9 +120,9 @@ void dash_browser_open(char *path, browser_item_selection_cb cb)
     // No we need to replace each line in the menu with the file/folder name plus a prefix
     // The prefix adds a file or folder symbol and a colour
     char file_color[8];
-    lv_color_t c = lv_color_make(settings_theme_colour >> 16,
-                                 settings_theme_colour >> 8,
-                                 settings_theme_colour >> 0);
+    lv_color_t c = lv_color_make(dash_settings.theme_colour >> 16,
+                                 dash_settings.theme_colour >> 8,
+                                 dash_settings.theme_colour >> 0);
     lv_snprintf(file_color, sizeof(file_color), "#%02X%02X%02X",
                 c.ch.red, c.ch.green, c.ch.blue);
 

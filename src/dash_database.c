@@ -78,6 +78,39 @@ void db_insert(const char *command, int argc, const char *format, ...)
     SDL_UnlockMutex(db_mutex);
 }
 
+void db_insert_blob(const char *command, void *blob, int len)
+{
+    dash_printf(LEVEL_TRACE, "Processing SQL insert command %s\n", command);
+    int rc;
+
+    SDL_LockMutex(db_mutex);
+
+    sqlite3_stmt *stmt;
+    rc = sqlite3_prepare_v2(db, command, -1, &stmt, NULL);
+    assert(rc == SQLITE_OK);
+
+    rc = sqlite3_bind_blob(stmt, 1, blob, len, SQLITE_STATIC);
+    if (rc != SQLITE_OK)
+    {
+        dash_printf(LEVEL_ERROR, "SQL ERROR: %s\n", sqlite3_errmsg(db));
+    }
+    assert(rc == SQLITE_OK);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE)
+    {
+        dash_printf(LEVEL_ERROR, "SQL ERROR: %s\n", sqlite3_errmsg(db));
+    }
+    assert(rc == SQLITE_DONE);
+    rc = sqlite3_finalize(stmt);
+    if (rc != SQLITE_OK)
+    {
+        dash_printf(LEVEL_ERROR, "SQL ERROR: %s\n", sqlite3_errmsg(db));
+    }
+    assert(rc == SQLITE_OK);
+    SDL_UnlockMutex(db_mutex);
+}
+
 bool db_open()
 {
     db_mutex = SDL_CreateMutex();
@@ -170,8 +203,7 @@ bool db_init(char *err_msg, int err_msg_len)
 
     // Check that the settings table has the correct columns
     static const char *settings_columns[] = {
-        SQL_SETTINGS_FAHRENHEIT, SQL_SETTINGS_AUTOLAUNCH_DVD, SQL_SETTINGS_DEFAULT_PAGE_INDEX,
-        SQL_SETTINGS_THEME_COLOR, SQL_SETTINGS_EARLIEST_RECENT_DATE, SQL_SETTINGS_PAGE_SORTS, SQL_SETTINGS_MAX_RECENT};
+        SQL_SETTINGS_DATA};
 
     rc = sqlite3_prepare_v2(db, SQL_SETTINGS_CHECK_TABLE_COLUMNS, -1, &stmt, NULL);
     assert(rc == SQLITE_OK);
