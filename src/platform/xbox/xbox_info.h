@@ -51,6 +51,7 @@ static const char *xbox_get_verion()
         return ver_string;
     }
 
+    HalWriteSMBusValue(0x20, 0x01, FALSE, 0); // reset rev pointer
     HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[0]);
     HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[1]);
     HalReadSMBusValue(0x20, 0x01, 0, (ULONG *)&ver[2]);
@@ -74,7 +75,7 @@ static const char *xbox_get_verion()
     {
         ver_string = "v1.1";
     }
-    else if (strcmp(ver, ("P11")) == 0 || strcmp(ver, ("1P1")) == 0 || strcmp(ver, ("11P")) == 0)
+    else if (strcmp(ver, ("P11")) == 0)
     {
         ver_string = (HalReadSMBusValue(0xD4, 0x00, 0, (ULONG *)&encoder_check) == 0) ? "v1.4" : "v1.2/v1.3";
     }
@@ -117,22 +118,32 @@ static const char *tray_state_str()
 static const char *get_encoder_str()
 {
     ULONG encoder_check;
+    static const char *encoder_str = NULL;
+
+    // Return previously calculated string
+    if (encoder_str != NULL)
+    {
+        return encoder_str;
+    }
+
     if (HalReadSMBusValue(0xd4, 0x00, FALSE, &encoder_check) == 0)
     {
-        return "Focus FS454";
+        encoder_str = "Focus FS454";
     }
     else if (HalReadSMBusValue(0xe0, 0x00, FALSE, &encoder_check) == 0)
     {
-        return "Microsoft Xcalibur";
+        encoder_str = "Microsoft Xcalibur";
     }
     else if (HalReadSMBusValue(0x8a, 0x00, FALSE, &encoder_check) == 0)
     {
-        return "Conexant CX25871";
+        encoder_str = "Conexant CX25871";
     }
     else
     {
-        return "Unknown";
+        encoder_str = "Unknown";
     }
+
+    return encoder_str;
 }
 
 static const char *xbox_get_date_time()
