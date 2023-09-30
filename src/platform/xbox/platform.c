@@ -408,29 +408,10 @@ void platform_flush_cache()
 // YYYY-MM-DD HH:MM:SS
 void platform_get_iso8601_time(char time_str[20])
 {
-    #if (1)
     SYSTEMTIME st;
     GetLocalTime(&st);
     lv_snprintf(time_str, 20, "%04d-%02d-%02d %02d:%02d:%02d",
         st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-    #else
-    TIME_FIELDS tf;
-    LARGE_INTEGER lt;
-    ULONG type;
-    LONG timezone, daylight, misc_flags;
-    KeQuerySystemTime(&lt);
-    ExQueryNonVolatileSetting(XC_TIMEZONE_BIAS, &type, &timezone, sizeof(timezone), NULL);
-    ExQueryNonVolatileSetting(XC_TZ_DLT_BIAS, &type, &daylight, sizeof(daylight), NULL);
-    ExQueryNonVolatileSetting(XC_MISC, &type, &misc_flags, sizeof(misc_flags), NULL);
-    if (misc_flags & 0x2) //This bit is set when DLT is disabled in MSDash
-    {
-        daylight = 0;
-    }
-    lt.QuadPart -= ((LONGLONG)(timezone + daylight) * 60 * 10000000);
-    RtlTimeToTimeFields(&lt, &tf);
-    lv_snprintf(time_str, 20, "%04d-%02d-%02d %02d:%02d:%02d",
-                tf.Year, tf.Month, tf.Day, tf.Hour, tf.Minute, tf.Second);
-    #endif
 }
 
 /*
