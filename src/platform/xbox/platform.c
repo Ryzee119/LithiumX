@@ -343,7 +343,7 @@ void info_update_callback(lv_timer_t *timer)
                 "%s Tray State:# %s\n"
                 "%s RAM:# %s MB\n"
                 "%s CPU:# %lu%c, %s MB:# %lu%c\n"
-                "%s CPU Freq:# %lu.%luMHz, %s GPU Freq:# %luMHz\n"
+                "%s CPU Freq:# %luMHz, %s GPU Freq:# %luMHz\n"
                 "%s Hardware Version:# %s\n"
                 "%s Serial Number:# %s\n"
                 "%s Mac Address :# %02x:%02x:%02x:%02x:%02x:%02x\n"
@@ -357,7 +357,7 @@ void info_update_callback(lv_timer_t *timer)
                 DASH_MENU_COLOR, tray_state_str(),
                 DASH_MENU_COLOR, xbox_get_ram_usage(),
                 DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
-                DASH_MENU_COLOR, cpu_speed % 1000, cpu_speed % 100, DASH_MENU_COLOR, gpu_speed,
+                DASH_MENU_COLOR, cpu_speed, DASH_MENU_COLOR, gpu_speed,
                 DASH_MENU_COLOR, xbox_get_verion(),
                 DASH_MENU_COLOR, serial_number,
                 DASH_MENU_COLOR, mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5],
