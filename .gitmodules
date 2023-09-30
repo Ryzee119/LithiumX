@@ -4,3 +4,6 @@
 [submodule "src/lib/nxdk"]
 	path = src/libs/nxdk
 	url = https://github.com/XboxDev/nxdk.git
+[submodule "src/libs/mbedtls"]
+	path = src/libs/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git
