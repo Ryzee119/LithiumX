@@ -81,11 +81,13 @@ static void autolaunch_dvd(void *param)
     }
 }
 
+void github_check(void *param);
 static void network_startup(void *param)
 {
     DbgPrint("STARTING NETWORK\n");
     nxNetInit(NULL);
     sys_thread_new("ftp_startup", ftp_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    sys_thread_new("github_check", github_check, NULL, 32768, DEFAULT_THREAD_PRIO);
     //SNTP should be started in TCPIP thread
     tcpip_callback(sntp_startup, NULL);
 }
