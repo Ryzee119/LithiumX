@@ -24,6 +24,9 @@
 #include "ftpd/ftp.h"
 #include "xbox_info.h"
 
+static ULONG platform_cpu_temp, platform_mb_temp, platform_tray_state = 0x70;
+static UCHAR platform_temp_unit;
+
 void xbox_sntp_set_time(uint32_t ntp_s)
 {
     DbgPrint("GOT TIME\n");
@@ -55,14 +58,15 @@ static void autolaunch_dvd(void *param)
     while (1)
     {
         Sleep(1000);
+        // Check if we have media inserted in the DVD ROM
+        HalReadSMCTrayState(&platform_tray_state, NULL);
+        xbox_get_temps(&platform_cpu_temp, &platform_mb_temp, &platform_temp_unit);
+
         if (dash_settings.auto_launch_dvd == false)
         {
             continue;
         }
-        // Check if we have media inserted in the DVD ROM
-        ULONG tray_state = 0x70;
-        HalReadSMCTrayState(&tray_state, NULL);
-        if (tray_state == 0x60)
+        if (platform_tray_state == 0x60)
         {
             // Prevent recursive launch by checking the current xbe isnt launched from the DVD itself
             nxGetCurrentXbeNtPath(targetPath);
@@ -317,8 +321,9 @@ void info_update_callback(lv_timer_t *timer)
     lv_label_set_recolor(label, true);
 
     const CHAR *encoder;
-    UCHAR mac_address[0x06], serial_number[0x0D], temp_unit;
-    ULONG type, video_region, game_region, encoder_check, cpu_temp, mb_temp;
+    static UCHAR mac_address[0x06], serial_number[0x0D];
+    static ULONG video_region, game_region;
+    ULONG type, encoder_check;
 
     static int clock_calc = 0;
     static ULONG cpu_speed, gpu_speed;
@@ -330,13 +335,18 @@ void info_update_callback(lv_timer_t *timer)
         gpu_speed = xbox_get_gpu_frequency();
     }
 
-    xbox_get_temps(&cpu_temp, &mb_temp, &temp_unit);
+    static bool first = 1;
+    if (first)
+    {
+        first = 0;
+        ExQueryNonVolatileSetting(XC_FACTORY_SERIAL_NUMBER, &type, &serial_number, sizeof(serial_number), NULL);
+        ExQueryNonVolatileSetting(XC_FACTORY_ETHERNET_ADDR, &type, &mac_address, sizeof(mac_address), NULL);
+        ExQueryNonVolatileSetting(XC_FACTORY_AV_REGION, &type, &video_region, sizeof(video_region), NULL);
+        ExQueryNonVolatileSetting(XC_FACTORY_GAME_REGION, &type, &game_region, sizeof(game_region), NULL);
+    }
 
-    ExQueryNonVolatileSetting(XC_FACTORY_SERIAL_NUMBER, &type, &serial_number, sizeof(serial_number), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_ETHERNET_ADDR, &type, &mac_address, sizeof(mac_address), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_AV_REGION, &type, &video_region, sizeof(video_region), NULL);
-    ExQueryNonVolatileSetting(XC_FACTORY_GAME_REGION, &type, &game_region, sizeof(game_region), NULL);
     encoder = get_encoder_str();
+
     lv_snprintf(info_text, sizeof(info_text),
                 "%s Date/Time:# %s\n"
                 "%s IP:# %s\n"
@@ -354,9 +364,9 @@ void info_update_callback(lv_timer_t *timer)
                 "%s Build Commit:# %s\n",
                 DASH_MENU_COLOR, xbox_get_date_time(),
                 DASH_MENU_COLOR, xbox_get_ip_address(),
-                DASH_MENU_COLOR, tray_state_str(),
+                DASH_MENU_COLOR, tray_state_str(platform_tray_state),
                 DASH_MENU_COLOR, xbox_get_ram_usage(),
-                DASH_MENU_COLOR, cpu_temp, temp_unit, DASH_MENU_COLOR, mb_temp, temp_unit,
+                DASH_MENU_COLOR, platform_cpu_temp, platform_temp_unit, DASH_MENU_COLOR, platform_mb_temp, platform_temp_unit,
                 DASH_MENU_COLOR, cpu_speed, DASH_MENU_COLOR, gpu_speed,
                 DASH_MENU_COLOR, xbox_get_verion(),
                 DASH_MENU_COLOR, serial_number,
@@ -408,10 +418,35 @@ void platform_flush_cache()
 // YYYY-MM-DD HH:MM:SS
 void platform_get_iso8601_time(char time_str[20])
 {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
+    static SYSTEMTIME st = {.wHour = 255};
+    static DWORD tick_cnt = 0;
+
+    DWORD change = KeTickCount - tick_cnt;
+    if (change > 1000)
+    {
+        st.wSecond += change / 1000;
+        tick_cnt = KeTickCount - (change % 1000);
+        while (st.wSecond > 59)
+        {
+            st.wMinute++;
+            st.wSecond -= 60;
+        }
+        while (st.wMinute > 59)
+        {
+            st.wHour++;
+            st.wMinute -= 60;
+        }
+    }
+    if (st.wHour > 23)
+    {
+        // This is quite slow (reads from EEPROM etc) so we only read once then
+        // work out time based on tick count. Will read from EEPROM once first time or at midnight
+        GetLocalTime(&st);
+        tick_cnt = KeTickCount;
+    }
+
     lv_snprintf(time_str, 20, "%04d-%02d-%02d %02d:%02d:%02d",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 }
 
 /*
