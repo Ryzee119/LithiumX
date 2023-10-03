@@ -90,10 +90,8 @@ static const char *xbox_get_verion()
     return ver_string;
 }
 
-static const char *tray_state_str()
+static const char *tray_state_str(ULONG tray_state)
 {
-    ULONG tray_state = 0x70;
-    HalReadSMCTrayState(&tray_state, NULL);
     switch (tray_state & 0x70)
     {
     case 0x00:
