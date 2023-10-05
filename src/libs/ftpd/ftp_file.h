@@ -41,8 +41,8 @@ typedef struct
     HANDLE cache_mutex[2];
     HANDLE write_thread;
     int thread_running;
-    int write_total;
-    int bytes_cached;
+    LONGLONG write_total;
+    LONGLONG bytes_cached;
     int pre_alloc;
 } fil_handle_t;
 

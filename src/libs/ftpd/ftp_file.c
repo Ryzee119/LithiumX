@@ -388,8 +388,8 @@ FRESULT ftps_f_close(FIL *fp)
 		FILE_END_OF_FILE_INFORMATION endOfFile;
 		FILE_ALLOCATION_INFORMATION allocation;
 
-		endOfFile.EndOfFile.QuadPart = fp->write_total;
-		allocation.AllocationSize.QuadPart = fp->write_total;
+		endOfFile.EndOfFile.QuadPart = (ULONGLONG)fp->write_total;
+		allocation.AllocationSize.QuadPart = (ULONGLONG)fp->write_total;
 		status = NtSetInformationFile(hfile, &iostatusBlock, &endOfFile, sizeof(endOfFile), FileEndOfFileInformation);
 		if (!NT_SUCCESS(status))
 			FILE_DBG("Error setting File End information");
