@@ -17,7 +17,6 @@ uint32_t *p;
 
 static void end_frame()
 {
-    pb_end(p);
     while (pb_finished());
 }
 
@@ -28,6 +27,7 @@ static void begin_frame()
     p = pb_begin();
     p = xgu_set_color_clear_value(p, 0xff000000);
     p = xgu_clear_surface(p, XGU_CLEAR_Z | XGU_CLEAR_STENCIL | XGU_CLEAR_COLOR);
+    pb_end(p);
 }
 
 void lvgl_getlock(void);

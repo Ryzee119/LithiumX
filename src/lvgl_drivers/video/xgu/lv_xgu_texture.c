@@ -203,12 +203,6 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
         return;
     }
 
-    if (xgu_ctx->xgu_data->combiner_mode != 1)
-    {
-        #include "lvgl_drivers/video/xgu/texture.inl"
-        xgu_ctx->xgu_data->combiner_mode = 1;
-    }
-
     lv_lru_get(xgu_ctx->xgu_data->texture_cache, &bmp, sizeof(bmp), (void **)&texture);
     if (texture == NULL)
     {
@@ -229,12 +223,21 @@ void xgu_draw_letter(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_label_dsc_t 
         }
     }
 
+    p = pb_begin();
+
+    if (xgu_ctx->xgu_data->combiner_mode != 1)
+    {
+        #include "lvgl_drivers/video/xgu/texture.inl"
+        xgu_ctx->xgu_data->combiner_mode = 1;
+    }
+
     p = xgux_set_color4ub(p, dsc->color.ch.red, dsc->color.ch.green,
                           dsc->color.ch.blue, dsc->opa);
 
     bind_texture(xgu_ctx, texture, (uint32_t)bmp, XGU_TEXTURE_FILTER_LINEAR);
 
     map_textured_rect(texture, &letter_area, &draw_area, 256.0f);
+    pb_end(p);
 }
 
 lv_res_t xgu_draw_img(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc_t *dsc,
@@ -297,6 +300,7 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
 
     lv_color_t recolor = lv_color_make(255, 255, 255);
 
+    p = pb_begin();
     // If we are about the draw 1 bit indexed image. Setup draw color froms src_buf;
     if (cf == LV_IMG_CF_INDEXED_1BIT)
     {
@@ -381,6 +385,7 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
         }
         if (texture == NULL)
         {
+            pb_end(p);
             return;
         }
     }
@@ -399,4 +404,5 @@ void xgu_draw_img_decoded(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_img_dsc
                  (dsc->antialias) ? XGU_TEXTURE_FILTER_LINEAR : XGU_TEXTURE_FILTER_NEAREST);
 
     map_textured_rect(texture, &src_area_transformed, &draw_area, (float)dsc->zoom);
+    pb_end(p);
 }
