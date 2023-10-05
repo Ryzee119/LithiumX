@@ -145,12 +145,16 @@ int main(int argc, char* argv[]) {
         lvgl_getlock();
         lv_task_handler();
         lvgl_removelock();
+        #ifdef NXDK
+        pb_wait_for_vbl();
+        #else
         e = SDL_GetTicks();
         t = e - s;
         if (t < LV_DISP_DEF_REFR_PERIOD)
         {
             SDL_Delay(LV_DISP_DEF_REFR_PERIOD - t);
         }
+        #endif
     }
     dash_printf(LEVEL_TRACE, "Quitting dash with quit event %d\n", lv_get_quit());
     lv_port_disp_deinit();
