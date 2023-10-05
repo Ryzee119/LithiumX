@@ -120,6 +120,8 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
         return;
     }
 
+    p = pb_begin();
+
     if (xgu_ctx->xgu_data->combiner_mode != 0)
     {
         #include "lvgl_drivers/video/xgu/notexture.inl"
@@ -174,6 +176,8 @@ void xgu_draw_rect(lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const
 
     rect_draw_image(&draw_area, dsc);
     rect_draw_border(&draw_area, dsc);
+
+    pb_end(p);
 }
 
 void xgu_draw_bg(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *draw_dsc, const lv_area_t *src_area)
