@@ -65,7 +65,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     t->jpg_info->decomp_handle = NULL;
 
     t->jpg_info->canvas = lv_canvas_create(image_container);
-    lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, LV_IMG_CF_RGB565);
 
     lv_img_set_size_mode(t->jpg_info->canvas, LV_IMG_SIZE_MODE_REAL);
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
@@ -507,7 +507,7 @@ void dash_scroller_init()
     thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * (LV_COLOR_DEPTH + 7) / 8,
                                     (lv_lru_free_t *)cache_free, NULL);
 
-    jpeg_decoder_init(LV_COLOR_DEPTH, 256);
+    jpeg_decoder_init(16, 256);
 
     _lv_ll_init(&jpeg_decomp_list, sizeof(jpeg_ll_value_t));
     lv_timer_create(jpeg_clear_timer, LV_DISP_DEF_REFR_PERIOD, NULL);
