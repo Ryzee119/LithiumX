@@ -42,7 +42,6 @@ static SDL_Thread *jpegdecomp_thread;              // Thread for the jpeg decomp
 static jpeg_t jpeg_mpool[JPEG_DECODER_QUEUE_SIZE]; // Local mempool for jpeg objects
 static jpeg_t *jpeg_mpool_free;                    // Stores a free pointer in mempool that can be used to quickly allocate from pool
 static jpeg_t *jpegdecomp_qhead;                   // Tracks a singly linked list of queued jpegs for decompression in thread
-static jpeg_t *jpegdecomp_qtail;                   // Tracks a singly linked list of queued jpegs for decompression in thread
 
 struct jpeg_decoder_error_mgr {
   struct jpeg_error_mgr pub;
@@ -87,7 +86,10 @@ static int decomp_thread(void *ptr)
         {
             return 0;
         }
+        SDL_LockMutex(jpegdecomp_qmutex);
         jpeg = jpegdecomp_qhead;
+        jpegdecomp_qhead = jpeg->next;
+        SDL_UnlockMutex(jpegdecomp_qmutex);
 
         state = SDL_AtomicGet(&jpeg->state);
         if (state == STATE_DECOMP_ABORTED)
@@ -169,9 +171,9 @@ static int decomp_thread(void *ptr)
             line_buffer[0] = (void *)&jpeg->decompressed_image[jinfo.output_scanline * row_stride];
             jpeg_read_scanlines(&jinfo, line_buffer, 1);
 
-            if (jinfo.output_scanline % 100 == 0)
+            if (jinfo.output_scanline % 200 == 0)
             {
-                SDL_Delay(20);
+                SDL_Delay(1);
             }
         }
 
@@ -182,14 +184,7 @@ static int decomp_thread(void *ptr)
         jpeg->complete_cb(jpeg->decompressed_image, jpeg->mem, jinfo.output_width, jinfo.output_height, jpeg->user_data);
 
     leave_error:
-        // We have finished with the object, remove it from the queue.
-        SDL_LockMutex(jpegdecomp_qmutex);
-        if (jpegdecomp_qhead != NULL)
-        {
-            jpegdecomp_qhead = jpegdecomp_qhead->next;
-        }
         SDL_AtomicSet(&jpeg->state, STATE_FREE);
-        SDL_UnlockMutex(jpegdecomp_qmutex);
     }
     return 0;
 }
@@ -208,7 +203,6 @@ void jpeg_decoder_init(int colour_depth, int max_dimension)
     jpeg_colour_depth = colour_depth;
     jpeg_max_dimension = max_dimension;
     jpegdecomp_qhead = NULL;
-    jpegdecomp_qtail = NULL;
     jpeg_mpool_free = &jpeg_mpool[0];
     jpegdecomp_qmutex = SDL_CreateMutex();
     jpegdecomp_queue = SDL_CreateSemaphore(0);
@@ -270,14 +264,11 @@ void *jpeg_decoder_queue(const char *fn, jpg_complete_cb_t complete_cb, void *us
     if (jpegdecomp_qhead == NULL)
     {
         jpegdecomp_qhead = jpeg;
-        jpegdecomp_qtail = jpegdecomp_qhead;
-        jpegdecomp_qtail->next = NULL;
     }
     else
     {
-        jpegdecomp_qtail->next = jpeg;
-        jpegdecomp_qtail = jpeg;
-        jpegdecomp_qtail->next = NULL;
+        jpeg->next = jpegdecomp_qhead;
+        jpegdecomp_qhead = jpeg;
     }
     SDL_UnlockMutex(jpegdecomp_qmutex);
     SDL_SemPost(jpegdecomp_queue);
