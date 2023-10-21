@@ -8,7 +8,7 @@
 
 #include <xboxkrnl/xboxkrnl.h>
 
-int lv_texture_cache_size = 8 * 1024 * 1024;
+int lv_texture_cache_size = 20 * 1024 * 1024;
 
 static void cache_free(draw_cache_value_t *texture)
 {
