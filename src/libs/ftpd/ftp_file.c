@@ -50,6 +50,7 @@ static char *get_win_path(const char *in, char* out)
 	{
 		out[0] = out[1];
 		out[1] = ':';
+		out[2] = '\\';
 	}
 #endif
 	return out;
