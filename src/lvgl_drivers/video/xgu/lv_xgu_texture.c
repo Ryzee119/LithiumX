@@ -114,7 +114,7 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     texture->th = th;
     texture->format = fmt;
     texture->bytes_pp = bytes_pp;
-    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, sz + (sz % PAGE_SIZE));
+    lv_lru_set(xgu_ctx->xgu_data->texture_cache, &key, sizeof(key), texture, (sz + (PAGE_SIZE - 1)) & -PAGE_SIZE);
 
     uint8_t *dst_buf = (uint8_t *)MmAllocateContiguousMemoryEx(sz, 0, 0xFFFFFFFF, 0,
                                                                PAGE_WRITECOMBINE | PAGE_READWRITE);
