@@ -12,6 +12,8 @@ static int page_current;
 static lv_lru_t *thumbnail_cache;
 static size_t thumbnail_cache_size = (16 * 1024 * 1024);
 
+#define JPEG_BPP (2)
+
 typedef struct
 {
     lv_obj_t *image_container;
@@ -65,13 +67,21 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     t->jpg_info->decomp_handle = NULL;
 
     t->jpg_info->canvas = lv_canvas_create(image_container);
-    lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, LV_IMG_CF_RGB565);
+
+    lv_img_cf_t cf = LV_IMG_CF_TRUE_COLOR;
+    assert(JPEG_BPP == 2 || JPEG_BPP == 8);
+    if (JPEG_BPP * 8 != LV_COLOR_DEPTH)
+    {
+        cf = (JPEG_BPP == 2) ? LV_IMG_CF_RGB565 : LV_IMG_CF_RGBA8888;
+    }
+
+    lv_canvas_set_buffer(t->jpg_info->canvas, img, w, h, cf);
 
     lv_img_set_size_mode(t->jpg_info->canvas, LV_IMG_SIZE_MODE_REAL);
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
     lv_obj_mark_layout_as_dirty(t->jpg_info->canvas);
 
-    lv_lru_set(thumbnail_cache, &image_container, sizeof(lv_obj_t *), t, w * h * 2);
+    lv_lru_set(thumbnail_cache, &image_container, sizeof(lv_obj_t *), t, w * h * JPEG_BPP);
     lvgl_removelock();
 }
 
@@ -503,10 +513,10 @@ void dash_scroller_init()
     page_current = dash_settings.startup_page_index;
 
     lv_memset(parsers, 0, sizeof(parsers));
-    thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * 2,
+    thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * JPEG_BPP,
                                     (lv_lru_free_t *)cache_free, NULL);
 
-    jpeg_decoder_init(16, 256);
+    jpeg_decoder_init(JPEG_BPP * 8, 256);
 
     _lv_ll_init(&jpeg_decomp_list, sizeof(jpeg_ll_value_t));
     lv_timer_create(jpeg_clear_timer, LV_DISP_DEF_REFR_PERIOD, NULL);
