@@ -34,6 +34,7 @@ static int root_index;
 
 static char *get_win_path(const char *in, char* out)
 {
+	memset(out, 0, _MAX_LFN);
 	strcpy(out, in);
 
 	// Replace "/" with "\"
@@ -176,10 +177,7 @@ FRESULT ftps_f_opendir(DIR *dp, const char *path)
 	}
 #endif
 
-	if (p == NULL)
-	{
-		p = get_win_path(path, dp->path);
-	}
+	p = get_win_path(path, dp->path);
 
 	// Check that the directory exists
 	DWORD res = GetFileAttributesA(dp->path);
