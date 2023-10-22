@@ -71,7 +71,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     lv_img_set_zoom(t->jpg_info->canvas, DASH_THUMBNAIL_WIDTH * 256 / w);
     lv_obj_mark_layout_as_dirty(t->jpg_info->canvas);
 
-    lv_lru_set(thumbnail_cache, t, sizeof(title_t *), t, w * h * ((LV_COLOR_DEPTH + 7) / 8));
+    lv_lru_set(thumbnail_cache, &image_container, sizeof(lv_obj_t *), t, w * h * 2);
     lvgl_removelock();
 }
 
@@ -226,7 +226,6 @@ static void item_deletion_callback(lv_event_t *event)
     title_t *t = item_container->user_data;
     if (t->jpg_info)
     {
-        lv_lru_remove(thumbnail_cache, t, sizeof(title_t *));
         t->jpg_info->decomp_handle = NULL;
         lv_mem_free(t->jpg_info->thumb_path);
         lv_mem_free(t->jpg_info);
@@ -504,7 +503,7 @@ void dash_scroller_init()
     page_current = dash_settings.startup_page_index;
 
     lv_memset(parsers, 0, sizeof(parsers));
-    thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * (LV_COLOR_DEPTH + 7) / 8,
+    thumbnail_cache = lv_lru_create(thumbnail_cache_size, 175 * 248 * 2,
                                     (lv_lru_free_t *)cache_free, NULL);
 
     jpeg_decoder_init(16, 256);
