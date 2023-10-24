@@ -111,9 +111,7 @@ static int get_launch_path_callback(void *param, int argc, char **argv, char **a
     (void) argc;
     assert(argc == 1);
 
-    char *launch_path = lv_mem_alloc(DASH_MAX_PATH);
-    strncpy(launch_path, argv[0], DASH_MAX_PATH);
-    dash_launch_path = launch_path;
+    strncpy(dash_launch_path, argv[0], DASH_MAX_PATH);
     return 0;
 }
 
@@ -268,6 +266,23 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
     item_strings_t *item = lv_mem_alloc(sizeof(item_strings_t));
     lv_memset(item, 0, sizeof(item_strings_t));
 
+    assert(strcmp(azColName[0], SQL_TITLE_DB_ID) == 0);
+    assert(strcmp(azColName[1], SQL_TITLE_NAME) == 0);
+    assert(strcmp(azColName[2], SQL_TITLE_LAUNCH_PATH) == 0);
+
+    strncpy(item->id, argv[0], sizeof(item->id) - 1);
+    strncpy(item->title, argv[1], sizeof(item->title) - 1);
+
+    if (strlen(argv[2]) <= 3)
+    {
+        lv_mem_free(item);
+        return 0;
+    }
+
+    int launch_path_len = strlen(argv[2]);
+    item->launch_path = lv_mem_alloc(launch_path_len + 1);
+    strcpy(item->launch_path, argv[2]);
+
     if (item_cb->tail == NULL)
     {
         assert(item_cb->head == NULL);
@@ -279,17 +294,6 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
         item_cb->tail->next = item;
         item_cb->tail = item;
     }
-
-    assert(strcmp(azColName[0], SQL_TITLE_DB_ID) == 0);
-    assert(strcmp(azColName[1], SQL_TITLE_NAME) == 0);
-    assert(strcmp(azColName[2], SQL_TITLE_LAUNCH_PATH) == 0);
-
-    strncpy(item->id, argv[0], sizeof(item->id) - 1);
-    strncpy(item->title, argv[1], sizeof(item->title) - 1);
-
-    int launch_path_len = strlen(argv[2]) + 1;
-    item->launch_path = lv_mem_alloc(launch_path_len);
-    strcpy(item->launch_path, argv[2]);
     return 0;
 }
 
