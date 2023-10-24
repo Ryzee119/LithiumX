@@ -9,7 +9,7 @@ typedef struct confirmbox_cb
 {
     lv_obj_t *parent;
     menuitem_cb_t cb;
-    void *param;
+    const void *param;
 } confirmbox_cb_t;
 
 static void confirmbox_cancel(void *param)
@@ -27,7 +27,7 @@ static void confirmbox_accept(void *param)
     lv_mem_free(cb);
 }
 
-lv_obj_t *confirmbox_open(const char *btn_str, menuitem_cb_t accept_cb, void *accept_param)
+lv_obj_t *confirmbox_open(const char *btn_str, menuitem_cb_t accept_cb, const void *accept_param)
 {
     confirmbox_cb_t *cb = lv_mem_alloc(sizeof(confirmbox_cb_t));
     cb->cb = accept_cb;
