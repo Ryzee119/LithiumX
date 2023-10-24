@@ -78,7 +78,7 @@ static void autolaunch_dvd(void *param)
 
             // Prep to launch
             lvgl_getlock();
-            dash_launch_path = "__DVD__";
+            strcpy(dash_launch_path, "__DVD__");
             lv_set_quit(LV_QUIT_OTHER);
             lvgl_removelock();
         }
@@ -184,13 +184,10 @@ void platform_init(int *w, int *h)
 void nvnetdrv_stop_txrx (void);
 int XboxGetFullLaunchPath(const char *input, char *output);
 void usbh_core_deinit();
-static void platform_launch_iso(const char *path);
-extern bool is_iso(const char *file_path);
+void platform_launch_iso(const char *path);
 
 void platform_quit(lv_quit_event_t event)
 {
-    char launch_path[DASH_MAX_PATHLEN];
-
     nvnetdrv_stop_txrx();
     usbh_core_deinit();
     debugClearScreen();
@@ -207,110 +204,33 @@ void platform_quit(lv_quit_event_t event)
     }
     else if (event == LV_QUIT_OTHER)
     {
-        if (is_iso(dash_launch_path))
+        if (strcmp(dash_launch_path, "__MSDASH__") == 0)
+        {
+            // FIXME: Do we need to eject disk?
+            strcpy(dash_launch_path, "C:\\xboxdash.xbe");
+        }
+        else if (strcmp(dash_launch_path, "__DVD__") == 0)
+        {
+            strcpy(dash_launch_path, "\\Device\\CdRom0\\default.xbe");
+        }
+        if (dash_launcher_is_iso(dash_launch_path, NULL, NULL))
         {
             platform_launch_iso(dash_launch_path);
         }
         else
         {
-            if (strcmp(dash_launch_path, "__MSDASH__") == 0)
-            {
-                // FIXME: Do we need to eject disk?
-                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "C:\\xboxdash.xbe");
-            }
-            else if (strcmp(dash_launch_path, "__DVD__") == 0)
-            {
-                lv_snprintf(launch_path, DASH_MAX_PATHLEN, "\\Device\\CdRom0\\default.xbe");
-            }
-            else
-            {
-                strncpy(launch_path, dash_launch_path, sizeof(launch_path));
-            }
-
             char xbox_launch_path[MAX_PATH];
-            XboxGetFullLaunchPath(launch_path, xbox_launch_path);
+            XboxGetFullLaunchPath(dash_launch_path, xbox_launch_path);
 
-            DbgPrint("Launching %s\n", launch_path);
+            DbgPrint("Launching %s\n", dash_launch_path);
             DbgPrint("Launching %s\n", xbox_launch_path);
             XLaunchXBE(xbox_launch_path);
             DbgPrint("Error launching. Reboot\n");
             Sleep(500);
-            DbgPrint("ERROR: Could not launch %s\n", launch_path);
+            DbgPrint("ERROR: Could not launch %s\n", dash_launch_path);
             HalReturnToFirmware(HalRebootRoutine);
         }
     }
-}
-
-#define VIRTUAL_ATTACH 0x1EE7CD01
-#define VIRTUAL_DETACH 0x1EE7CD02
-
-#define MAX_IMAGE_SLICES 8
-
-// MAX_IMAGE_SLICES + 1 is a compatibility extension required for some kernels
-typedef struct attach_slice_data {
-    uint32_t num_slices;
-    ANSI_STRING slice_files[MAX_IMAGE_SLICES + 1];
-} attach_slice_data_t;
-
-static void platform_launch_iso(const char *path)
-{
-    nxUnmountDrive('D');
-
-    char *xbox_path = lv_mem_alloc(MAX_PATH);
-    XboxGetFullLaunchPath(path, xbox_path);
-
-    DbgPrint("Launching %s\n", path);
-    DbgPrint("Launching %s\n", xbox_path);
-
-    ANSI_STRING ansi_path;
-    RtlInitAnsiString(&ansi_path, xbox_path);
-
-    int struct_size = sizeof(attach_slice_data_t);
-
-    attach_slice_data_t *slices = lv_mem_alloc(struct_size);
-    slices->num_slices = 1; // FIXME: Support split ISOs
-    slices->slice_files[0] = ansi_path;
-
-    bool compat = false;
-
-    // CerBios has special handling of CCI images
-    if (XboxKrnlVersion.Build == 8008 && strcmp((char *)(path + strlen(path) - 3), "cci") == 0)
-    {
-        compat = true;
-        slices->num_slices |= 0x64 << 8; // CCI, 0x44 "Other"
-        ANSI_STRING cdrom_path;
-        RtlInitAnsiString(&cdrom_path, "\\Device\\CdRom0");
-        slices->slice_files[8] = cdrom_path;
-    }
-
-    ANSI_STRING dev_name;
-    RtlInitAnsiString(&dev_name, "\\Device\\CdRom1");
-
-    OBJECT_ATTRIBUTES obj_attr;
-    InitializeObjectAttributes(&obj_attr, &dev_name, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-    HANDLE handle;
-    IO_STATUS_BLOCK io_status;
-
-    NTSTATUS status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
-    if (!NT_SUCCESS(status))
-    {
-        DbgPrint("ERROR: Could not open %s\n", dev_name.Buffer);
-        goto iso_cleanup;
-    }
-
-    // Push the slices to the driver, reference implementation handles detaching old slices
-    NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, VIRTUAL_ATTACH, slices, compat ? struct_size : struct_size - sizeof(ANSI_STRING), NULL, 0);
-
-    // If the user did a quick reboot, or somehow got back to us make sure we can use the volume again
-    IoDismountVolumeByName(&dev_name);
-
-iso_cleanup:
-    NtClose(handle);
-    lv_mem_free(slices);
-    lv_mem_free(xbox_path);
-
-    HalReturnToFirmware(HalQuickRebootRoutine);
 }
 
 void info_update_callback(lv_timer_t *timer)

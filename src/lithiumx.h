@@ -30,6 +30,7 @@ int strcasecmp(const char *s1, const char *s2);
 #include "dash_styles.h"
 #include "dash_synop.h"
 #include "dash_browser.h"
+#include "dash_launcher.h"
 
 #include "lvgl_drivers/lv_port_disp.h"
 #include "lvgl_drivers/lv_port_indev.h"
@@ -44,12 +45,6 @@ int strcasecmp(const char *s1, const char *s2);
 #include "libs/toml/toml.h"
 #include "libs/tlsf/tlsf.h"
 #include "platform/platform.h"
-
-/// Macro that returns the minimum of two numbers
-#define DASH_MIN(_x, _y) (((_x) < (_y)) ? (_x) : (_y))
-
-/// Macro that returns the maximum of two numbers
-#define DASH_MAX(_x, _y) (((_x) > (_y)) ? (_x) : (_y))
 
 /// Macro that returns the size of a static array
 #define DASH_ARRAY_SIZE(_arr) (sizeof(_arr) / sizeof((_arr)[0]))
@@ -207,7 +202,7 @@ typedef struct dash_settings {
 
 extern toml_table_t *dash_search_paths;
 extern dash_settings_t dash_settings;
-extern const char *dash_launch_path;
+extern char dash_launch_path[];
 
 #ifdef __cplusplus
 }
