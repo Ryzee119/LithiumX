@@ -10,7 +10,7 @@ extern "C" {
 
 #include "../lithiumx.h"
 
-lv_obj_t *confirmbox_open(const char *btn_str, menuitem_cb_t accept_cb, void *accept_param);
+lv_obj_t *confirmbox_open(const char *btn_str, menuitem_cb_t accept_cb, const void *accept_param);
 
 #ifdef __cplusplus
 }
