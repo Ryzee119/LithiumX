@@ -6,7 +6,7 @@
 // Globals
 toml_table_t *dash_search_paths;
 dash_settings_t dash_settings;
-const char *dash_launch_path;
+char dash_launch_path[DASH_MAX_PATH];
 
 static lv_obj_t *focus_stack[32];
 static lv_indev_t *indev;

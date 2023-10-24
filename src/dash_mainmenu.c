@@ -25,7 +25,7 @@ static void dash_system_info(void *param)
 static void dash_launch_msdash(void *param)
 {
     (void)param;
-    dash_launch_path = "__MSDASH__";
+    strcpy(dash_launch_path, "__MSDASH__");
     lv_set_quit(LV_QUIT_OTHER);
 }
 
@@ -41,7 +41,7 @@ static void dash_launch_dvd(void *param)
     }
     #endif
     (void)param;
-    dash_launch_path = "__DVD__";
+    strcpy(dash_launch_path, "__DVD__");
     lv_set_quit(LV_QUIT_OTHER);
 }
 
@@ -51,175 +51,27 @@ static void dash_flush_cache(void *param)
     platform_flush_cache();
 }
 
-static char *last_backslash(const char *str)
-{
-    char *lastBackslash = NULL;
-    char *current = strchr(str, '\\');
-    while (current != NULL)
-    {
-        lastBackslash = current;
-        current = strchr(current + 1, '\\');
-    }
-    return lastBackslash;
-}
-
-static bool is_xbe(const char *file_path, char *title, char *title_id)
-{
-    const int extlen = 4; //".xbe"
-    int slen = strlen(file_path);
-    if (slen > extlen)
-    {
-        const char *ext = file_path + slen - extlen;
-        if (strcasecmp(ext, ".xbe") == 0)
-        {
-            bool ret = false;
-            char *folder_path = lv_mem_alloc(strlen(file_path) + 1);
-            strcpy(folder_path, file_path);
-            char *last = last_backslash(folder_path);
-            if (last != NULL)
-            {
-                last[0] = '\0'; // Split it
-                ret = db_xbe_parse(file_path, folder_path, title, title_id);
-            }
-            lv_mem_free(folder_path);
-            return ret;
-        }
-    }
-    return false;
-}
-
-bool is_iso(const char *file_path)
-{
-    const int extlen = 4; //".iso" | ".cso" | ".cci"
-    int slen = strlen(file_path);
-    if (slen > extlen)
-    {
-        const char *ext = file_path + slen - extlen;
-        if (strcasecmp(ext, ".iso") == 0 || strcasecmp(ext, ".cso") == 0 || strcasecmp(ext, ".cci") == 0)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-static int recent_title_exists_cb(void *param, int argc, char **argv, char **azColName)
-{
-    (void)argc; (void)argv; (void)azColName;
-    int *db_id = param;
-    *db_id = atoi(argv[0]);
-    return 0;
-}
-
-static int recent_title_get_last_id_cb(void *param, int argc, char **argv, char **azColName)
-{
-    (void)argc; (void)argv; (void)azColName;
-    int *db_id_max = param;
-    if (argv[0] != NULL)
-        *db_id_max = atoi(argv[0]);
-    return 0;
-}
-
-typedef struct xbe_launch_param
-{
-    char title[MAX_META_LEN];
-    char title_id[MAX_META_LEN];
-    char selected_path[DASH_MAX_PATH];
-} xbe_launch_param_t;
-
-static void xbe_launch_abort(lv_event_t *event)
+static void item_launch_abort(lv_event_t *event)
 {
     lv_mem_free(lv_event_get_user_data(event));
 }
 
-static void xbe_launch(void *param)
+static void item_launch(void *param)
 {
-    static const char *no_meta = "No Meta-Data";
-    char cmd[SQL_MAX_COMMAND_LEN];
-    char time_str[20];
-    xbe_launch_param_t *xbe_params = param;
-    platform_get_iso8601_time(time_str);
-
-    // See if the launch paths exists in page "Recent"
-    const char *query = "SELECT " SQL_TITLE_DB_ID " FROM " SQL_TITLES_NAME
-                        " WHERE " SQL_TITLE_LAUNCH_PATH "= \"%s\" AND " SQL_TITLE_PAGE " = \"__RECENT__\"";
-    lv_snprintf(cmd, sizeof(cmd), query, xbe_params->selected_path);
-    int db_id = -1;
-    db_command_with_callback(cmd, recent_title_exists_cb, &db_id);
-    if (db_id >= 0)
-    {
-        // If it does, update the LAUNCH_DATETIME to now
-        lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, db_id);
-        db_command_with_callback(cmd, NULL, NULL);
-    }
-    else
-    {
-        // Otherwise add it to a page called "Recent" with current LAUNCH_DATETIME
-        const char *query = "SELECT MAX(" SQL_TITLE_DB_ID ") FROM " SQL_TITLES_NAME
-                            " WHERE " SQL_TITLE_PAGE " = \"__RECENT__\"";
-        int db_id_max = 10000;
-        db_command_with_callback(query, recent_title_get_last_id_cb, &db_id_max);
-        db_id_max++;
-        db_id_max = LV_MAX(10000, db_id_max);
-
-        char item_index_str[8];
-        lv_snprintf(item_index_str, sizeof(item_index_str), "%d", db_id_max);
-        db_insert(SQL_TITLE_INSERT, SQL_TITLE_INSERT_CNT, SQL_TITLE_INSERT_FORMAT,
-            item_index_str,
-            xbe_params->title_id,
-            xbe_params->title,
-            xbe_params->selected_path,
-            "__RECENT__",
-            no_meta,
-            no_meta,
-            no_meta,
-            no_meta,
-            time_str,
-            "0.0");
-    }
-
-    // Setup launch path then quit
-    dash_launch_path = xbe_params->selected_path;
-    lv_set_quit(LV_QUIT_OTHER);
+    dash_launcher_go(param);
 }
 
-static void iso_launch_abort(lv_event_t *event)
+static bool dash_browser_item_selection_cb(const char *selected_path)
 {
-    lv_mem_free(lv_event_get_user_data(event));
-}
-
-static void iso_launch(void *param)
-{
-    // Setup launch path then quit
-    xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
-    xbe_params = param;
-    dash_launch_path = xbe_params->selected_path;
-    lv_set_quit(LV_QUIT_OTHER);
-}
-
-static bool xbe_selection_cb(const char *selected_path)
-{
-    char title[MAX_META_LEN];
-    char title_id[MAX_META_LEN];
-    if (is_xbe(selected_path, title, title_id))
+    char cb_text[DASH_MAX_PATH];
+    if (dash_launcher_is_launchable(selected_path))
     {
-        xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
-        strcpy(xbe_params->selected_path, selected_path);
-        strcpy(xbe_params->title, title);
-        strcpy(xbe_params->title_id, title_id);
-        char cb_text[DASH_MAX_PATH];
         lv_snprintf(cb_text, DASH_MAX_PATH, "Launch \"%s\"", selected_path);
-        lv_obj_t *cb = confirmbox_open(cb_text, xbe_launch, xbe_params);
-        lv_obj_add_event_cb(cb, xbe_launch_abort, LV_EVENT_DELETE, xbe_params);
-    }
-    else if (is_iso(selected_path))
-    {
-        xbe_launch_param_t *xbe_params = lv_mem_alloc(sizeof(xbe_launch_param_t));
-        strcpy(xbe_params->selected_path, selected_path);
-        char cb_text[DASH_MAX_PATH];
-        lv_snprintf(cb_text, DASH_MAX_PATH, "Launch \"%s\"", selected_path);
-        lv_obj_t *cb = confirmbox_open(cb_text, iso_launch, xbe_params);
-        lv_obj_add_event_cb(cb, iso_launch_abort, LV_EVENT_DELETE, xbe_params);
+
+        char *t = lv_mem_alloc(DASH_MAX_PATH);
+        strncpy(t, selected_path, DASH_MAX_PATH - 1);
+        lv_obj_t *cb = confirmbox_open(cb_text, item_launch, t);
+        lv_obj_add_event_cb(cb, item_launch_abort, LV_EVENT_DELETE, t);
     }
     return false;
 }
@@ -227,7 +79,7 @@ static bool xbe_selection_cb(const char *selected_path)
 static void dash_open_xbe_launcher(void *param)
 {
     (void)param;
-    dash_browser_open(DASH_ROOT_PATH, xbe_selection_cb);
+    dash_browser_open(DASH_ROOT_PATH, dash_browser_item_selection_cb);
 }
 
 static void dash_open_eeprom_config(void *param)
