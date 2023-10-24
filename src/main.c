@@ -122,6 +122,8 @@ int main(int argc, char* argv[]) {
     InitializeCriticalSection(&tlsf_crit_sec);
     mem_pool = tlsf_create_with_pool(mem_pool_data, sizeof(mem_pool_data));
 
+    toml_set_memutil(lx_mem_alloc, lx_mem_free);
+
     dash_printf(LEVEL_TRACE, "Initialising Platform\n");
     platform_init(&w, &h);
 
