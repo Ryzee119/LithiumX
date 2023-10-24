@@ -304,7 +304,7 @@ static bool get_xml_str(char *xml, sxmltok_t *tokens, int num_tokens, char *key,
                     break;
                 }
 
-                int capped_len = DASH_MIN(buf_len, len1);
+                int capped_len = LV_MIN(buf_len, len1);
                 strncpy(buf, &xml[t->startpos], capped_len);
                 buf[capped_len] = '\0';
                 return true;
@@ -566,34 +566,41 @@ bool db_xbe_parse(const char *xbe_path, const char *xbe_folder, char *title, cha
             }
         }
     }
-    title[max_len] = '\0';
-    for (int i = 0; i < max_len; i++)
+
+    if (title)
     {
-        uint16_t unicode = xbe_cert.wszTitleName[i];
-        // Replace non ascii with ' '
-        title[i] = (unicode > 0x7E) ? ' ' : (unicode & 0x7F);
-        if (unicode == 0x000)
+        title[max_len] = '\0';
+        for (int i = 0; i < max_len; i++)
         {
-            break;
+            uint16_t unicode = xbe_cert.wszTitleName[i];
+            // Replace non ascii with ' '
+            title[i] = (unicode > 0x7E) ? ' ' : (unicode & 0x7F);
+            if (unicode == 0x000)
+            {
+                break;
+            }
+        }
+
+        // If the xbe doesnt seem to have a title, fall back to the folder name
+        if (strlen(title) < 2)
+        {
+            strncpy(title, xbe_folder, max_len);
+            dash_printf(LEVEL_TRACE, "Extracted title from XBE %s. Title \"%s\"\n", xbe_path, title);
+        }
+
+        // Sometimes the string has encoding issues. Fix the ones I know about.
+        char *_str = strstr(title, "&amp;");
+        if (_str)
+        {
+            _str++;
+            // Turn "Hello &amp; World" into "Hello & World"
+            strcpy(_str, _str + strlen("&amp;") - 1);
         }
     }
 
-    // If the xbe doesnt seem to have a title, fall back to the folder name
-    if (strlen(title) < 2)
+    if (title_id)
     {
-        strncpy(title, xbe_folder, max_len);
-        dash_printf(LEVEL_TRACE, "Extracted title from XBE %s. Title \"%s\"\n", xbe_path, title);
+        lv_snprintf(title_id, MAX_META_LEN, "%08x", xbe_cert.dwTitleId);
     }
-
-    // Sometimes the string has encoding issues. Fix the ones I know about.
-    char *_str = strstr(title, "&amp;");
-    if (_str)
-    {
-        _str++;
-        // Turn "Hello &amp; World" into "Hello & World"
-        strcpy(_str, _str + strlen("&amp;") - 1);
-    }
-
-    lv_snprintf(title_id, MAX_META_LEN, "%08x", xbe_cert.dwTitleId);
     return true;
 }
