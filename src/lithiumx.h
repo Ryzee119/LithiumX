@@ -37,6 +37,7 @@ int strcasecmp(const char *s1, const char *s2);
 #include "lvgl_widgets/menu.h"
 #include "lvgl_widgets/generic_container.h"
 #include "lvgl_widgets/confirmbox.h"
+#include "lvgl_widgets/helpers.h"
 
 #include "libs/toml/toml.h"
 #include "libs/sqlite3/sqlite3.h"
@@ -180,6 +181,7 @@ void lvgl_removelock(void);
 void *lx_mem_alloc(size_t size);
 void *lx_mem_realloc(void *data, size_t new_size);
 void lx_mem_free(void *data);
+void lx_mem_usage(uint32_t *used, uint32_t *capacity);
 
 void dash_focus_set_final(lv_obj_t *focus);
 void dash_focus_change_depth(lv_obj_t *new_focus);

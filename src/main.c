@@ -92,6 +92,29 @@ void lx_mem_free(void *data)
     LeaveCriticalSection(&tlsf_crit_sec);
 }
 
+static void calculate_memory_usage(void* ptr, size_t size, int used, void* user) {
+    size_t* total_used = (size_t*)user;
+    if (used) {
+        // If the block is used, add its size to total used
+        *total_used += size;
+    }
+}
+
+void lx_mem_usage(uint32_t *used, uint32_t *capacity)
+{
+    if (used)
+    {
+        *used = 0;
+        EnterCriticalSection(&tlsf_crit_sec);
+        tlsf_walk_pool(tlsf_get_pool(mem_pool), calculate_memory_usage, used);
+        LeaveCriticalSection(&tlsf_crit_sec);
+    }
+    if (capacity)
+    {
+        *capacity = sizeof(mem_pool_data);
+    }
+}
+
 static void npf_putchar(int c, void *ctx)
 {
     (void)ctx;
