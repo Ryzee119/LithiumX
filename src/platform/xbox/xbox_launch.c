@@ -222,7 +222,7 @@ void platform_launch_iso(const char *path)
                 if (strcasecmp(ext, matching_ext) == 0)
                 {
                     strcat(xbox_path, findData.cFileName);
-                    char *slice_str = strdup(xbox_path);
+                    char *slice_str = lv_strdup(xbox_path);
                     RtlInitAnsiString(&slice_files[num_slices], slice_str);
                     slice_files[num_slices].MaximumLength = slice_files[num_slices].Length + 1;
                     num_slices++;
@@ -246,22 +246,22 @@ void platform_launch_iso(const char *path)
     if (XboxKrnlVersion.Build >= 8008)
     {
         slices_cerbios = lv_mem_alloc(sizeof(attach_slice_data_cerbios_t));
-        memset(slices_cerbios, 0, sizeof(attach_slice_data_cerbios_t));
+        lv_memset(slices_cerbios, 0, sizeof(attach_slice_data_cerbios_t));
 
         bool is_cci = strcmp((char *)(path + strlen(path) - 3), "cci") == 0;
         slices_cerbios->DeviceType = (is_cci) ? 0x64 : 0x44; // Means CCI or normal ISO
         slices_cerbios->num_slices = num_slices;
         RtlInitAnsiString(&slices_cerbios->mount_point, "\\Device\\CdRom0");
         RtlInitAnsiString(&dev_name, "\\Device\\Virtual0\\Image0");
-        memcpy(slices_cerbios->slice_files, slice_files, sizeof(slice_files));
+        lv_memcpy(slices_cerbios->slice_files, slice_files, sizeof(slice_files));
     }
     else
     {
         slices = lv_mem_alloc(sizeof(attach_slice_data_t));
-        memset(slices, 0, sizeof(attach_slice_data_t));
+        lv_memset(slices, 0, sizeof(attach_slice_data_t));
         slices->num_slices = num_slices;
         RtlInitAnsiString(&dev_name, "\\Device\\CdRom1");
-        memcpy(slices->slice_files, slice_files, sizeof(slice_files));
+        lv_memcpy(slices->slice_files, slice_files, sizeof(slice_files));
     }
 
     OBJECT_ATTRIBUTES obj_attr;
