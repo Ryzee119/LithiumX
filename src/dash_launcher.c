@@ -3,17 +3,6 @@
 
 #include "lithiumx.h"
 
-static char *last_backslash(const char *str)
-{
-    char *lastBackslash = NULL;
-    char *current = strchr(str, '\\');
-    while (current != NULL)
-    {
-        lastBackslash = current;
-        current = strchr(current + 1, '\\');
-    }
-    return lastBackslash;
-}
 
 static int recent_title_exists_cb(void *param, int argc, char **argv, char **azColName)
 {
@@ -43,12 +32,11 @@ bool dash_launcher_is_xbe(const char *file_path, char *title, char *title_id)
         if (strcasecmp(ext, ".xbe") == 0)
         {
             bool ret = false;
-            char *folder_path = lv_mem_alloc(strlen(file_path) + 1);
-            strcpy(folder_path, file_path);
-            char *last = last_backslash(folder_path);
+            char *folder_path = lv_strdup(file_path);
+            char *last = strrchr(folder_path, '\\');
             if (last != NULL)
             {
-                last[0] = '\0'; // Split it
+                last[0] = '\0'; // Knock off file name
                 ret = db_xbe_parse(file_path, folder_path, title, title_id);
             }
             lv_mem_free(folder_path);
@@ -70,23 +58,21 @@ bool dash_launcher_is_iso(const char *file_path, char *title, char *title_id)
             if (title)
             {
                 // Need to convert /mypath/myiso.1.iso (for example) to "myiso"
-                char *folder_path = lv_mem_alloc(strlen(file_path) + 1);
-                strcpy(folder_path, file_path);
-
-                const char *cfile_name = last_backslash(folder_path) + 1;
-                char *file_name = lv_mem_alloc(strlen(cfile_name) + 1);
-                strcpy(file_name, cfile_name);
-
-                file_name[strlen(file_name) - extlen] = '\0';
-                int file_name_length = strlen(file_name);
-
-                if (file_name_length > 2 && file_name[file_name_length - 2] == '.')
+                const char *file_name = strrchr(file_path, '\\') + 1;
+                // Should be myiso.1.iso
+                char *trimmed = lv_strdup(file_name);
+                // Should be myiso.1
+                strrchr(trimmed, '.')[0] = '\0';
+                // The .1 is only for split isos, so check if it exists then trim it
+                int length = strlen(trimmed);
+                if(length > 2 && trimmed[length - 2] == '.' && isdigit(trimmed[length - 1]))
                 {
-                    file_name[file_name_length - 2] = '\0';
+                    trimmed[length - 2] = '\0';
                 }
-                strncpy(title, file_name, MAX_META_LEN);
-                DbgPrint("%s\n", title);
-                lv_mem_free(folder_path);
+
+                // Should be "myiso"
+                strncpy(title, trimmed, MAX_META_LEN);
+                lv_mem_free(trimmed);
             }
             return true;
         }
@@ -118,8 +104,6 @@ void dash_launcher_go(const char *selected_path)
             return;
         }
     }
-
-    DbgPrint("dash launch path %s selected_path \"%s\" \n", launch_params->selected_path, selected_path);
 
     // See if the launch paths exists in page "Recent"
     const char *query = "SELECT " SQL_TITLE_DB_ID " FROM " SQL_TITLES_NAME
