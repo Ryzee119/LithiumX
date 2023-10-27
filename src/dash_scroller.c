@@ -279,9 +279,7 @@ static int item_scan_callback(void *param, int argc, char **argv, char **azColNa
         return 0;
     }
 
-    int launch_path_len = strlen(argv[2]);
-    item->launch_path = lv_mem_alloc(launch_path_len + 1);
-    strcpy(item->launch_path, argv[2]);
+    item->launch_path = lv_strdup(argv[2]);
 
     if (item_cb->tail == NULL)
     {
