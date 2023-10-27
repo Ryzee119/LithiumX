@@ -22,7 +22,7 @@ static int dash_settings_read_callback(void *param, int argc, char **argv, char 
     dash_settings_t *_dash_settings = (dash_settings_t *)argv[0];
     if (_dash_settings->magic == DASH_SETTINGS_MAGIC)
     {
-        memcpy(&dash_settings, argv[0], sizeof(dash_settings));
+        lv_memcpy(&dash_settings, argv[0], sizeof(dash_settings));
     }
     return 0;
 }
