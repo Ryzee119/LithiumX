@@ -24,6 +24,7 @@ SRCS += \
     $(CURDIR)/src/lvgl_widgets/confirmbox.c \
     $(CURDIR)/src/lvgl_widgets/generic_container.c \
     $(CURDIR)/src/lvgl_widgets/menu.c \
+    $(CURDIR)/src/lvgl_widgets/helpers.c \
     $(CURDIR)/src/platform/xbox/platform.c \
     $(CURDIR)/src/platform/xbox/xbox_launch.c \
     $(CURDIR)/src/lvgl_drivers/video/xgu/lv_xgu_disp.c \
