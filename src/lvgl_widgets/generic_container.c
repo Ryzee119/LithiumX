@@ -11,7 +11,10 @@ static void input_forwarder(lv_event_t *event)
     key = *((int *)lv_event_get_param(event));
     lv_obj_t *item = lv_obj_get_child(window, 0);
     assert(lv_obj_is_valid(item));
-    lv_event_send(item, LV_EVENT_KEY, &key);
+    if (item)
+    {
+        lv_event_send(item, LV_EVENT_KEY, &key);
+    }
 }
 
 static void container_scroll(lv_event_t *event)
