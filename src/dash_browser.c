@@ -6,24 +6,24 @@
 #define FOLDER_COLOR "#F2E25D"
 #define FILE_COLOR "#FFFFFF"
 
-static void list_dir(const char *path, char **list, int *cnt);
+typedef struct list_item
+{
+    char *item;
+    uint8_t is_dir;
+} list_item_t;
+
+static void list_dir(const char *path, list_item_t *list, int *cnt);
 static void dash_browser_draw_hook(lv_event_t *e);
 
 typedef struct 
 {
     char *cwd;
-    char **list;
+    list_item_t *list;
     lv_obj_t *menu;
     menu_items_t *items;
     int item_cnt;
     browser_item_selection_cb cb;
 } dash_browser_info_t;
-
-static bool is_folder(const char *path)
-{
-    int len = strlen(path);
-    return path[len + 1] == 1;
-}
 
 static void browser_item_selected(void *param)
 {
@@ -35,7 +35,7 @@ static void browser_item_selected(void *param)
     //Path should look like "cwd"
     if (strlen(cwd) > 0) strcat(cwd, "\\");
     //Path should look like "cwd\\"
-    strcat(cwd, dinfo->list[r]);
+    strcat(cwd, dinfo->list[r].item);
     //Path should look like "cwd\\Folder"
 
     // Call the user callback to check we have found what we are looking for
@@ -46,7 +46,7 @@ static void browser_item_selected(void *param)
     }
 
     // Otherwise do nothing unless its a directory, in which case open it
-    if (is_folder(dinfo->list[r]))
+    if (dinfo->list[r].is_dir)
     {
         dash_printf(LEVEL_TRACE, "Opening %s\n", cwd);
         dash_browser_open(cwd, dinfo->cb);
@@ -58,7 +58,7 @@ static void dash_browser_closed(lv_event_t *event)
     dash_browser_info_t *dinfo = lv_event_get_user_data(event);
     for (int i = 0; i < dinfo->item_cnt; i++)
     {
-        lv_mem_free(dinfo->list[i]);
+        lv_mem_free(dinfo->list[i].item);
     }
     lv_mem_free(dinfo->list);
     lv_mem_free(dinfo->items);
@@ -78,14 +78,13 @@ void dash_browser_open(char *path, browser_item_selection_cb cb)
     // Setup directory struct
     int _cnt = LV_MAX(1, cnt);
     dinfo->item_cnt = cnt;
-    dinfo->list = lv_mem_alloc(cnt * sizeof(char *));
+    dinfo->list = lv_mem_alloc(cnt * sizeof(list_item_t));
     dinfo->items = lv_mem_alloc(cnt * sizeof(menu_items_t));
-    dinfo->cwd = lv_mem_alloc(strlen(path) + 1);
+    dinfo->cwd = lv_strdup(path);
     dinfo->cb = cb;
 
     // Now populate list of files/folders
     list_dir(path, dinfo->list, &cnt);
-    strcpy(dinfo->cwd, path);
 
     // Create the basic menu structure
     for (int i = 0; i < cnt; i++)
@@ -128,7 +127,7 @@ void dash_browser_open(char *path, browser_item_selection_cb cb)
 
     for (int i = 0; i < cnt; i++)
     {
-        bool f = is_folder(dinfo->list[i]);
+        bool f = dinfo->list[i].is_dir;
         lv_table_set_cell_value_fmt(dinfo->menu, i, 0, "%s %s# %s", 
             f ? FOLDER_COLOR : FILE_COLOR,
             f ? LV_SYMBOL_DIRECTORY : LV_SYMBOL_FILE,
@@ -149,16 +148,17 @@ static void dash_browser_draw_hook(lv_event_t *e)
     }
 }
 
-static void list_sort(char **arr, int size) {
+static void list_sort(list_item_t *arr, int size) {
     int i, j;
-    char *temp;
+    list_item_t temp;
 
     for (i = 0; i < size - 1; i++) {
         for (j = 0; j < size - i - 1; j++) {
-            char *path1 = arr[j];
-            char *path2 = arr[j + 1];
-            bool folder1 = is_folder(path1);
-            bool folder2 = is_folder(path2);
+            char *path1 = arr[j].item;
+            char *path2 = arr[j + 1].item;
+            bool folder1 = arr[j].is_dir;
+            bool folder2 = arr[j + 1].is_dir;
+            // Directories are listed before files
             if (!folder1 && folder2)
             {
                 temp = arr[j];
@@ -174,7 +174,7 @@ static void list_sort(char **arr, int size) {
     }
 }
 
-static void list_dir(const char *path, char **list, int *cnt)
+static void list_dir(const char *path, list_item_t *list, int *cnt)
 {
     WIN32_FIND_DATA findData;
     HANDLE hFind;
@@ -199,9 +199,8 @@ static void list_dir(const char *path, char **list, int *cnt)
             }
             if (list != NULL)
             {
-                list[_cnt] = (char *)lv_mem_alloc(4);
-                strcpy(list[_cnt], root_drives[i]);
-                list[_cnt][3] = 1;
+                list[_cnt].item = lv_strdup(root_drives[i]);
+                list[_cnt].is_dir = 1;
             }
             _cnt++;
         }
@@ -226,10 +225,8 @@ static void list_dir(const char *path, char **list, int *cnt)
             // Allocate memory for the string and copy the file/directory name
             if (list != NULL)
             {
-                int len = strlen(findData.cFileName);
-                list[i] = (char *)lv_mem_alloc(len + 2);
-                list[i][len + 1] = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
-                strcpy(list[i], findData.cFileName);
+                list[i].item = lv_strdup(findData.cFileName);
+                list[i].is_dir = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
             }
             i++;
         }
