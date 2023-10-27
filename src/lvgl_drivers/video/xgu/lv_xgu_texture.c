@@ -129,7 +129,7 @@ static void *create_texture(lv_draw_xgu_ctx_t *xgu_ctx, const uint8_t *src_buf, 
     uint32_t dst_px = 0, src_px = 0;
     for (int y = 0; y < ih; y++)
     {
-        memcpy(&dst_buf[dst_px], &src_buf[src_px], iw * bytes_pp);
+        lv_memcpy(&dst_buf[dst_px], &src_buf[src_px], iw * bytes_pp);
         dst_px += tw * bytes_pp;
         src_px += iw * bytes_pp;
     }
