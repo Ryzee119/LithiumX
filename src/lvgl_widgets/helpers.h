@@ -10,7 +10,7 @@ extern "C" {
 
 #include "../lithiumx.h"
 
-lv_obj_t *lv_strdup(void);
+char *lv_strdup(const char *s);
 
 #ifdef __cplusplus
 }
