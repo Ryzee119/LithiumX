@@ -219,11 +219,14 @@ static void item_selection_callback(lv_event_t *event)
             lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_GET_LAUNCH_PATH, t->db_id);
             db_command_with_callback(cmd, get_launch_path_callback, NULL);
 
-            platform_get_iso8601_time(time_str);
-            lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, t->db_id);
-            db_command_with_callback(cmd, NULL, NULL);
+            if (dash_launcher_is_launchable(dash_launch_path))
+            {
+                platform_get_iso8601_time(time_str);
+                lv_snprintf(cmd, sizeof(cmd), SQL_TITLE_SET_LAST_LAUNCH_DATETIME, time_str, t->db_id);
+                db_command_with_callback(cmd, NULL, NULL);
 
-            lv_set_quit(LV_QUIT_OTHER);
+                lv_set_quit(LV_QUIT_OTHER);
+            }
         }
     }
 }
