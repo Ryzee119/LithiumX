@@ -31,6 +31,7 @@ int strcasecmp(const char *s1, const char *s2);
 #include "dash_synop.h"
 #include "dash_browser.h"
 #include "dash_launcher.h"
+#include "dash_debug.h"
 
 #include "lvgl_drivers/lv_port_disp.h"
 #include "lvgl_drivers/lv_port_indev.h"
