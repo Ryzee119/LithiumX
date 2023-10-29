@@ -5,7 +5,7 @@
 
 static CRITICAL_SECTION tlsf_crit_sec;
 static tlsf_t mem_pool;
-static uint8_t mem_pool_data[3U * 1024U * 1024U];
+static uint8_t mem_pool_data[1U * 1024U * 1024U];
 
 static SDL_mutex *lvgl_mutex;
 
@@ -67,12 +67,14 @@ void lvgl_putstring(const char *buf)
     printf("%s", buf);
 }
 
+size_t tlsf_usage = 0;
 // Replace lvgls internal allocator with basically the same thing
 // but wrapped in crit sec for thread safety.
 void *lx_mem_alloc(size_t size)
 {
     EnterCriticalSection(&tlsf_crit_sec);
     void *ptr = tlsf_malloc(mem_pool, size);
+    tlsf_usage += tlsf_block_size(ptr);
     LeaveCriticalSection(&tlsf_crit_sec);
     return ptr;
 }
@@ -80,7 +82,9 @@ void *lx_mem_alloc(size_t size)
 void *lx_mem_realloc(void *data, size_t new_size)
 {
     EnterCriticalSection(&tlsf_crit_sec);
+    tlsf_usage -= tlsf_block_size(data);
     void *ptr = tlsf_realloc(mem_pool, data, new_size);
+    tlsf_usage += tlsf_block_size(ptr);
     LeaveCriticalSection(&tlsf_crit_sec);
     return ptr;
 }
@@ -88,25 +92,17 @@ void *lx_mem_realloc(void *data, size_t new_size)
 void lx_mem_free(void *data)
 {
     EnterCriticalSection(&tlsf_crit_sec);
+    tlsf_usage -= tlsf_block_size(data);
     tlsf_free(mem_pool, data);
     LeaveCriticalSection(&tlsf_crit_sec);
-}
-
-static void calculate_memory_usage(void* ptr, size_t size, int used, void* user) {
-    size_t* total_used = (size_t*)user;
-    if (used) {
-        // If the block is used, add its size to total used
-        *total_used += size;
-    }
 }
 
 void lx_mem_usage(uint32_t *used, uint32_t *capacity)
 {
     if (used)
     {
-        *used = 0;
         EnterCriticalSection(&tlsf_crit_sec);
-        tlsf_walk_pool(tlsf_get_pool(mem_pool), calculate_memory_usage, used);
+        *used = tlsf_usage;
         LeaveCriticalSection(&tlsf_crit_sec);
     }
     if (capacity)
