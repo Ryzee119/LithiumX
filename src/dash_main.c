@@ -226,21 +226,6 @@ void dash_init(void)
     return;
 }
 
-static int update_mem_usage_thread(void *param)
-{
-    lv_obj_t *mem_usage_label = param;
-    uint32_t used, capacity;
-    while (1)
-    {
-        lx_mem_usage(&used, &capacity);
-        lvgl_getlock();
-        lv_label_set_text_fmt(mem_usage_label, "%d / %d", used, capacity);
-        lvgl_removelock();
-        SDL_Delay(LV_DISP_DEF_REFR_PERIOD);
-    }
-    return 0;
-}
-
 
 void dash_create()
 {
@@ -280,12 +265,9 @@ void dash_create()
         create_warning_box(err_msg_db);
     }
 
-    lv_obj_t *mem_usage_label = lv_label_create(lv_layer_sys());
-    lv_obj_set_style_bg_opa(mem_usage_label, LV_OPA_50, 0);
-    lv_obj_set_align(mem_usage_label, LV_ALIGN_BOTTOM_LEFT);
-    lv_obj_set_size(mem_usage_label, 100, 50);
-    lv_obj_set_style_text_font(mem_usage_label, &lv_font_montserrat_16, LV_PART_MAIN);
-    lv_label_set_text(mem_usage_label, "hello");
+    if (dash_settings.show_debug_info)
+    {
+        dash_debug_open();
+    }
     lvgl_removelock();
-    SDL_CreateThread(update_mem_usage_thread, "update_mem_usage", mem_usage_label);
 }

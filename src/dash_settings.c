@@ -5,8 +5,10 @@
 
 static const char *f_off = "Fahrenheit Display   OFF";
 static const char *d_off = "Autolaunch DVD       OFF";
+static const char *i_off = "Debug Information   OFF";
 static const char *f_on = "Fahrenheit Display   ON";
 static const char *d_on = "Autolaunch DVD       ON";
+static const char *i_on = "Debug Information    ON";
 
 static int dash_settings_read_callback(void *param, int argc, char **argv, char **azColName)
 {
@@ -41,6 +43,23 @@ static void autolaunch_dvd_change_callback(void *param)
     dash_settings.auto_launch_dvd ^= 1;
     lv_table_set_cell_value(param, 1, 0, (dash_settings.auto_launch_dvd) ? d_on : d_off);
     dash_settings_apply(false);
+}
+
+static void debug_info_change_callback(void *param)
+{
+    dash_settings.show_debug_info = LV_MIN(1, dash_settings.show_debug_info);
+    dash_settings.show_debug_info ^= 1;
+    lv_table_set_cell_value(param, 2, 0, (dash_settings.show_debug_info) ? i_on : i_off);
+    dash_settings_apply(false);
+
+    if (dash_settings.show_debug_info)
+    {
+        dash_debug_open();
+    }
+    else
+    {
+        dash_debug_close();
+    }
 }
 
 static void change_page_sort_sub_submenu_callback(void *param)
@@ -322,6 +341,7 @@ void dash_settings_open()
         {
             {"", fahrenheit_change_callback, NULL, NULL},
             {"", autolaunch_dvd_change_callback, NULL, NULL},
+            {"Show Debug Information", debug_info_change_callback, NULL, NULL},
             {"Change How Pages are Sorted", change_page_sort_submenu, NULL, NULL},
             {"Change Max Recent Items Shown", change_max_recent_submenu, NULL, NULL},
             {"Change Default Start Up Page", change_startup_page_submenu, NULL, NULL},
@@ -331,6 +351,7 @@ void dash_settings_open()
 
     items[0].str = (dash_settings.use_fahrenheit) ? f_on : f_off;
     items[1].str = (dash_settings.auto_launch_dvd) ? d_on : d_off;
+    items[2].str = (dash_settings.show_debug_info) ? i_on : i_off;
     lv_obj_t *menu = menu_open_static(items, DASH_ARRAY_SIZE(items));
     for (unsigned int i = 0; i < DASH_ARRAY_SIZE(items); i++)
     {
