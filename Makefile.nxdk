@@ -20,6 +20,7 @@ SRCS += \
     $(CURDIR)/src/dash_synop.c \
     $(CURDIR)/src/dash_browser.c \
     $(CURDIR)/src/dash_launcher.c \
+    $(CURDIR)/src/dash_debug.c \
     $(CURDIR)/src/main.c \
     $(CURDIR)/src/lvgl_widgets/confirmbox.c \
     $(CURDIR)/src/lvgl_widgets/generic_container.c \
