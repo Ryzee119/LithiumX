@@ -82,7 +82,37 @@ bool dash_launcher_is_iso(const char *file_path, char *title, char *title_id)
 
 bool dash_launcher_is_launchable(const char *file_path)
 {
-    return dash_launcher_is_xbe(file_path, NULL, NULL) || dash_launcher_is_iso(file_path, NULL, NULL);
+    if (dash_launcher_is_xbe(file_path, NULL, NULL))
+    {
+        return true;
+    }
+    #ifdef NXDK
+    if (dash_launcher_is_iso(file_path, NULL, NULL))
+    {
+        uint32_t supported_isos = platform_iso_supported();
+        const char *ext = file_path + strlen(file_path) - 4;
+        if (strcasecmp(ext, ".cci") == 0 && (supported_isos & PLATFORM_XBOX_CCI_SUPPORTED) == 0)
+        {
+            //Tried to launch CCI on unsupported BIOS
+            lv_label_set_text(lv_label_create(container_open()), "ERROR: Tried to launch CCI on unsupported BIOS");
+            return false;
+        }
+        else if (strcasecmp(ext, ".cso") == 0 && (supported_isos & PLATFORM_XBOX_CSO_SUPPORTED) == 0)
+        {
+            //Tried to launch CSO on unsupported BIOS
+            lv_label_set_text(lv_label_create(container_open()), "ERROR: Tried to launch CSO on unsupported BIOS");
+            return false;
+        }
+        else if (strcasecmp(ext, ".iso") == 0 && (supported_isos & PLATFORM_XBOX_ISO_SUPPORTED) == 0)
+        {
+            //Tried to launch ISO on unsupported BIOS
+            lv_label_set_text(lv_label_create(container_open()), "ERROR: Tried to launch ISO on unsupported BIOS");
+            return false;
+        }
+        return true;
+    }
+    #endif
+    return false;
 }
 
 void dash_launcher_go(const char *selected_path)

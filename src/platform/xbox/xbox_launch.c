@@ -138,7 +138,11 @@ int XboxGetFullLaunchPath(const char *input, char *output)
         output[endOfPrefix++] = '\\';
     }
 
-    strcpy(&output[endOfPrefix], pathStart);
+    // If we have a path, put it back
+    if (pathStart)
+    {
+        strcpy(&output[endOfPrefix], pathStart);
+    }
 
     // Replace any remaining forward slashes with backslashes
     char *slash = strchr(output, '/');
@@ -174,18 +178,50 @@ typedef struct _ATTACH_SLICE_DATA_CERBIOS {
     ANSI_STRING mount_point;
 } attach_slice_data_cerbios_t;
 
-void xbox_mount_iso(const char *path)
-{
-    char *xbox_path = lv_mem_alloc(MAX_PATH);
-    XboxGetFullLaunchPath(path, xbox_path);
-}
-
 static int sort_slices(const void* a, const void* b) {
     ANSI_STRING* strA = (ANSI_STRING*)a;
     ANSI_STRING* strB = (ANSI_STRING*)b;
 
     // Compare the ANSI_STRING contents using strncmp
     return strncmp(strA->Buffer, strB->Buffer, LV_MIN(strA->Length, strB->Length));
+}
+
+uint32_t platform_iso_supported()
+{
+    uint32_t support_flags = 0;
+
+    OBJECT_ATTRIBUTES obj_attr;
+    IO_STATUS_BLOCK io_status;
+    HANDLE handle;
+    NTSTATUS status;
+    ANSI_STRING cerb_dev;
+    ANSI_STRING other_dev;
+    RtlInitAnsiString(&other_dev, "\\Device\\CdRom1");
+    RtlInitAnsiString(&cerb_dev, "\\Device\\Virtual0\\Image0");
+
+    // Check if CCI is supported
+    InitializeObjectAttributes(&obj_attr, &cerb_dev, OBJ_CASE_INSENSITIVE, NULL, NULL);
+    status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
+    if (NT_SUCCESS(status))
+    {
+        support_flags |= PLATFORM_XBOX_CCI_SUPPORTED;
+    }
+    NtClose(handle);
+
+    // Check if CSO is supported
+    // How?
+
+    // Check if ISO is supported
+    InitializeObjectAttributes(&obj_attr, &other_dev, OBJ_CASE_INSENSITIVE, NULL, NULL);
+    status = NtOpenFile(&handle, GENERIC_READ | SYNCHRONIZE, &obj_attr, &io_status, FILE_SHARE_READ, FILE_SYNCHRONOUS_IO_NONALERT);
+    if (NT_SUCCESS(status))
+    {
+        support_flags |= PLATFORM_XBOX_ISO_SUPPORTED;
+        support_flags |= PLATFORM_XBOX_CSO_SUPPORTED; //Assume CISO is too for now
+    }
+    NtClose(handle);
+
+    return support_flags;
 }
 
 void platform_launch_iso(const char *path)
@@ -207,12 +243,12 @@ void platform_launch_iso(const char *path)
     strcpy(end_path, "\\*");
 
     // Find all ISO, CCI files and set num_slices
+    const char *matching_ext = &path[strlen(path) - 4];
     ANSI_STRING slice_files[MAX_IMAGE_SLICES];
     WIN32_FIND_DATA findData;
     HANDLE hFind = FindFirstFileA(sym_path, &findData);
     if (hFind != INVALID_HANDLE_VALUE)
     {
-        const char *matching_ext = &path[strlen(path) - 4];
         int end = strlen(xbox_path);
         do
         {
@@ -230,25 +266,27 @@ void platform_launch_iso(const char *path)
                 }
             }
         } while (FindNextFileA(hFind, &findData) != 0);
+        FindClose(hFind);
     }
+    lv_mem_free(xbox_path);
+    lv_mem_free(sym_path);
+
 
     if (num_slices == 0)
     {
-        lv_mem_free(xbox_path);
-        lv_mem_free(sym_path);
         return;
     }
 
     // Should be sorted numerically - assumes split isos are atleast numbered sequentially
     qsort(slice_files, num_slices, sizeof(ANSI_STRING), sort_slices);
 
-    // CerBios has special handling of CCI/ISO images
-    if (XboxKrnlVersion.Build >= 8008)
+    // CerBios has special handling of CCI images
+    bool is_cci = strcasecmp(".cci", matching_ext) == 0;
+    if (XboxKrnlVersion.Build >= 8008 && is_cci)
     {
         slices_cerbios = lv_mem_alloc(sizeof(attach_slice_data_cerbios_t));
         lv_memset(slices_cerbios, 0, sizeof(attach_slice_data_cerbios_t));
 
-        bool is_cci = strcmp((char *)(path + strlen(path) - 3), "cci") == 0;
         slices_cerbios->DeviceType = (is_cci) ? 0x64 : 0x44; // Means CCI or normal ISO
         slices_cerbios->num_slices = num_slices;
         RtlInitAnsiString(&slices_cerbios->mount_point, "\\Device\\CdRom0");
@@ -274,12 +312,10 @@ void platform_launch_iso(const char *path)
     if (!NT_SUCCESS(status))
     {
         DbgPrint("ERROR: Could not open %s\n", dev_name.Buffer);
-        goto iso_cleanup;
+        NtClose(handle);
+        return;
     }
-
-    nxUnmountDrive('D');
-
-    if (XboxKrnlVersion.Build >= 8008)
+    if (XboxKrnlVersion.Build >= 8008 && is_cci)
     {
         NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, VIRTUAL_DETACH_CERBIOS, NULL, 0, NULL, 0);
         NtDeviceIoControlFile(handle, NULL, NULL, NULL, &io_status, VIRTUAL_ATTACH_CERBIOS, slices_cerbios, sizeof(attach_slice_data_cerbios_t), NULL, 0);
@@ -292,9 +328,4 @@ void platform_launch_iso(const char *path)
 
     // If the user did a quick reboot, or somehow got back to us make sure we can use the volume again
     IoDismountVolumeByName(&dev_name);
-
-iso_cleanup:
-    lv_mem_free(xbox_path);
-    lv_mem_free(sym_path);
-    NtClose(handle);
 }

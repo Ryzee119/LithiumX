@@ -37,6 +37,20 @@ void platform_flush_cache(void);
  */
 void platform_get_iso8601_time(char time_str[20]);
 
+
+
+#define PLATFORM_XBOX_ISO_SUPPORTED 0x01
+#define PLATFORM_XBOX_CSO_SUPPORTED 0x02
+#define PLATFORM_XBOX_CCI_SUPPORTED 0x04
+/*
+ * Xbox Specific. Check if mounting/launching ISOs is supported by the current BIOS
+   This is a bit flag,
+   0x1 = ISO is supported
+   0x2 = CSO is supported
+   0x4 = CCI is supported
+*/
+uint32_t platform_iso_supported();
+
 #ifdef __cplusplus
 }
 #endif
