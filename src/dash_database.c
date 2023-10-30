@@ -387,11 +387,13 @@ static bool parse_xml(const char *xml_path, char *title, char *title_id, char *d
 
 static void clean_path(char *path)
 {
-    char *ptr = strchr(path, '/');
+    char a = (DASH_PATH_SEPARATOR == '/') ? '\\' : '/';
+    char b = DASH_PATH_SEPARATOR;
+    char *ptr = strchr(path, a);
     while (ptr != NULL)
     {
-        *ptr = '\\';
-        ptr = strchr(ptr + 1, '/');
+        *ptr = b;
+        ptr = strchr(ptr + 1, a);
     }
 }
 

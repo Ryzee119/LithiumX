@@ -22,7 +22,7 @@ static void confirmbox_cancel(void *param)
 static void confirmbox_accept(void *param)
 {
     confirmbox_cb_t *cb = param;
-    cb->cb(cb->param);
+    cb->cb((void *)cb->param);
     lv_event_send(cb->parent, LV_EVENT_KEY, (void *)&key_escape);
     lv_mem_free(cb);
 }

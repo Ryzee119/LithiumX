@@ -29,6 +29,7 @@ static void frame_count_incrememt(lv_timer_t *t)
 
 static int debug_info_thread_f(void *param)
 {
+    (void) param;
     lvgl_getlock();
     lv_obj_t *mem_usage_label = lv_label_create(lv_layer_sys());
     lv_obj_set_style_bg_opa(mem_usage_label, LV_OPA_50, 0);

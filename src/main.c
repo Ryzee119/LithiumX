@@ -5,7 +5,7 @@
 
 static CRITICAL_SECTION tlsf_crit_sec;
 static tlsf_t mem_pool;
-static uint8_t mem_pool_data[1U * 1024U * 1024U];
+static uint8_t mem_pool_data[3U * 1024U * 1024U];
 
 static SDL_mutex *lvgl_mutex;
 
