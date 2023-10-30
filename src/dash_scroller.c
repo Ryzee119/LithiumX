@@ -12,7 +12,11 @@ static int page_current;
 static lv_lru_t *thumbnail_cache;
 static size_t thumbnail_cache_size = (16 * 1024 * 1024);
 
+#ifdef NXDK
 #define JPEG_BPP (2)
+#else
+#define JPEG_BPP (4)
+#endif
 
 typedef struct
 {
@@ -69,7 +73,7 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     t->jpg_info->canvas = lv_canvas_create(image_container);
 
     lv_img_cf_t cf = LV_IMG_CF_TRUE_COLOR;
-    assert(JPEG_BPP == 2 || JPEG_BPP == 8);
+    assert(JPEG_BPP == 2 || JPEG_BPP == 4);
     if (JPEG_BPP * 8 != LV_COLOR_DEPTH)
     {
         cf = (JPEG_BPP == 2) ? LV_IMG_CF_RGB565 : LV_IMG_CF_RGBA8888;
@@ -203,6 +207,23 @@ static void item_selection_callback(lv_event_t *event)
             // Scroll until our new selection is in view
             lv_obj_scroll_to_view_recursive(new_item_container, LV_ANIM_ON);
             dash_focus_change(new_item_container);
+
+            int s = LV_MAX(1, new_index - 2 * tiles_per_row) * (key == LV_KEY_UP);
+            int e = LV_MIN(last_index, new_index + 2 * tiles_per_row) * (key == LV_KEY_DOWN);
+            for (int i = s; i < new_index + e; i++)
+            {
+                lv_event_t e;
+                e.target = lv_obj_get_child(scroller, i);
+                if (e.target)
+                {
+                    title_t *t = e.target->user_data;
+                    if (t->jpg_info)
+                    {
+                        t->jpg_info->prevent_abort = true;
+                        update_thumbnail_callback(&e);
+                    }
+                }
+            }
         }
         else if (key == DASH_INFO_PAGE && *current_index != 0)
         {
@@ -343,6 +364,7 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
     }
 
     // Next we scan for thumbnails
+    char *thumb_path = lv_mem_alloc(DASH_MAX_PATH);
     item = item_cb->head;
     while (item)
     {
@@ -350,14 +372,22 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
         title_t *t = item_container->user_data;
 
         // Check if a thumbnail exists
-        char *thumb_path = item->launch_path;
-        size_t len = strlen(thumb_path);
-        assert(len > 3);
-        strcpy(&thumb_path[len - 3], "tbn");
+        strcpy(thumb_path, item->launch_path);
+        lv_mem_free(item->launch_path);
+        char *b = strrchr(thumb_path, '\\');
+        if  (b == NULL) b = strrchr(thumb_path, '/');
+        if (b == NULL)
+        {
+            item = item->next;
+            continue;
+        }
+        if (b)
+        {
+            strcpy(&b[1], DASH_GAME_THUMBNAIL);
+        }
         DWORD fileAttributes = GetFileAttributes(thumb_path);
         if (fileAttributes == INVALID_FILE_ATTRIBUTES || (fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
-            lv_mem_free(thumb_path);
             item = item->next;
             continue;
         }
@@ -366,12 +396,11 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
         assert(jpg_info);
         if (jpg_info == NULL)
         {
-            lv_mem_free(thumb_path);
             item = item->next;
             continue;
         }
         lv_memset(jpg_info, 0, sizeof(jpg_info_t));
-        jpg_info->thumb_path = thumb_path;
+        jpg_info->thumb_path = lv_strdup(thumb_path);
 
         lvgl_getlock();
         t->jpg_info = jpg_info;
@@ -380,6 +409,7 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
         lvgl_removelock();
         item = item->next;
     }
+    lv_mem_free(thumb_path);
 }
 
 static void dash_scroller_get_sort_strings(unsigned int sort_index, const char **sort_by, const char **order_by)
@@ -491,7 +521,7 @@ static void jpeg_clear_timer(lv_timer_t *t)
         title_t *title = image_container->user_data;
         assert(title->jpg_info);
         // Still decompressing but no longer visible. Lets abort it.
-        if (lv_obj_is_visible(image_container) == false)
+        if (lv_obj_is_visible(image_container) == false && title->jpg_info->prevent_abort == false)
         {
             jpeg_decoder_abort(title->jpg_info->decomp_handle);
             title->jpg_info->decomp_handle = NULL;
