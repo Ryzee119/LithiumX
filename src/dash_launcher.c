@@ -33,7 +33,7 @@ bool dash_launcher_is_xbe(const char *file_path, char *title, char *title_id)
         {
             bool ret = false;
             char *folder_path = lv_strdup(file_path);
-            char *last = strrchr(folder_path, '\\');
+            char *last = strrchr(folder_path, DASH_PATH_SEPARATOR);
             if (last != NULL)
             {
                 last[0] = '\0'; // Knock off file name
@@ -58,7 +58,7 @@ bool dash_launcher_is_iso(const char *file_path, char *title, char *title_id)
             if (title)
             {
                 // Need to convert /mypath/myiso.1.iso (for example) to "myiso"
-                const char *file_name = strrchr(file_path, '\\') + 1;
+                const char *file_name = strrchr(file_path, DASH_PATH_SEPARATOR) + 1;
                 // Should be myiso.1.iso
                 char *trimmed = lv_strdup(file_name);
                 // Should be myiso.1

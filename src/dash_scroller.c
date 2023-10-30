@@ -374,8 +374,7 @@ static void item_scan_add(lv_obj_t *scroller, item_strings_callback_t *item_cb)
         // Check if a thumbnail exists
         strcpy(thumb_path, item->launch_path);
         lv_mem_free(item->launch_path);
-        char *b = strrchr(thumb_path, '\\');
-        if  (b == NULL) b = strrchr(thumb_path, '/');
+        char *b = strrchr(thumb_path, DASH_PATH_SEPARATOR);
         if (b == NULL)
         {
             item = item->next;

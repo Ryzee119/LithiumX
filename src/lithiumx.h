@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 
+#ifdef WIN32
 #include <windows.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -151,6 +153,7 @@ typedef struct
     void *image; //image is the decompressed image with mem (this may be byte aligned etc)
     int w;
     int h;
+    bool prevent_abort;
 } jpg_info_t;
 
 typedef struct

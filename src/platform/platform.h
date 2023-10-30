@@ -10,6 +10,10 @@ extern "C" {
 
 #include "lithiumx.h"
 
+#ifdef __linux__
+#include "linux/dash_linux.h"
+#endif
+
 /*
  * Anything you need to do to initialise your platform
 */

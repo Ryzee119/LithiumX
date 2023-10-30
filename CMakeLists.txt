@@ -11,9 +11,8 @@ pkg_check_modules(TURBOJPEG REQUIRED libturbojpeg)
 pkg_check_modules(LIBJPEG REQUIRED libjpeg)
 
 add_library(sqlite)
-target_compile_options(sqlite PRIVATE)
-target_compile_definitions(sqlite PRIVATE
-    -DSQLITE_OS_OTHER=1 #To match xbox environment, set no OS then pull in my own OS driver
+set(SQLITE_COMPILE_DEFINITIONS)
+list(APPEND SQLITE_COMPILE_DEFINITIONS
     -DSQLITE_DEFAULT_MEMSTATUS=0
     -DSQLITE_OMIT_DEPRECATED
     -DSQLITE_OMIT_PROGRESS_CALLBACK
@@ -22,8 +21,15 @@ target_compile_definitions(sqlite PRIVATE
     -DSQLITE_DISABLE_INTRINSIC
     -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1
     )
+target_compile_options(sqlite PRIVATE)
 target_include_directories(sqlite PRIVATE src/libs)
+if(WIN32)
+list(APPEND SQLITE_COMPILE_DEFINITIONS -DSQLITE_OS_OTHER)
 target_sources(sqlite PRIVATE "src/libs/sqlite3/sqlite3.c" "src/platform/win32/sqlite_win32.c")
+elseif(UNIX)
+target_sources(sqlite PRIVATE "src/libs/sqlite3/sqlite3.c")
+endif()
+target_compile_definitions(sqlite PRIVATE ${SQLITE_COMPILE_DEFINITIONS})
 
 add_library(toml)
 target_sources(toml PRIVATE "src/libs/toml/toml.c")
@@ -57,27 +63,26 @@ set(SOURCES
     src/dash_settings.c
     src/dash_eeprom.c
     src/dash_browser.c
+    src/dash_debug.c
+    src/dash_launcher.c
     src/lvgl_widgets/confirmbox.c
     src/lvgl_widgets/menu.c
     src/lvgl_widgets/generic_container.c
+    src/lvgl_widgets/helpers.c
 )
-if(NXDK)
+if(UNIX)
     list(APPEND SOURCES src/lvgl_drivers/input/sdl/lv_sdl_indev.c)
-    list(APPEND SOURCES src/platform/xbox/platform.c)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_disp.c)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_draw.c)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_rect.c)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/lv_xgu_texture.c)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/notexture.ps)
-    list(APPEND SOURCES src/lvgl_drivers/video/xgu/texture.ps)
-else()
+    list(APPEND SOURCES src/lvgl_drivers/video/sdl/lv_sdl_disp.c)
+    list(APPEND SOURCES src/platform/linux/glue.c)
+    list(APPEND SOURCES src/platform/linux/platform.c)
+elseif(WIN32)
     list(APPEND SOURCES src/lvgl_drivers/input/sdl/lv_sdl_indev.c)
     list(APPEND SOURCES src/lvgl_drivers/video/sdl/lv_sdl_disp.c)
     list(APPEND SOURCES src/platform/win32/platform.c)
 endif()
 add_executable(LithiumX ${SOURCES})
 
-target_compile_options(LithiumX PUBLIC -Wall -Wextra -std=c99)
+target_compile_options(LithiumX PUBLIC -Wall -Wextra)
 target_compile_definitions(LithiumX PUBLIC "-DLVGL_USE_CUSTOM_KEYBOARD_MAP")
 target_include_directories(LithiumX PUBLIC . libs)
 
