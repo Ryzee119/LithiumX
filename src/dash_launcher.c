@@ -74,6 +74,18 @@ bool dash_launcher_is_iso(const char *file_path, char *title, char *title_id)
                 strncpy(title, trimmed, MAX_META_LEN);
                 lv_mem_free(trimmed);
             }
+
+            if (title_id)
+            {
+                // Generate a unique ID for this title
+                uint32_t title_id_hash = 5281;
+                const char *str = file_path;
+                int c;
+                while ((c = *str++)) {
+                    title_id_hash = ((title_id_hash << 5) + c) + c;
+                }
+                sprintf(title_id, "%08x", title_id_hash);
+            }
             return true;
         }
     }
