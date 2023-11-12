@@ -106,6 +106,12 @@ static void update_thumbnail_callback(lv_event_t *event)
         jpeg_ll_value_t *n = _lv_ll_ins_tail(&jpeg_decomp_list);
         n->image_container = image_container;
     }
+
+    // Poke it in cache
+    if (t->jpg_info->mem) {
+        lv_obj_t *obj;
+        lv_lru_get(thumbnail_cache, &image_container, sizeof(lv_obj_t *), &obj);
+    }
 }
 
 static int get_launch_path_callback(void *param, int argc, char **argv, char **azColName)
