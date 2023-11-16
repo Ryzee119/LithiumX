@@ -110,7 +110,7 @@ static void update_thumbnail_callback(lv_event_t *event)
     // Poke it in cache
     if (t->jpg_info->mem) {
         lv_obj_t *obj;
-        lv_lru_get(thumbnail_cache, &image_container, sizeof(lv_obj_t *), &obj);
+        lv_lru_get(thumbnail_cache, &image_container, sizeof(lv_obj_t *), (void **)&obj);
     }
 }
 
