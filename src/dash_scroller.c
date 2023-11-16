@@ -56,13 +56,14 @@ static void jpg_decompression_complete_cb(void *img, void *mem, int w, int h, vo
     lv_obj_t *image_container = user_data;
     title_t *t = image_container->user_data;
 
+    lvgl_getlock();
+
     if (img == NULL)
     {
         t->jpg_info->decomp_handle = NULL;
+        lvgl_removelock();
         return;
     }
-
-    lvgl_getlock();
 
     t->jpg_info->mem = mem;
     t->jpg_info->image = img;
@@ -103,8 +104,10 @@ static void update_thumbnail_callback(lv_event_t *event)
     {
         t->jpg_info->decomp_handle = jpeg_decoder_queue(t->jpg_info->thumb_path,
                                                         jpg_decompression_complete_cb, image_container);
-        jpeg_ll_value_t *n = _lv_ll_ins_tail(&jpeg_decomp_list);
-        n->image_container = image_container;
+        if (t->jpg_info->decomp_handle) {
+            jpeg_ll_value_t *n = _lv_ll_ins_tail(&jpeg_decomp_list);
+            n->image_container = image_container;
+        }
     }
 
     // Poke it in cache
