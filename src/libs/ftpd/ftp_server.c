@@ -1034,16 +1034,14 @@ static void ftp_cmd_stor(ftp_data_t *ftp)
 	ftp_send(ftp, "150 Connected to port %u\r\n", ftp->data_port);
 
 	//
-	struct pbuf *rcvbuf = NULL;
-	void *prcvbuf;
-	uint16_t buflen = 0;
+	struct pbuf *p = NULL;
 	int8_t file_err = 0;
 	int8_t con_err = 0;
 	uint32_t bytes_written = 0;
 	while (1)
 	{
 		// receive data from ftp client ok?
-		con_err = netconn_recv_tcp_pbuf(ftp->dataconn, &rcvbuf);
+		con_err = netconn_recv_tcp_pbuf(ftp->dataconn, &p);
 
 		// socket closed? (end of file)
 		if (con_err == ERR_CLSD)
@@ -1059,10 +1057,8 @@ static void ftp_cmd_stor(ftp_data_t *ftp)
 		}
 
 		// housekeeping
-		prcvbuf = rcvbuf->payload;
-		buflen = rcvbuf->tot_len;
-		file_err = ftps_f_write(&ftp->file, prcvbuf, buflen, (uint32_t *)&bytes_written);
-		pbuf_free(rcvbuf);
+		file_err = ftps_f_write(&ftp->file, p, p->tot_len, (uint32_t *)&bytes_written);
+		pbuf_free(p);
 
 		// error in nested loop?
 		if (file_err != FR_OK)

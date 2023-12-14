@@ -407,17 +407,15 @@ FRESULT ftps_f_close(FIL *fp)
 	return res;
 }
 
-FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t buflen, uint32_t *written)
+FRESULT ftps_f_write(FIL *fp, struct pbuf *p, uint32_t buflen, uint32_t *written)
 {
 	HANDLE hfile = fp->h;
 	FRESULT res = FR_OK;
 
-	const uint8_t *prcvbuf = (const uint8_t *)buffer;
 	// Write the correct amount of bytes to fill up to FILE_CACHE_SIZE exactly.
 	int next_spot = fp->bytes_cached + buflen;
 	int len = (next_spot < FILE_CACHE_SIZE) ? buflen : (buflen - (next_spot - FILE_CACHE_SIZE));
-	memcpy(&fp->cache_buf[fp->cache_index][fp->bytes_cached], prcvbuf, len);
-	fp->bytes_cached += len;
+	fp->bytes_cached += pbuf_copy_partial(p, &fp->cache_buf[fp->cache_index][fp->bytes_cached], len, 0);
 
 	// If we have filled the file write cache, write it out.
 	assert(fp->bytes_cached <= FILE_CACHE_SIZE);
@@ -435,7 +433,7 @@ FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t buflen, uint32_t *wri
 		assert(remaining >= 0);
 		if (remaining > 0)
 		{
-			memcpy(fp->cache_buf[fp->cache_index], &prcvbuf[len], remaining);
+			pbuf_copy_partial(p, &fp->cache_buf[fp->cache_index], remaining, len);
 		}
 		fp->bytes_cached = remaining;
 	}
