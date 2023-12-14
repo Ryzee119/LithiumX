@@ -867,7 +867,7 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 		return;
 	}
 
-	// does the chosen file exists?
+	// does the chosen file exist?
 	if (ftps_f_stat(ftp->path, &ftp->finfo) != FR_OK)
 	{
 		// go up a level again
@@ -899,11 +899,11 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 		// go up a level again
 		path_up_a_level(ftp->path);
 
-		// send error to client
-		ftp_send(ftp, "425 Can't create connection\r\n");
-
 		// close file
 		ftps_f_close(&ftp->file);
+
+		// send error to client
+		ftp_send(ftp, "425 Can't create connection\r\n");
 
 		// go back
 		return;
@@ -912,10 +912,20 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 	// feedback
 	FTP_CONN_DEBUG(ftp, "Sending %s\r\n", ftp->parameters);
 
+	// grab the optional start position and reset it for next time
+	uint32_t restart_position = ftp->file_restart_pos;
+	if (restart_position > ftp->finfo.fsize)
+	{
+		ftp_send(ftp, "530 Invalid restart position\r\n");
+		goto done;
+	}
+	ftp->file_restart_pos = 0;
+
 	// send accept to client
-	ftp_send(ftp, "150 Connected to port %u, %lu bytes to download\r\n", ftp->data_port, ftps_f_size(&ftp->file));
+	ftp_send(ftp, "150 Connected to port %u, %lu bytes to download\r\n", ftp->data_port, ftp->finfo.fsize - restart_position);
 
 	// variables used in loop
+	uint32_t total_bytes_read = 0;
 	uint32_t bytes_transferred = 0;
 	uint32_t bytes_read;
 
@@ -924,15 +934,17 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 	{
 		// read from file ok?
 		bytes_read = 0;
-		if (ftps_f_read(&ftp->file, ftp->file.cache_buf[0], FILE_CACHE_SIZE, &bytes_read) != FR_OK)
+		if (ftps_f_read(&ftp->file, ftp->file.cache_buf[0], FILE_CACHE_SIZE, &bytes_read, restart_position + total_bytes_read) != FR_OK)
 		{
-			ftp_send(ftp, "451 Communication error during transfer\r\n");
+			ftp_send(ftp, "550 File read failure\r\n");
 			break;
 		}
+		total_bytes_read += bytes_read;
 
-		//Done with file
+		// done with file
 		if(bytes_read == 0)
 		{
+			ftp_send(ftp, "226 File successfully transferred\r\n");
 			break;
 		}
 
@@ -945,12 +957,14 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 			err_t con_err = netconn_write(ftp->dataconn, &ftp->file.cache_buf[0][bytes_transferred], xfer_len, NETCONN_COPY);
 			if (con_err != ERR_OK)
 			{
-				ftp_send(ftp, "426 Error during file transfer: %d\r\n", con_err);
-				break;
+				ftp_send(ftp, "426 LWIP network error code %d, transfer aborted\r\n", con_err);
+				goto done;
 			}
 			bytes_transferred += xfer_len;
 		}
 	}
+	done:
+
 	// feedback
 	FTP_CONN_DEBUG(ftp, "Sent %u bytes\r\n", bytes_transferred);
 
@@ -962,9 +976,6 @@ static void ftp_cmd_retr(ftp_data_t *ftp)
 
 	// close data socket
 	data_con_close(ftp);
-
-	// stop transfer
-	ftp_send(ftp, "226 File successfully transferred\r\n");
 }
 
 static void ftp_cmd_stor(ftp_data_t *ftp)
@@ -1470,6 +1481,18 @@ static void ftp_cmd_pass(ftp_data_t *ftp)
 	}
 }
 
+static void ftp_cmd_rest(ftp_data_t *ftp)
+{
+	// are we not yet logged in?
+	if (!FTP_IS_LOGGED_IN(ftp))
+		return;
+
+	// sets the restart file position
+	uint32_t pos = strtoul(ftp->parameters, NULL, 0);
+	ftp->file_restart_pos = pos;
+	ftp_send(ftp, "350 Restarting at %d\r\n", pos);
+}
+
 static ftp_cmd_t ftpd_commands[] = {
 	//
 	{"PWD", ftp_cmd_pwd},	//
@@ -1500,6 +1523,7 @@ static ftp_cmd_t ftpd_commands[] = {
 	{"AUTH", ftp_cmd_auth}, //
 	{"USER", ftp_cmd_user}, //
 	{"PASS", ftp_cmd_pass}, //
+	{"REST", ftp_cmd_rest}, //
 	{NULL, NULL}			//
 };
 
@@ -1528,6 +1552,8 @@ static uint8_t ftp_process_command(ftp_data_t *ftp)
 		// increment
 		cmd++;
 	}
+
+	// TODO: only allow RETR to follow a REST
 
 	// did we find a command?
 	if (cmd->cmd != NULL && cmd->func != NULL)

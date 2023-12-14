@@ -443,9 +443,10 @@ FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t buflen, uint32_t *wri
 	return res;
 }
 
-FRESULT ftps_f_read(FIL *fp, void *buffer, uint32_t len, uint32_t *read)
+FRESULT ftps_f_read(FIL *fp, void *buffer, uint32_t len, uint32_t *read, uint32_t position)
 {
 	HANDLE hfile = fp->h;
+	SetFilePointer(hfile, position, NULL, FILE_BEGIN);
 	return (ReadFile(hfile, (LPVOID)buffer, len, (LPDWORD)read, NULL)) ? FR_OK : FR_INVALID_PARAMETER;
 }
 

@@ -101,6 +101,9 @@ typedef struct {
 
 	// data connection mode state
 	dcm_type data_conn_mode;
+
+	// file restart position
+	uint32_t file_restart_pos;
 } ftp_data_t;
 
 // structure for ftp commands

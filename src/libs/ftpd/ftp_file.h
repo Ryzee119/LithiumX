@@ -99,7 +99,7 @@ FRESULT ftps_f_open(FIL *fp, const char *path, uint8_t mode);
 size_t ftps_f_size(FIL *fp);
 FRESULT ftps_f_close(FIL *fp);
 FRESULT ftps_f_write(FIL *fp, const void *buffer, uint32_t len, uint32_t *written);
-FRESULT ftps_f_read(FIL *fp, void *buffer, uint32_t len, uint32_t *read);
+FRESULT ftps_f_read(FIL *fp, void *buffer, uint32_t len, uint32_t *read, uint32_t position);
 FRESULT ftps_f_mkdir(const char *path);
 FRESULT ftps_f_rename(const char *from, const char *to);
 FRESULT ftps_f_utime(const char *path, const FILINFO *fno);
