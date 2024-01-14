@@ -127,10 +127,38 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     }
 }
 
+#define REPEAT_INITIAL_DELAY            600 // Time before the key starts repeating
+#define REPEAT_DELAY                     80 // Time between key state repeats
+
+static uint32_t repeat_key         = NULL;  // Key to repeat
+static uint32_t repeat_time_last   = 0;     // Time the key was last pressed
+static uint32_t repeat_time_first  = 0;     // Time the key was first pressed
+static bool     repeat_key_pressed = false; // If the key is currently pressed
+
 static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
     (void) indev_drv;
     data->key = 0;
+
+    // Check if we have data to process
+    if(SDL_PollEvent(NULL) == 0) {
+        // Simulate repeat key
+        if(
+            // Check we have a key to repeat
+            repeat_key != NULL &&
+            // Check if enough time has passed to repeat
+            (SDL_GetTicks() - repeat_time_first > REPEAT_INITIAL_DELAY) && (SDL_GetTicks() - repeat_time_last > REPEAT_DELAY)
+        ) {
+            data->key   = repeat_key;
+            data->state = repeat_key_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+
+            repeat_key_pressed = !repeat_key_pressed;
+            repeat_time_last = SDL_GetTicks();
+        }
+
+        data->continue_reading = false;
+        return;
+    }
 
     static SDL_Event e;
     if (SDL_PollEvent(&e))
@@ -186,6 +214,27 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
             LV_ASSERT(lvgl_gamecontroller_map[e.cbutton.button].sdl_map == e.cbutton.button);
             data->key = lvgl_gamecontroller_map[e.cbutton.button].lvgl_map;
             data->state = (e.type == SDL_CONTROLLERBUTTONDOWN) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+
+            // If we hit this assert, lvgl_gamecontroller_map isnt right
+            LV_ASSERT(lvgl_gamecontroller_map[e.cbutton.button].sdl_map == e.cbutton.button);
+            data->key = lvgl_gamecontroller_map[e.cbutton.button].lvgl_map;
+            data->state = (e.type == SDL_CONTROLLERBUTTONDOWN) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+
+            // Store the last key pressed for repeat
+            if (
+                data->state == LV_INDEV_STATE_PRESSED && (
+                    data->key == LV_KEY_UP   || data->key == LV_KEY_DOWN ||
+                    data->key == LV_KEY_LEFT || data->key == LV_KEY_RIGHT
+                )
+            )
+            {
+                repeat_key  = data->key;
+                repeat_time_last = repeat_time_first = SDL_GetTicks();
+            }
+
+            // Clear the repeat key if it was released
+            if (data->state == LV_INDEV_STATE_RELEASED && data->key == repeat_key)
+                repeat_key = 0;
         }
 
         if (e.type == SDL_CONTROLLERAXISMOTION && e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
@@ -246,8 +295,10 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
             }
         }
     }
-    //Is there more input events?
-    data->continue_reading = (SDL_PollEvent(NULL) != 0);
+
+    // Always report that we are ready to read more data so we can process the repeat key
+    // if needed on the next poll.
+    data->continue_reading = true;
 }
 
 void lv_port_indev_init(bool use_mouse_cursor)
