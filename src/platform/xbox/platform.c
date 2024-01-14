@@ -188,7 +188,7 @@ void platform_launch_iso(const char *path);
 
 void platform_quit(lv_quit_event_t event)
 {
-    nvnetdrv_stop_txrx();
+    nvnetdrv_stop();
     usbh_core_deinit();
     debugClearScreen();
 
