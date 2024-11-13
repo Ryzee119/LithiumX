@@ -3,4 +3,4 @@
 	url = https://github.com/lvgl/lvgl.git
 [submodule "src/lib/nxdk"]
 	path = src/libs/nxdk
-	url = https://github.com/XboxDev/nxdk.git
+	url = https://github.com/Ryzee119/nxdk.git
