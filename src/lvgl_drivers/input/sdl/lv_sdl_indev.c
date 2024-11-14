@@ -130,7 +130,7 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 #define REPEAT_INITIAL_DELAY            600 // Time before the key starts repeating
 #define REPEAT_DELAY                     80 // Time between key state repeats
 
-static uint32_t repeat_key         = NULL;  // Key to repeat
+static uint32_t repeat_key         = 0;  // Key to repeat
 static uint32_t repeat_time_last   = 0;     // Time the key was last pressed
 static uint32_t repeat_time_first  = 0;     // Time the key was first pressed
 static bool     repeat_key_pressed = false; // If the key is currently pressed
@@ -145,7 +145,7 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         // Simulate repeat key
         if(
             // Check we have a key to repeat
-            repeat_key != NULL &&
+            repeat_key != 0 &&
             // Check if enough time has passed to repeat
             (SDL_GetTicks() - repeat_time_first > REPEAT_INITIAL_DELAY) && (SDL_GetTicks() - repeat_time_last > REPEAT_DELAY)
         ) {
