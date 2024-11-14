@@ -24,7 +24,7 @@ jobs:
       run: |
         sudo apt-get update -y && sudo apt-get install -y flex bison clang lld llvm
     - name: Checkout Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Compile
@@ -32,7 +32,7 @@ jobs:
         eval $(src/libs/nxdk/bin/activate -s)
         make -f Makefile.nxdk -j$(nproc)
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dash_xbox
         path: |
@@ -55,7 +55,7 @@ jobs:
         pacman -S mingw-w64-x86_64-SDL2 --noconfirm
         pacman -S mingw-w64-x86_64-libjpeg-turbo --noconfirm
     - name: Checkout Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Compile
@@ -64,7 +64,7 @@ jobs:
         cmake .. -G "MinGW Makefiles"
         cmake --build .
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dash_windows
         path: |
