@@ -128,7 +128,7 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 }
 
 #define REPEAT_INITIAL_DELAY            600 // Time before the key starts repeating
-#define REPEAT_DELAY                     80 // Time between key state repeats
+#define REPEAT_DELAY                     10 // Time between key state repeats
 
 static uint32_t repeat_key         = 0;  // Key to repeat
 static uint32_t repeat_time_last   = 0;     // Time the key was last pressed
