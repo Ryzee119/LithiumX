@@ -122,6 +122,35 @@ static void main_unfocus(lv_event_t *e)
     lv_obj_set_style_bg_opa(lv_obj_get_parent(obj), LV_OPA_0, LV_PART_MAIN);
 }
 
+static void menu_fast_scroll(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_key_t key = *((lv_key_t *)lv_event_get_param(e));
+    lv_table_t *t = (lv_table_t *)obj;
+
+    if (t->row_cnt == 0) {
+        return;
+    }
+
+    if (key != 'L' && key != 'R')
+    {
+        return;
+    }
+
+    if (key == 'L')
+    {
+        t->row_act = LV_MAX(0, (int32_t)t->row_act - 10);
+    }
+    else if (key == 'R')
+    {
+        t->row_act = LV_MIN(t->row_cnt - 1, (int32_t)t->row_act + 10);
+    }
+
+    lv_obj_get_parent(obj)->user_data = (void *)(intptr_t)t->row_act;
+    lv_obj_invalidate(obj);
+    main_scroll(e);
+}
+
 lv_obj_t *menu_open(menu_items_t *menu_items, int cnt)
 {
     menu_items_t *i = lv_mem_alloc(sizeof(menu_items_t) * cnt);
@@ -159,7 +188,6 @@ lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
         lv_obj_add_event_cb(menu, menu_pressed, LV_EVENT_PRESSED, NULL);
         lv_obj_add_event_cb(menu, menu_wrap, LV_EVENT_KEY, NULL);
         lv_obj_add_event_cb(menu, main_scroll, LV_EVENT_VALUE_CHANGED, NULL);
-        
     }
     else
     {
@@ -169,6 +197,7 @@ lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
     lv_obj_add_event_cb(menu, menu_close, LV_EVENT_KEY, NULL);
     lv_obj_add_event_cb(menu, main_unfocus, LV_EVENT_DEFOCUSED, NULL);
     lv_obj_add_event_cb(menu, main_refocus, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(menu, menu_fast_scroll, LV_EVENT_KEY, NULL);
 
     lv_obj_align(menu, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_size(menu, MENU_WIDTH, LV_SIZE_CONTENT);
