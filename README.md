@@ -57,6 +57,14 @@ pacman -S mingw-w64-x86_64-make \
           mingw-w64-x86_64-SDL2 \
           mingw-w64-x86_64-libjpeg-turbo
 
+## Build (Linux Version)
+```
+sudo apt install pkgconf libsdl2-dev libturbojpeg0-dev libjpeg-dev
+mkdir build && cd build
+cmake .. -G "Unix Makefiles"
+cmake --build .
+```
+
 git clone --recursive https://github.com/Ryzee119/LithiumX.git
 cd LithiumX/
 mkdir build && cd build
