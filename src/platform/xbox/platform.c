@@ -1,4 +1,3 @@
-//make -f Makefile.nxdk -j && /d/Games/Emulators/xemu/xemu.exe -device lpc47m157 -serial stdio
 #include <xboxkrnl/xboxkrnl.h>
 #include <nxdk/format.h>
 #include <nxdk/mount.h>
@@ -52,7 +51,7 @@ static void sntp_startup(void *param)
     sntp_init();
 }
 
-static void autolaunch_dvd(void *param)
+static WINAPI DWORD autolaunch_dvd(LPVOID param)
 {
     char targetPath[MAX_PATH];
     while (1)
@@ -83,15 +82,17 @@ static void autolaunch_dvd(void *param)
             lvgl_removelock();
         }
     }
+    return 0;
 }
 
-static void network_startup(void *param)
+static WINAPI DWORD network_startup(LPVOID param)
 {
     DbgPrint("STARTING NETWORK\n");
     nxNetInit(NULL);
     sys_thread_new("ftp_startup", ftp_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
     //SNTP should be started in TCPIP thread
     tcpip_callback(sntp_startup, NULL);
+    return 0;
 }
 
 void platform_init(int *w, int *h)
@@ -177,8 +178,9 @@ void platform_init(int *w, int *h)
     }
     debugPrint(".");
 
-    sys_thread_new("XBOX_DVD_AUTOLAUNCH", autolaunch_dvd, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
-    sys_thread_new("XBOX_NETWORK", network_startup, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+    // CreateThread for autolaunch_dvd
+    CreateThread(NULL, 0, autolaunch_dvd, NULL, 0, NULL);
+    CreateThread(NULL, 0, network_startup, NULL, 0, NULL);
 }
 
 void nvnetdrv_stop_txrx (void);
