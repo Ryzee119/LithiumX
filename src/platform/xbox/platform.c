@@ -117,11 +117,12 @@ void platform_init(int *w, int *h)
                 XVideoSetMode(xmode.width, xmode.height, xmode.bpp, xmode.refresh);;
                 break;
             }
-            
-            *w = xmode.width;
-            *h = xmode.height;
         }
     }
+
+    VIDEO_MODE xmode = XVideoGetMode();
+    *w = xmode.width;
+    *h = xmode.height;
 
     // Show a loading screen as early as possible so we indicate some sign of life
     debugClearScreen();
