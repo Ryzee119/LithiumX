@@ -106,7 +106,7 @@ int strcasecmp(const char *s1, const char *s2);
 #endif
 
 #ifndef DASH_THUMBNAIL_WIDTH
-#define DASH_THUMBNAIL_WIDTH (LV_MIN(200, (lv_obj_get_width(lv_scr_act()) - (2 * DASH_XMARGIN)) / 4))
+#define DASH_THUMBNAIL_WIDTH ((lv_obj_get_width(lv_scr_act()) - (2 * DASH_XMARGIN)) / dash_settings.items_per_row)
 #endif
 
 #ifndef DASH_THUMBNAIL_HEIGHT

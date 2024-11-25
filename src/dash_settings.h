@@ -10,7 +10,7 @@ extern "C" {
 
 #include "lithiumx.h"
 
-#define DASH_SETTINGS_VERSION 0x01
+#define DASH_SETTINGS_VERSION 0x02
 #define DASH_SETTINGS_MAGIC (0xBEEF0000+DASH_SETTINGS_VERSION)
 typedef struct dash_settings {
     unsigned int magic;
@@ -20,6 +20,7 @@ typedef struct dash_settings {
     int startup_page_index;
     int theme_colour;
     int max_recent_items;
+    int items_per_row;
     char earliest_recent_date[20]; //"YYYY-MM-DD HH:MM:SS"
     char sort_strings[4096]; //Like "Games=1 Apps=1\0" etc.
 } dash_settings_t;

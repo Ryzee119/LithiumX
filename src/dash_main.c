@@ -180,6 +180,7 @@ void dash_init(void)
     dash_settings.magic = DASH_SETTINGS_MAGIC;
     dash_settings.max_recent_items = 15;
     dash_settings.theme_colour = (22 << 16) | (111 << 8) | (15 << 0);
+    dash_settings.items_per_row = (lv_obj_get_width(lv_scr_act()) == 640) ? 4 : 6;
 
     // Read in the toml file that has all the search paths
     check_path_toml(err_msg_toml, sizeof(err_msg_toml));

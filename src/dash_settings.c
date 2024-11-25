@@ -169,6 +169,35 @@ static void change_page_sort_submenu(void *param)
     menu_open(items, rows);
 }
 
+static void change_items_per_row_submenu_cb(void *param)
+{
+    int n = (intptr_t)param;
+    dash_settings.items_per_row = n;
+    dash_settings_apply(true);
+}
+
+static void change_items_per_row(void *param) {
+    const uint8_t min_items = 4;
+    const uint8_t max_items = 12;
+    const uint8_t count = max_items - min_items + 1;
+    menu_items_t *items = lv_mem_alloc(sizeof(menu_items_t) * count);
+    for (int i = 0; i < count; i++)
+    {
+        items[i].callback_param = (void *)(intptr_t)i + min_items;
+        items[i].cb = change_items_per_row_submenu_cb;
+        items[i].confirm_box = NULL;
+        items[i].str = "";
+    }
+
+    lv_obj_t *number_list = menu_open(items, count);
+    for (int i = 0; i < count; i++)
+    {
+        lv_table_set_cell_value_fmt(number_list, i, 0, "%d", i + min_items);
+    }
+    dash_settings.items_per_row = LV_CLAMP(min_items, dash_settings.items_per_row, max_items);
+    menu_force_value(number_list, dash_settings.items_per_row - min_items);
+}
+
 static void change_max_recent_submenu_cb(void *param)
 {
     int n = (intptr_t)param;
@@ -343,6 +372,7 @@ void dash_settings_open()
             {"", autolaunch_dvd_change_callback, NULL, NULL},
             {"Show Debug Information", debug_info_change_callback, NULL, NULL},
             {"Change How Pages are Sorted", change_page_sort_submenu, NULL, NULL},
+            {"Change Number of Items per Row", change_items_per_row, NULL, NULL},
             {"Change Max Recent Items Shown", change_max_recent_submenu, NULL, NULL},
             {"Change Default Start Up Page", change_startup_page_submenu, NULL, NULL},
             {"Change Base Theme Color", change_base_color_submenu, NULL, NULL},
@@ -376,7 +406,7 @@ void dash_settings_apply(bool confirm_box)
     {
         lv_obj_t *obj = container_open();
         lv_obj_t *label = lv_label_create(obj);
-        lv_label_set_text(label, "Setting successfully applied");
+        lv_label_set_text(label, "Setting successfully applied\nReboot to apply changes");
         lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     }
