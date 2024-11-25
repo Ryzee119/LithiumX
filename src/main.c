@@ -159,6 +159,13 @@ int main(int argc, char* argv[]) {
     dash_printf(LEVEL_TRACE, "Creating dash\n");
     dash_init();
     dash_printf(LEVEL_TRACE, "Enter dash busy loop\n");
+
+    #ifdef NXDK
+    lv_disp_t *disp = lv_obj_get_disp(lv_scr_act());
+    lv_timer_del(disp->refr_timer);
+    disp->refr_timer = NULL;
+    #endif
+
     while (lv_get_quit() == LV_QUIT_NONE)
     {
         int s,e,t;
@@ -167,6 +174,9 @@ int main(int argc, char* argv[]) {
         lv_task_handler();
         lvgl_removelock();
         #ifdef NXDK
+        lvgl_getlock();
+        _lv_disp_refr_timer(NULL);
+        lvgl_removelock();
         pb_wait_for_vbl();
         #else
         e = SDL_GetTicks();
