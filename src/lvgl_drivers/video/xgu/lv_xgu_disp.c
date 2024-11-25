@@ -17,7 +17,12 @@ uint32_t *p;
 
 static void end_frame()
 {
-    while (pb_finished());
+    while (pb_busy()) {
+        SDL_Delay(0);
+    }
+    while (pb_finished()) {
+        SDL_Delay(0);
+    }
 }
 
 static void begin_frame()
