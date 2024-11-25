@@ -215,6 +215,7 @@ lv_obj_t *menu_open_static(const menu_items_t *menu_items, int cnt)
 void menu_force_value(lv_obj_t *menu, int row)
 {
     assert(lv_obj_get_class(menu) == &lv_table_class);
+    lv_obj_update_layout(menu);
     lv_table_t *t = (lv_table_t *)menu;
     if (row >= t->row_cnt)
     {
