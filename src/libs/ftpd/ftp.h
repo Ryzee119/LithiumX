@@ -35,7 +35,7 @@
 #define FTP_DATA_PORT 55600
 
 // number of clients we want to serve simultaneously, same as netbuf limit
-#define FTP_NBR_CLIENTS 2
+#define FTP_NBR_CLIENTS 10
 
 #ifdef FTP_DEBUG
 #define FTP_CONN_DEBUG(ftp, f, ...) printf("[%d] " f, ftp->ftp_con_num, ##__VA_ARGS__)
