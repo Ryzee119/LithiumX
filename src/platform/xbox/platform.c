@@ -316,6 +316,43 @@ void platform_system_info(lv_obj_t *window)
     lv_timer_ready(timer);
 }
 
+static void recursive_empty_folder(const char *folderPath) {
+    char searchPath[MAX_PATH];
+    lv_snprintf(searchPath, MAX_PATH, "%s\\*", folderPath);
+
+    WIN32_FIND_DATA findData;
+    HANDLE hFind = FindFirstFile(searchPath, &findData);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        printf("Failed to open directory: %s\n", folderPath);
+        return;
+    }
+
+    do {
+        // Ignore `.` and `..`
+        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) {
+            continue;
+        }
+
+        char filePath[MAX_PATH];
+        lv_snprintf(filePath, MAX_PATH, "%s\\%s", folderPath, findData.cFileName);
+
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // Recursively delete subdirectory
+            recursive_empty_folder(filePath);
+            RemoveDirectory(filePath);
+        } else {
+            // Delete file
+            if (!DeleteFile(filePath)) {
+                printf("Failed to delete file: %s\n", filePath);
+            }
+        }
+
+    } while (FindNextFile(hFind, &findData));
+
+    FindClose(hFind);
+}
+
 void platform_flush_cache()
 {
     // Source: https://github.com/dracc/NevolutionX/blob/master/Sources/wipeCache.cpp
@@ -336,6 +373,9 @@ void platform_flush_cache()
             DbgPrint("TRACE: Formatted %s ok!\n", partitions[i]);
         }
     }
+
+    // Delete E:\CACHE too
+    recursive_empty_folder("E:\\CACHE");
 }
 
 // YYYY-MM-DD HH:MM:SS
