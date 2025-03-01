@@ -10,7 +10,7 @@ static lv_obj_t *page_tiles;
 static lv_obj_t *label_footer;
 static int page_current;
 static lv_lru_t *thumbnail_cache;
-static size_t thumbnail_cache_size = (16 * 1024 * 1024);
+static size_t thumbnail_cache_size = (10 * 1024 * 1024);
 
 #ifdef NXDK
 #define JPEG_BPP (2)
