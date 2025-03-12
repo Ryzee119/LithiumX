@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdatomic.h>
 
 #include <nxdk/mount.h>
 
@@ -25,11 +26,11 @@
 #include <xboxkrnl/xboxkrnl.h>
 static const char root_drives[][3] = {"/C", "/D", "/E", "/F", "/G", "/R", "/S", "/V", "/W", "/A", "/B", "/P", "/X", "/Y", "/Z"};
 static int root_index;
-#define FILE_DBG DbgPrint
+#define FILE_DBG(...)
 #else
 #include <timezoneapi.h>
 #include <handleapi.h>
-#define FILE_DBG printf
+#define FILE_DBG(...)
 #endif
 
 static char *get_win_path(const char *in, char* out)
@@ -288,32 +289,55 @@ FRESULT ftps_f_unlink(const char *path)
 	return FR_OK;
 }
 
-static void NTAPI async_writer(PKSTART_ROUTINE StartRoutine, PVOID StartContext)
+typedef struct async_writer_mbox_item {
+	fil_handle_t *fp;
+	void *write_buffer;
+	int write_len;
+} async_writer_mbox_item_t;
+static HANDLE async_writer;
+static HANDLE async_writer_semaphore;
+#define ASYNC_WRITE_MBOX_SIZE 128
+static async_writer_mbox_item_t async_writer_mbox[ASYNC_WRITE_MBOX_SIZE];
+static atomic_size_t async_writer_mbox_head;
+static atomic_size_t async_writer_mbox_tail;
+static int async_writer_init = 1;
+
+static DWORD WINAPI async_writer_thread(LPVOID lpThreadParameter)
 {
-	FIL *fp = (FIL *)StartContext;
-	HANDLE hfile = fp->h;
-	int cache_index = 0;
-	DWORD bw;
 	while (1)
 	{
-		NtWaitForSingleObject(fp->cache_mutex[cache_index], FALSE, NULL);
-		if (fp->thread_running == 0)
-		{
-			break;
+		WaitForSingleObject(async_writer_semaphore, INFINITE);
+		async_writer_mbox_item_t *item = &async_writer_mbox[async_writer_mbox_head];
+		async_writer_mbox_head = (async_writer_mbox_head + 1) % ASYNC_WRITE_MBOX_SIZE;
+
+		HANDLE hfile = item->fp->h;
+		DWORD bw;
+		if (WriteFile(hfile, item->write_buffer, item->write_len, &bw, NULL)) {
+			item->fp->write_total += bw;
 		}
-		WriteFile(hfile, (LPVOID)fp->cache_buf[cache_index], FILE_CACHE_SIZE, &bw, NULL);
-		NtReleaseMutant(fp->cache_mutex[cache_index], NULL);
-		cache_index ^= 1;
+		SetEvent(item->fp->write_complete);
 	}
-	PsTerminateSystemThread(0);
+	return 0;
 }
 
 FRESULT ftps_f_open(FIL *fp, const char *path, uint8_t mode)
 {
+	// FIXME: Have a way to close the async writer thread
+	if (async_writer_init) {
+		async_writer_init = 0;
+		memset(async_writer_mbox, 0, sizeof(async_writer_mbox));
+		async_writer_mbox_head = 0;
+		async_writer_mbox_tail = 0;
+		async_writer_semaphore = CreateSemaphore(0, 0, ASYNC_WRITE_MBOX_SIZE, NULL);
+		async_writer = CreateThread(0, 0, async_writer_thread, NULL, 0, NULL);
+	}
+
 	DWORD access = 0, disposition = 0;
 	access |= (mode & FA_READ) ? GENERIC_READ : 0;
 	access |= (mode & FA_WRITE) ? GENERIC_WRITE : 0;
 	disposition = (mode & FA_CREATE_ALWAYS) ? CREATE_ALWAYS : OPEN_EXISTING;
+
+	memset(fp, 0, sizeof(FIL));
 
 	get_win_path(path, fp->path);
 	FILE_DBG("Opening %s\n", fp->path);
@@ -323,21 +347,11 @@ FRESULT ftps_f_open(FIL *fp, const char *path, uint8_t mode)
 		return FR_NO_FILE;
 	}
 	fp->h = hfile;
-	fp->write_total = -1;
-	fp->bytes_cached = 0;
-	fp->cache_index = 0;
-	fp->thread_running = 0;
-
-	if (access & GENERIC_WRITE)
+	if (mode & FA_WRITE)
 	{
-		fp->thread_running = 1;
-		fp->write_total = 0;
-		NtCreateMutant(&fp->cache_mutex[0], NULL, TRUE);
-		NtCreateMutant(&fp->cache_mutex[1], NULL, FALSE);
-		PsCreateSystemThreadEx(&fp->write_thread, 0, 4096, 0, NULL, NULL, fp, FALSE, FALSE, async_writer);
+		fp->opened_for_write = 1;
+		fp->write_complete = CreateEvent(NULL, FALSE, TRUE, NULL);
 	}
-	//FIXME async_reader?
-
 	return FR_OK;
 }
 
@@ -359,16 +373,10 @@ FRESULT ftps_f_close(FIL *fp)
 	DWORD bw;
 
 	// Did we have the file opened as write?
-	if (fp->write_total != -1)
+	if (fp->opened_for_write)
 	{
-		//Shutdown async_writer thread
-		fp->thread_running = 0;
-		NtReleaseMutant(fp->cache_mutex[0], NULL);
-		NtReleaseMutant(fp->cache_mutex[1], NULL);
-		NtWaitForSingleObject(fp->write_thread, FALSE, NULL);
-		NtClose(fp->write_thread);
-		NtClose(fp->cache_mutex[0]);
-		NtClose(fp->cache_mutex[1]);
+		// Wait for the last write to complete
+		WaitForSingleObject(fp->write_complete, INFINITE);
 
 		// If we have pending data in cache, write it out.
 		if (fp->bytes_cached > 0)
@@ -381,7 +389,7 @@ FRESULT ftps_f_close(FIL *fp)
 		}
 
 		// Fix the final output size.
-		#ifdef NXDK
+#ifdef NXDK
 		NTSTATUS status;
 		IO_STATUS_BLOCK iostatusBlock;
 		FILE_END_OF_FILE_INFORMATION endOfFile;
@@ -396,14 +404,15 @@ FRESULT ftps_f_close(FIL *fp)
 		status = NtSetInformationFile(hfile, &iostatusBlock, &allocation, sizeof(allocation), FileAllocationInformation);
 		if (!NT_SUCCESS(status))
 			FILE_DBG("Error setting File Allocation information");
-		#else
+#else
 		FILE_END_OF_FILE_INFO endOfFile;
 		endOfFile.EndOfFile.QuadPart = fp->write_total;
 		SetFileInformationByHandle(hfile, FileEndOfFileInfo, &endOfFile, sizeof(endOfFile));
-		#endif
+#endif
 	}
 
 	CloseHandle(hfile);
+	CloseHandle(fp->write_complete);
 	return res;
 }
 
@@ -413,22 +422,31 @@ FRESULT ftps_f_write(FIL *fp, struct pbuf *p, uint32_t buflen, uint32_t *written
 	FRESULT res = FR_OK;
 
 	// Write the correct amount of bytes to fill up to FILE_CACHE_SIZE exactly.
-	int next_spot = fp->bytes_cached + buflen;
-	int len = (next_spot < FILE_CACHE_SIZE) ? buflen : (buflen - (next_spot - FILE_CACHE_SIZE));
+	int last_byte = fp->bytes_cached + buflen;
+	int len = (last_byte < FILE_CACHE_SIZE) ? buflen : (buflen - (last_byte - FILE_CACHE_SIZE));
 	fp->bytes_cached += pbuf_copy_partial(p, &fp->cache_buf[fp->cache_index][fp->bytes_cached], len, 0);
 
 	// If we have filled the file write cache, write it out.
 	assert(fp->bytes_cached <= FILE_CACHE_SIZE);
 	if (fp->bytes_cached == FILE_CACHE_SIZE)
 	{
-		//Get ownership of next buffer
-		NtWaitForSingleObject(fp->cache_mutex[fp->cache_index ^ 1], FALSE, NULL);
-		//Release ownership of current buffer to start writing in the async_writer thread
-		NtReleaseMutant(fp->cache_mutex[fp->cache_index], NULL);
-		fp->cache_index ^= 1;
-		fp->write_total += FILE_CACHE_SIZE;
+		// Wait for the last write to complete
+		WaitForSingleObject(fp->write_complete, INFINITE);
 
-		// If we have remaining bytes, put them in the now cleared cache buffer.
+		// Prepare the write buffer
+		async_writer_mbox_item_t *item = &async_writer_mbox[async_writer_mbox_tail];
+		async_writer_mbox_tail = (async_writer_mbox_tail + 1) % ASYNC_WRITE_MBOX_SIZE;
+		item->fp = fp;
+		item->write_buffer = fp->cache_buf[fp->cache_index];
+		item->write_len = FILE_CACHE_SIZE;
+
+		// Post semaphore to wake up writer thread to handle it
+		ReleaseSemaphore(async_writer_semaphore, 1, NULL);
+
+		// Flip to the other cache buffer
+		fp->cache_index ^= 1;
+
+		// If we have remaining bytes, put them in the now free cache buffer.
 		int remaining = buflen - len;
 		assert(remaining >= 0);
 		if (remaining > 0)

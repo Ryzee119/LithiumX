@@ -38,12 +38,10 @@ typedef struct
     char path[_MAX_LFN];
     int cache_index;
     char cache_buf[2][FILE_CACHE_SIZE + TCP_MSS] __attribute__((aligned(PAGE_SIZE)));
-    HANDLE cache_mutex[2];
-    HANDLE write_thread;
-    int thread_running;
-    LONGLONG write_total;
-    LONGLONG bytes_cached;
-    int pre_alloc;
+    ULONGLONG write_total;
+    ULONGLONG bytes_cached;
+    HANDLE write_complete;
+    BOOL opened_for_write;
 } fil_handle_t;
 
 #define DIR dir_handle_t
