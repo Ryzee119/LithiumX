@@ -6,7 +6,7 @@ A simple dashboard, mainly developed for the Original Xbox console, but it can b
 
 ## Features
 * Customisable search paths and pages.
-* Supports game synopsis information and boxart using the [XBMC4Gamers artwork format](https://github.com/Rocky5/XBMC4Gamers/blob/master/README.md#game-resources-and-synopsis). [Google Drive Link](https://drive.google.com/file/d/1Y3_21N8yDqYJ1CznaP6ceMM87JHpTHwd/view?usp=sharing)
+* Supports game synopsis information and boxart using the [XBMC4Gamers artwork format](https://github.com/Rocky5/XBMC4Gamers/blob/master/README.md#game-resources-and-synopsis). [Google Drive Link](https://drive.google.com/file/d/151xRSGPrMIl3KjTGYJqhbxDUGMrPSQqW/view?usp=sharing)
 * Keeps track of recently launched titles to quickly get back into your games.
 * Will run at 720p if available, otherwise it will automatically fallback to 480p.
 * FTP Server (Xbox build only)
